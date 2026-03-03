@@ -53,7 +53,6 @@ CARRYOVER_RATIO = 0.5
 SOURCE_FRESH_FETCH = "fresh_fetch"
 SOURCE_CARRYOVER_CACHE = "carryover_cache"
 PRIORITY_DEEP_SCORE = 9.0
-RUN_DATE_RANGE_RE = re.compile(r"^\d{8}-\d{8}$")
 
 
 def log(message: str) -> None:
@@ -99,72 +98,6 @@ def parse_date_str(date_str: str) -> date:
         # 区间 token 用结束日期参与“今日/最近N天”逻辑
         s = s.split("-", 1)[1]
     return datetime.strptime(s, "%Y%m%d").date()
-
-
-def resolve_published_window(token: str) -> tuple[datetime, datetime] | None:
-    """
-    将 DPR_RUN_DATE 解析为 publication 区间，默认左闭右开。
-    - YYYYMMDD       -> [当天 00:00, 次日 00:00)
-    - YYYYMMDD-YYYYMMDD -> [start 00:00, end+1 00:00)
-    """
-    s = str(token or "").strip()
-    if not s:
-        return None
-
-    if re.fullmatch(r"^\d{8}$", s):
-        start = datetime.strptime(s, "%Y%m%d").replace(tzinfo=timezone.utc)
-        return start, start + timedelta(days=1)
-
-    m = RUN_DATE_RANGE_RE.fullmatch(s)
-    if m:
-        start_s, end_s = s.split("-", 1)
-        start = datetime.strptime(start_s, "%Y%m%d").replace(tzinfo=timezone.utc)
-        end = datetime.strptime(end_s, "%Y%m%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
-        return start, end
-
-    return None
-
-
-def parse_published_datetime(value: Any) -> datetime | None:
-    if isinstance(value, datetime):
-        dt = value
-    else:
-        raw = str(value or "").strip()
-        if not raw:
-            return None
-        try:
-            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        except Exception:
-            try:
-                dt = datetime.strptime(raw[:10], "%Y-%m-%d")
-            except Exception:
-                return None
-
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
-
-def filter_by_published_window(
-    items: List[Dict[str, Any]],
-    start_dt: datetime,
-    end_dt: datetime,
-) -> tuple[List[Dict[str, Any]], int]:
-    filtered: List[Dict[str, Any]] = []
-    skipped = 0
-    for item in items:
-        if not isinstance(item, dict):
-            skipped += 1
-            continue
-        published_dt = parse_published_datetime(item.get("published"))
-        if published_dt is None:
-            skipped += 1
-            continue
-        if start_dt <= published_dt < end_dt:
-            filtered.append(item)
-        else:
-            skipped += 1
-    return filtered, skipped
 
 
 def list_date_dirs(archive_root: str) -> List[str]:
@@ -907,28 +840,10 @@ def main() -> None:
     log(f"[INFO] config tags={tag_count} | {tag_list}")
     log(f"[INFO] arxiv_paper_setting mode={mode_text} days_window={carryover_days}")
 
-    published_window = resolve_published_window(TODAY_STR)
-    if published_window is None:
-        log(f"[WARN] 无法从 DPR_RUN_DATE 解析发布时间边界：{TODAY_STR}，将不进行 published 硬过滤。")
-    else:
-        p_start, p_end = published_window
-        log(
-            f"[INFO] 发布日期硬边界（UTC）：[{p_start.isoformat()} , {p_end.isoformat()})"
-        )
-
     group_start(f"Step 5 - select {os.path.basename(input_path)}")
     log_substep("5.2", "构建评分论文列表", "START")
     try:
         scored_papers = build_scored_papers(papers, llm_ranked)
-        if published_window is not None:
-            before_scored = len(scored_papers)
-            scored_papers, skipped_scored = filter_by_published_window(
-                scored_papers,
-                p_start,
-                p_end,
-            )
-            if skipped_scored:
-                log(f"[INFO] publication filter: scored_papers {before_scored}->{len(scored_papers)}，丢弃={skipped_scored}")
         log(f"[INFO] scored_papers={len(scored_papers)}")
     finally:
         log_substep("5.2", "构建评分论文列表", "END")
@@ -948,15 +863,6 @@ def main() -> None:
             today_date,
             carryover_days,
         )
-        if published_window is not None:
-            before_carry = len(carryover_items)
-            carryover_items, skipped_carryover = filter_by_published_window(
-                carryover_items,
-                p_start,
-                p_end,
-            )
-            if skipped_carryover:
-                log(f"[INFO] publication filter: carryover {before_carry}->{len(carryover_items)}，丢弃={skipped_carryover}")
         if args.carryover_only:
             candidates = []
             for item in carryover_items:
