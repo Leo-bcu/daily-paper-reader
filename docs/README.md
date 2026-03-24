@@ -6,73 +6,77 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-03-15 ~ 2026-03-24
-- 运行时间：2026-03-24 09:03:13 UTC
+- 最新运行日期：2026-03-24
+- 运行时间：2026-03-24 20:29:02 UTC
 - 运行状态：成功
-- 本次总论文数：17
+- 本次总论文数：18
 - 精读区：6
-- 速读区：11
+- 速读区：12
 
 ### 今日简报（AI）
-本期深度解析 17 篇视觉前沿论文，聚焦 3D 重建与多模态感知能力的跨越式提升。
-重点推荐 SegVGGT 实现的 3D 重建与分割一体化方案，以及通过空间 Token 增强 VLM 感知力的 Perceptio。
-建议优先研读高分论文的多视图融合思路，并关注无标注 3D 点云分割在农业等垂直场景的落地潜力。
-- 详情：[/20260315-20260324/README](/20260315-20260324/README)
+- 今日共生成 18 篇推荐（精读 6 篇，速读 12 篇）
+- 精读：《MM-OVSeg:Multimodal Optical-SAR Fusion for Open-Vocabulary Segmentation in Remote Sensing》（8.0/10）, 《PC-CrossDiff: Point-Cluster Dual-Level Cross-Modal Differential Attention for Unified 3D Referring and Segmentation》（8.0/10）
+- 速读：《Pointing-Based Object Recognition》（7.0/10）, 《ReLaGS: Relational Language Gaussian Splatting》（7.0/10）, 《Robotic Agentic Platform for Intelligent Electric Vehicle Disassembly》（7.0/10）
+- 这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。
+- 详情：[/202603/24/README](/202603/24/README)
 
 ### 精读区论文标签
-1. [SegVGGT: Joint 3D Reconstruction and Instance Segmentation from Multi-View Images](/20260315-20260324/2603.19926v1-segvggt-joint-3d-reconstruction-and-instance-segmentation-from-multi-view-images)  
-   标签：评分：9.0/10、query:rgb-d
-   evidence：多视图图像的联合3D重建与实例分割
-2. [Perceptio: Perception Enhanced Vision Language Models via Spatial Token Generation](/20260315-20260324/2603.18795v1-perceptio-perception-enhanced-vision-language-models-via-spatial-token-generation)  
-   标签：评分：8.0/10、query:rgb-d
-   evidence：大型视觉语言模型中的显式语义分割标记和深度标记
-3. [Weakly supervised multimodal segmentation of acoustic borehole images with depth-aware cross-attention](/20260315-20260324/2603.20729v1-weakly-supervised-multimodal-segmentation-of-acoustic-borehole-images-with-depth-aware-cross-attention)  
-   标签：评分：8.0/10、query:rgb-d
-   evidence：具有深度感知交叉注意力的多模态分割
-4. [Training-Free Instance-Aware 3D Scene Reconstruction and Diffusion-Based View Synthesis from Sparse Images](/20260315-20260324/2603.21166v1-training-free-instance-aware-3d-scene-reconstruction-and-diffusion-based-view-synthesis-from-sparse-images)  
-   标签：评分：8.0/10、query:rgb-d
-   evidence：从RGB图像进行2D到3D的实例提升
-5. [STENet: Superpixel Token Enhancing Network for RGB-D Salient Object Detection](/20260315-20260324/2603.21999v1-stenet-superpixel-token-enhancing-network-for-rgb-d-salient-object-detection)  
-   标签：评分：8.0/10、query:rgb-d
-   evidence：具有跨模态交互的RGB-D显著性目标检测
-6. [Cross-Modal Reinforcement Learning for Navigation with Degraded Depth Measurements](/20260315-20260324/2603.22182v1-cross-modal-reinforcement-learning-for-navigation-with-degraded-depth-measurements)  
-   标签：评分：8.0/10、query:rgb-d
-   evidence：深度图与灰度图之间的跨模态学习
+1. [MM-OVSeg:Multimodal Optical-SAR Fusion for Open-Vocabulary Segmentation in Remote Sensing](/202603/24/2603.17528v1-mm-ovsegmultimodal-optical-sar-fusion-for-open-vocabulary-segmentation-in-remote-sensing)  
+   标签：评分：8.0/10、query:mmseg
+   evidence：用于开放词汇分割的多模态光学-SAR融合
+2. [PC-CrossDiff: Point-Cluster Dual-Level Cross-Modal Differential Attention for Unified 3D Referring and Segmentation](/202603/24/2603.17753v1-pc-crossdiff-point-cluster-dual-level-cross-modal-differential-attention-for-unified-3d-referring-and-segmentation)  
+   标签：评分：8.0/10、query:mmseg
+   evidence：具有跨模态注意力的统一3D指代与分割
+3. [Revisiting foundation models for cell instance segmentation](/202603/24/2603.17845v1-revisiting-foundation-models-for-cell-instance-segmentation)  
+   标签：评分：8.0/10、query:mmseg
+   evidence：细胞实例分割的基础模型
+4. [EdgeCrafter: Compact ViTs for Edge Dense Prediction via Task-Specialized Distillation](/202603/24/2603.18739v1-edgecrafter-compact-vits-for-edge-dense-prediction-via-task-specialized-distillation)  
+   标签：评分：8.0/10、query:mmseg
+   evidence：用于边缘设备实例分割的紧凑型ViT
+5. [Scene Graph-guided SegCaptioning Transformer with Fine-grained Alignment for Controllable Video Segmentation and Captioning](/202603/24/2603.20887v1-scene-graph-guided-segcaptioning-transformer-with-fine-grained-alignment-for-controllable-video-segmentation-and-captioning)  
+   标签：评分：8.0/10、query:mmseg
+   evidence：多模态视频分割与字幕生成
+6. [Mitigating Objectness Bias and Region-to-Text Misalignment for Open-Vocabulary Panoptic Segmentation](/202603/24/2603.21386v1-mitigating-objectness-bias-and-region-to-text-misalignment-for-open-vocabulary-panoptic-segmentation)  
+   标签：评分：8.0/10、query:mmseg
+   evidence：使用视觉语言模型和掩码细化的开放词汇全景分割
 
 ### 速读区论文标签
-1. [UniFusion: A Unified Image Fusion Framework with Robust Representation and Source-Aware Preservation](/20260315-20260324/2603.14214v1-unifusion-a-unified-image-fusion-framework-with-robust-representation-and-source-aware-preservation)  
+1. [Pointing-Based Object Recognition](/202603/24/2603.15403v1-pointing-based-object-recognition)  
    标签：评分：7.0/10、query:rgb-d
-   evidence：多模态数据的统一图像融合框架
-2. [In-Field 3D Wheat Head Instance Segmentation From TLS Point Clouds Using Deep Learning Without Manual Labels](/20260315-20260324/2603.14309v1-in-field-3d-wheat-head-instance-segmentation-from-tls-point-clouds-using-deep-learning-without-manual-labels)  
+   evidence：结合深度信息显著提高了复杂场景中的目标识别
+2. [ReLaGS: Relational Language Gaussian Splatting](/202603/24/2603.17605v1-relags-relational-language-gaussian-splatting)  
+   标签：评分：7.0/10、query:mmseg
+   evidence：使用语言蒸馏高斯场景的3D感知和分割
+3. [Robotic Agentic Platform for Intelligent Electric Vehicle Disassembly](/202603/24/2603.18520v1-robotic-agentic-platform-for-intelligent-electric-vehicle-disassembly)  
    标签：评分：7.0/10、query:rgb-d
-   evidence：利用深度学习进行点云3D实例分割
-3. [Exclusivity-Guided Mask Learning for Semi-Supervised Crowd Instance Segmentation and Counting](/20260315-20260324/2603.16241v1-exclusivity-guided-mask-learning-for-semi-supervised-crowd-instance-segmentation-and-counting)  
-   标签：评分：7.0/10、query:rgb-d
-   evidence：针对密集场景的实例分割算法
-4. [MG-Grasp: Metric-Scale Geometric 6-DoF Grasping Framework with Sparse RGB Observations](/20260315-20260324/2603.16270v1-mg-grasp-metric-scale-geometric-6-dof-grasping-framework-with-sparse-rgb-observations)  
-   标签：评分：7.0/10、query:rgb-d
-   evidence：RGB-D抓取检测及从RGB重建稠密点云
-5. [GAP-MLLM: Geometry-Aligned Pre-training for Activating 3D Spatial Perception in Multimodal Large Language Models](/20260315-20260324/2603.16461v1-gap-mllm-geometry-aligned-pre-training-for-activating-3d-spatial-perception-in-multimodal-large-language-models)  
-   标签：评分：7.0/10、query:rgb-d
-   evidence：多模态大模型中用于3D空间感知的几何对齐预训练
-6. [Parameter-Efficient Modality-Balanced Symmetric Fusion for Multimodal Remote Sensing Semantic Segmentation](/20260315-20260324/2603.17705v1-parameter-efficient-modality-balanced-symmetric-fusion-for-multimodal-remote-sensing-semantic-segmentation)  
-   标签：评分：7.0/10、query:rgb-d
-   evidence：针对异构数据的多模态对称融合语义分割
-7. [DC-ViT: Modulating Spatial and Channel Interactions for Multi-Channel Images](/20260315-20260324/2603.14281v1-dc-vit-modulating-spatial-and-channel-interactions-for-multi-channel-images)  
+   evidence：机器人拆解中用于目标检测的RGB-D感知
+4. [TSegAgent: Zero-Shot Tooth Segmentation via Geometry-Aware Vision-Language Agents](/202603/24/2603.19684v1-tsegagent-zero-shot-tooth-segmentation-via-geometry-aware-vision-language-agents)  
+   标签：评分：7.0/10、query:mmseg
+   evidence：通过视觉语言代理和3D模型的零样本牙齿分割
+5. [Evaluating Vision Foundation Models for Pixel and Object Classification in Microscopy](/202603/24/2603.19802v1-evaluating-vision-foundation-models-for-pixel-and-object-classification-in-microscopy)  
+   标签：评分：7.0/10、query:mmseg
+   evidence：使用视觉基础模型的细胞实例分割
+6. [Can Large Multimodal Models Inspect Buildings? A Hierarchical Benchmark for Structural Pathology Reasoning](/202603/24/2603.20148v1-can-large-multimodal-models-inspect-buildings-a-hierarchical-benchmark-for-structural-pathology-reasoning)  
+   标签：评分：7.0/10、query:mmseg
+   evidence：用于结构病理推理和像素级定位的大型多模态模型
+7. [HeBA: Heterogeneous Bottleneck Adapters for Robust Vision-Language Models](/202603/24/2603.16653v1-heba-heterogeneous-bottleneck-adapters-for-robust-vision-language-models)  
+   标签：评分：6.0/10、query:mmseg
+   evidence：具有模态特定结构偏差的跨模态特征学习
+8. [Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping](/202603/24/2603.16788v1-preserving-vertical-structure-in-3d-to-2d-projection-for-permafrost-thaw-mapping)  
    标签：评分：6.0/10、query:rgb-d
-   evidence：调节多通道图像的交互
-8. [AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild](/20260315-20260324/2603.14701v1-aurora-kitti-any-weather-depth-completion-and-denoising-in-the-wild)  
-   标签：评分：6.0/10、query:rgb-d
-   evidence：用于多种天气下深度补全和去噪的RGB-LiDAR融合
-9. [Fractal Autoregressive Depth Estimation with Continuous Token Diffusion](/20260315-20260324/2603.14702v1-fractal-autoregressive-depth-estimation-with-continuous-token-diffusion)  
-   标签：评分：6.0/10、query:rgb-d
-   evidence：单目深度估计与跨模态调节
-10. [MG-Grasp: Metric-Scale Geometric 6-DoF Grasping Framework with Sparse RGB Observations](/20260315-20260324/2603.16270v2-mg-grasp-metric-scale-geometric-6-dof-grasping-framework-with-sparse-rgb-observations)  
-   标签：评分：6.0/10、query:rgb-d
-   evidence：RGB-D抓取检测与度量尺度点云重建
-11. [$x^2$-Fusion: Cross-Modality and Cross-Dimension Flow Estimation in Event Edge Space](/20260315-20260324/2603.16671v1-x2-fusion-cross-modality-and-cross-dimension-flow-estimation-in-event-edge-space)  
-   标签：评分：6.0/10、query:rgb-d
-   evidence：共享潜空间中的跨模态和跨维度融合
+   evidence：分割中3D到2D投影的学习高度嵌入
+9. [Beyond Forced Modality Balance: Intrinsic Information Budgets for Multimodal Learning](/202603/24/2603.17347v1-beyond-forced-modality-balance-intrinsic-information-budgets-for-multimodal-learning)  
+   标签：评分：6.0/10、query:mmseg
+   evidence：模态平衡的多模态学习框架
+10. [UAV-CB: A Complex-Background RGB-T Dataset and Local Frequency Bridge Network for UAV Detection](/202603/24/2603.17492v1-uav-cb-a-complex-background-rgb-t-dataset-and-local-frequency-bridge-network-for-uav-detection)  
+   标签：评分：6.0/10、query:mmseg
+   evidence：RGB-T多模态数据集和局部频率桥接网络
+11. [UniSem: Generalizable Semantic 3D Reconstruction from Sparse Unposed Images](/202603/24/2603.17519v1-unisem-generalizable-semantic-3d-reconstruction-from-sparse-unposed-images)  
+   标签：评分：6.0/10、query:mmseg
+   evidence：通过2D分割器特征共同提高深度准确性和语义泛化
+12. [Towards High-Quality Image Segmentation: Improving Topology Accuracy by Penalizing Neighbor Pixels](/202603/24/2603.18671v1-towards-high-quality-image-segmentation-improving-topology-accuracy-by-penalizing-neighbor-pixels)  
+   标签：评分：6.0/10、query:mmseg
+   evidence：提高图像分割中的拓扑准确性
 
 
 <div class="dpr-home-promo-card">

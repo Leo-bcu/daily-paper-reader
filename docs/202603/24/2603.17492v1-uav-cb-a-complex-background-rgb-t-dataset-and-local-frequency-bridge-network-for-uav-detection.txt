@@ -1,0 +1,418 @@
+Title: UAV-CB: A Complex-Background RGB-T Dataset and Local Frequency Bridge Network for UAV Detection
+
+URL Source: https://arxiv.org/pdf/2603.17492v1
+
+Published Time: Thu, 19 Mar 2026 01:00:35 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# UAV-CB: A Complex-Background RGB–T Dataset and Local Frequency Bridge Network for UAV Detection 
+
+# Shenghui Huang 1,2 Menghao Hu 1,4 Longkun Zou 1 Hongyu Chi 1,5 Zekai Li 2
+
+# Feng Gao 3 Fan Yang 3 Qingyao Wu 2* Ke Chen 1 *
+
+> 1
+
+Pengcheng Laboratory, China 2South China University of Technology, China 
+
+> 3
+
+Peking University, China 4Xinjiang University, China 5Harbin Institute of Technology, China 
+
+ftshhuang@mail.scut.edu.cn; qyw@scut.edu.cn; chenk02@pcl.ac.cn 
+
+# Abstract 
+
+Detecting Unmanned Aerial Vehicles (UAVs) in low-altitude environments is essential for perception and defense sys-tems but remains highly challenging due to complex back-grounds, camouflage, and multimodal interference. In real-world scenarios, UAVs are frequently visually blended with surrounding structures such as buildings, vegetation, and power lines, resulting in low contrast, weak bound-aries, and strong confusion with cluttered background tex-tures. Existing UAV detection datasets, though diverse, are not specifically designed to capture these camouflage and complex-background challenges, which limits progress to-ward robust real-world perception. To fill this gap, we con-struct UAV-CB, a new RGB–T UAV detection dataset de-liberately curated to emphasize complex low-altitude back-grounds and camouflage characteristics. Furthermore, we propose the Local Frequency Bridge Network (LFB-Net), which models features in localized frequency space to bridge both the frequency–spatial fusion gap and the cross-modality discrepancy gap in RGB–T fusion. Extensive experiments on UAV-CB and public benchmarks demon-strate that LFBNet achieves state-of-the-art detection per-formance and strong robustness under camouflaged and cluttered conditions, offering a frequency-aware perspec-tive on multimodal UAV perception in real-world applica-tions. 
+
+# 1. Introduction 
+
+As low-altitude Unmanned Aerial Vehicles (UAVs) become ubiquitous in civilian and defense applications [8, 19, 30, 31], UAV detection is becoming a critical front-end task in perception and defense pipelines. It enables subse-quent operations such as localization, tracking, identifica-tion, and countermeasures [11, 29, 34, 40]. However, in 
+
+> *Corresponding author.
+
+Figure 1. Representative RGB–T examples of UAV detection un-der complex low-altitude backgrounds. 
+
+real-world low-altitude environments, detecting UAVs un-der complex and cluttered backgrounds remains a persistent challenge. Background interference often arises from build-ings, vegetation, power lines, and cloud layers, forming intricate and dynamic background patterns. These factors lead to low contrast, weak edges, and strong camouflage for small UAVs [6, 32]. In addition, illumination fluctua-tions, atmospheric scattering, and motion variations further obscure the distinction between targets and background. This severely degrades the robustness of existing vision-based detectors [13]. To understand this issue, we exam-ine existing UAV detection benchmarks [10, 13, 37, 45] and find that, although they cover diverse environments and viewpoints, none are specifically designed to address the challenges posed by camouflage and complex backgrounds. Most datasets focus on general UAV detection or track-ing, without deliberately sampling scenes with strong back-ground interference, environmental clutter, or low-contrast conditions [10, 13]. Consequently, they offer limited sup-port for analyzing model robustness and failure modes un-der real-world low-altitude complexity, especially in cam-ouflaged and cluttered backgrounds. To fill this gap, we construct UAV-CB, an RGB–T UAV detection dataset delib-
+
+> arXiv:2603.17492v1 [cs.CV] 18 Mar 2026
+
+erately designed to capture camouflage and environmental complexity in low-altitude scenes. Traditional UAV detection methods [7, 23] often fail when targets exhibit strong camouflage or appear within cluttered backgrounds. In such conditions, UAVs usually present low contrast, weak boundaries, and high visual sim-ilarity to surrounding textures, leading to both false alarms and missed detections. While camouflaged object detec-tion (COD) [4, 48] shares a similar notion of visual ambi-guity, its formulation is fundamentally different. COD gen-erally performs pixel-level segmentation on large, static ob-jects in single-modality RGB images. UAV detection, by contrast, focuses on small, dynamic aerial targets in mul-timodal low-altitude environments. Recent studies have explored frequency-domain representations to enhance vi-sual discrimination and suppress interference [9, 16]. How-ever, integrating frequency and spatial representations in-troduces two critical challenges. First, there exists a fre-quency–spatial fusion gap: spatial features capture local structures, while global frequency modeling lacks localized context, resulting in suboptimal cooperation. Second, there is a cross-modality discrepancy gap, caused by the inherent spectral inconsistency between RGB and thermal modali-ties, which hampers effective alignment. To bridge these gaps, we propose the Local Frequency Bridge Network (LF-BNet). By modeling features in localized frequency space, LFBNet enhances frequency–spatial interactions and lever-ages the modality-independent nature of frequency repre-sentations to achieve better cross-modal alignment. Fur-thermore, the proposed local frequency-guided alignment mechanism enables adaptive fusion, leading to robust UAV detection under camouflaged and cluttered backgrounds. In summary, our main contributions are as follows: • We systematically formalize UAV detection in complex low-altitude environments and highlight the challenges arising from camouflage, low contrast, and multimodal inconsistencies. • We introduce UAV-CB, a new RGB–T UAV detection dataset that deliberately focuses on complex backgrounds and camouflage, containing 3,442 RGB–T image pairs across five background categories to support robustness and cross-modality studies. • We propose LFBNet, a localized frequency modeling ar-chitecture that jointly mitigates the frequency–spatial fu-sion gap and cross-modality discrepancy, achieving state-of-the-art performance and strong generalization under complex real-world conditions. 
+
+# 2. Related Work 
+
+2.1. UAV Detection and Datasets 
+
+UAV detection is crucial for low-altitude security and counter-drone applications. Early studies mainly relied on single-modal detectors such as Faster R-CNN [24] and YOLO [23], focusing on appearance cues from either RGB or thermal imagery [6, 10]. However, detecting UAVs re-mains challenging due to their small apparent size, rapid motion, diverse structures, and cluttered real-world back-grounds [29]. Recent progress has extended UAV per-ception from single-modal to multimodal sensing, such as RGB–T fusion [13] and multi-sensor integration [37]. How-ever, most existing studies focus on tracking tasks [10, 13]. In practice, detection is the fundamental prerequisite for localization, tracking, and counter-drone operations, yet it remains less explored as an independent problem. More-over, few efforts explicitly address the complex-background challenge, where small UAVs are easily camouflaged by cluttered scenes. Although recent datasets such as RCSD-UAV [6] and CST Anti-UAV [32] have begun to consider complex scenarios, they are still single-modal and lack tar-geted solutions to handle these difficulties. To fill this gap, we introduce UAV-CB, a dual-modal RGB–T dataset delib-erately curated for complex and camouflaged UAV detec-tion in real-world low-altitude environments. 
+
+2.2. RGB–T Fusion 
+
+Research on RGB–T based UAV detection remains rela-tively limited. Although the Anti-UAV benchmark [13] in-troduced an RGB–T dataset for UAV perception, it does not investigate cross-modal detection models or dedicated fu-sion strategies. In contrast, RGB–T fusion has been exten-sively studied in other vision domains such as object de-tection [33, 46, 50], tracking [38, 49], and pedestrian anal-ysis [14, 44]. where complementary visible–thermal cues significantly enhance robustness against illumination vari-ations and background clutter. Existing fusion strategies can be broadly categorized into early, middle, and late fu-sion [12, 42], employing concatenation, attention mecha-nisms, or transformer-based cross-modal alignment to inte-grate modality-specific information [18, 35, 39, 41]. How-ever, most of these designs target generic object scenes, while the challenge of small UAV detection under com-plex and camouflaged backgrounds remains largely unad-dressed. 
+
+2.3. Camouflage-Aware UAV Detection 
+
+Camouflaged object detection (COD) focuses on targets that intentionally blend into backgrounds [4, 48]. Existing COD methods in natural images emphasize boundary refinement, multi-scale aggregation, uncertainty modeling, or contrast priors, and are primarily designed for pixel-level segmenta-tion of large static objects in single-modal RGB [20, 25, 43]. Adapting COD methods to UAV detection is challenging. UAVs are small, fast-moving targets observed under multi-modal low-altitude conditions with dynamic clutter, where localization must remain reliable despite weak edges and Table 1. Overview of some representative UAV datasets. 
+
+Modality Dataset Data Scale Description Visible 
+
+Real-World [21] 56,821 images Real-world UAV detection under diverse backgrounds. RCSD-UAV [6] 2,844 images UAV detection in complex real-world scenes. DUT-Anti-UAV [45] 10,000 images UAV detection and tracking in urban scenarios. 
+
+Thermal Anti-UAV410 [10] 410 sequences Thermal UAV tracking benchmark for tiny targets. CST Anti-UAV [32] 220 sequences Thermal UAV tracking in complex environments. 
+
+Multi-modal Anti-UAV [13] 318 sequences RGB–T UAV detection and tracking benchmark. MMAUD [37] 50 sequences Multi-sensor UAV dataset (RGB, IR, radar, audio). low contrast. Nonetheless, the camouflage-aware perspec-tive of COD offers valuable insight, as both tasks involve detecting visually inconspicuous targets in complex back-grounds. Inspired by this connection, we extend the camou-flage concept to multimodal UAV detection and introduce a frequency-based mechanism [3, 9] that enhances discrimi-native cues between UAVs and complex backgrounds. 
+
+# 3. UAV-CB Dataset 
+
+3.1. Data Collection 
+
+The UAV-CB dataset was captured using an HP-DMS15 electro-optical platform equipped with a co-aligned RGB camera and infrared thermal imager, as Fig. 2. The RGB module adopts a 1/2.8-inch CMOS sensor (1920 ×1080), while the thermal module employs an uncooled VOx detec-tor (640 ×512, 8–14 μm). Both sensors are rigidly mounted and electronically synchronized to ensure precise spatial and temporal alignment across modalities. Two UAV mod-els, DJI Matrice 350 RTK (810 × 670 × 430 mm) and DJI Matrice 4E (307 × 387.5 × 149.5 mm), were used as aerial targets to provide diverse sizes, structures, and reflective characteristics. To emphasize realistic detection challenges, all samples in UAV-CB were carefully curated from a large corpus of raw RGB–T recordings, selecting only those scenes exhibiting substantial background inter-ference and camouflage characteristics. The final dataset covers five representative complex background categories– building, vegetation, powerline, cloud, and ground–each in-troducing distinct spatial structures. 
+
+3.2. Annotation 
+
+During preprocessing, RGB and thermal video streams were synchronized and temporally aligned via hardware timestamps to ensure frame-level correspondence. Anno-tators manually reviewed the synchronized videos and se-lected frames with strong camouflage or background confu-sion to construct the UAV-CB subset. Each selected frame was labeled on both modalities with instance-level bound-ing boxes—first coarsely on RGB images, then refined on thermal ones for cross-modality consistency. When UAVs were partially occluded or visually blended into the back-
+
+> Figure 2. Illustration of the data acquisition platform and the UAV targets used in constructing the UAV-CB dataset.
+
+ground, annotations were refined using temporal motion cues and thermal evidence. The two modalities were not pixel-level registered, as perfect alignment rarely occurs in real-world systems. This design better reflects practical de-ployment and encourages research on handling modality misalignment. The resulting dataset provides high-quality annotations suitable for both single-modal and multimodal UAV detection benchmarks. 
+
+3.3. Dataset Statistics and Analysis 
+
+We conducted a statistical analysis to characterize UAV-CB in terms of scale distribution and background composition. As illustrated in Fig. 3, the dataset includes five represen-tative background types—building, vegetation, power line, cloud, and ground—capturing the complexity of real-world low-altitude environments. As shown in Fig. 4c, samples are relatively balanced across categories, with slightly more instances of building and vegetation scenes, which typically present greater visual complexity. Fig. 4a and 4b illustrate the scale distributions of visible and thermal targets, where target scale is defined as the square root of the normal-ized bounding-box area. Most UAVs occupy less than 5% of the image area, underscoring the small-object nature of UAV-CB. The visible and thermal distributions are closely aligned, indicating accurate temporal correspondence be-tween modalities while preserving appearance discrepan-cies that make multimodal detection more challenging. Figure 3. Representative RGB–T image pairs from the UAV-CB dataset covering five complex background categories: buildings, vegeta-tion, power lines, near-ground clutter, and clouds. Each pair shows the visible (left) and thermal (right) modalities with annotated UAV targets (orange boxes).   
+
+> (a) Scale distribution of visible targets. (b) Scale distribution of thermal targets. (c) Complex background category distribu-tion.
+> Figure 4. Statistical analysis of the proposed UAV-CB dataset.
+
+3.4. Benchmark Tasks and Evaluation Protocols 
+
+To ensure fair comparison and reproducibility, UAV-CB de-fines a unified RGB–T UAV detection benchmark, where detectors localize UAVs within complex and camouflaged backgrounds using visible and thermal imagery. Each RGB–T pair is annotated with bounding boxes and back-ground category labels, enabling evaluation under both single-modality and multimodal settings. 
+
+Data split design. UAV-CB comprises 3,442 carefully curated and meticulously annotated pairs of visible–thermal images. We partition the dataset into training, validation, and test splits at a 6:2:2 ratio, while preserving balanced distributions over background categories, target scales, and UAV types to ensure fair evaluation and minimize bias. 
+
+Benchmark tasks. We define two primary settings: (1) Single-modality detection, where models are trained and evaluated on RGB or thermal images independently to as-sess the robustness of each modality; and (2) Multimodal detection, where both modalities are jointly utilized to in-vestigate the effectiveness of cross-modal feature alignment and fusion. 
+
+Evaluation metrics. We evaluate detection performance using standard Average Precision (AP) metrics. For a pre-dicted box bp and a ground-truth box bg , the Intersection over Union (IoU) is IoU (bp, b g ) = |bp ∩ bg ||bp ∪ bg | . (1) A detection is considered correct if IoU ≥ τ . Precision and recall are defined as Precision = T P T P + F P , Recall = T P T P + F N . (2) The Average Precision at threshold τ is computed as the area under the precision–recall curve, denoted as AP (τ ).We report three standard metrics: AP 50 (τ = 0 .5), AP 75 
+
+(τ = 0 .75 ), and the averaged AP (0 .5:0 .95) = 110 
+
+> 0.95
+
+X 
+
+> τ=0 .5
+
+AP (τ ), (3) which jointly measure coarse and fine localization accuracy, particularly for small and camouflaged UAV targets. 
+
+# 4. Method 
+
+4.1. Overview 
+
+As illustrated in Fig. 5, LFBNet comprises two main com-ponents: Local Frequency Cross-Modal Alignment (LFCA) and Frequency-Guided Spatial Alignment (FGSA). Given paired RGB–T inputs Xm (m ∈ { r, t }), the network first ex-tracts two complementary representations. Spatial features 
+
+Fm are obtained via multi-scale atrous convolutions, while localized frequency features are computed by dividing Xm
+
+into patches Bmq and applying a 2D FFT: 
+
+Fmq = Amq ejΦmq .
+
+Assembled spectra Fm provide amplitude–phase cues that complement Fm.LFCA aligns modalities in localized frequency space and produces a Local Frequency Guidance Map (LFGM). LFGM then guides FGSA to perform frequency-aware de-formable fusion in the spatial domain. The fused represen-tation is finally fed into an FPN-based detection head for ro-bust UAV detection under camouflaged and cluttered back-grounds. 
+
+4.2. Local Frequency Cross-Modal Alignment 
+
+Although RGB and thermal modalities differ in illumina-tion and texture, they share consistent geometric structures in the frequency domain: high-frequency components cap-ture edges and shapes, while low-frequency components en-code intensity and energy. Motivated by this, the Local Fre-quency Cross-Modal Alignment (LFCA) module aligns the modalities in frequency space through amplitude alignment, phase alignment, and local reconstruction. 
+
+Amplitude Alignment. Given the patch-wise frequency features {F rq } and {F tq }, each local spectrum can be repre-sented as 
+
+Fmq = Amq ejΦmq , m ∈ { r, t }, (4) where Amq and Φmq denote the amplitude and phase spec-tra of patch q for modality m. Since amplitude reflects the overall energy distribution that varies across modalities, we normalize it within each patch to remove scale bias: 
+
+˜Amq = Amq
+
+∥Amq ∥2 + ϵ . (5) Then, a learnable coefficient αq ∈ [0 , 1] adaptively balances the normalized amplitudes: 
+
+Aaq = αq ˜Arq + (1 − αq ) ˜Atq . (6) This operation harmonizes the spectral energy between modalities, ensuring consistent magnitude under varying il-lumination and emissivity. 
+
+Phase Alignment. The phase spectrum encodes geomet-ric structure. To maintain structural consistency, we linearly interpolate between the two modalities’ phases: 
+
+Φaq = Φtq + βq · wrap  Φrq − Φtq
+
+ , (7) where wrap( ·) confines values to [−π, π ], and βq controls the contribution of RGB structural details. This formulation allows thermal geometry to guide coarse alignment, while RGB edges refine high-frequency structures. 
+
+Frequency Reconstruction. After amplitude and phase alignment, the aligned complex spectrum of each patch is reconstructed as 
+
+Faq = Aaq ejΦaq . (8) The spatial feature is then obtained via inverse FFT and overlap-add aggregation: 
+
+Falign (x, y ) = 1
+
+Nq(x,y )
+
+X
+
+> q:( x,y )∈q
+
+iFFT2D  Faq
+
+(x, y ), (9) where Nq(x,y ) is the number of overlapping patches cover-ing pixel (x, y ). This yields Falign , a modality-consistent representation. Finally, cross-attention injects aligned frequency cues into each modality: 
+
+FmX = XAttn( Fm, Falign ) , m ∈ { r, t }, (10) where Fm denotes the spatial feature from modality m.
+
+4.3. Frequency-Guided Spatial Alignment 
+
+While LFCA achieves cross-modal consistency in the fre-quency domain, spatial misalignment still exists due to par-allax and sensor offset. To address this, the Frequency-Guided Spatial Alignment (FGSA) module uses spectral cues to guide deformable alignment. 
+
+Local Frequency Guidance Map (LFGM). To bridge the frequency–spatial domain gap, we construct a Local LFCA 
+
+> SFE FFE SFE
+
+XAttn 
+
+XAttn      
+
+> Local Frequency Guidance Map
+> [𝑑 𝑥 ,𝑑 𝑦 ,𝑆 ∅][𝐶 ℎ𝑓 ,𝐶 𝑙𝑓 ][𝐶𝑜ℎ ]
+> DetNet
+> C
+
+×N
+
+𝑋 𝑡 
+
+𝑋 𝑟       
+
+> Split
+> Split
+> (a) Spatial Feature Extraction (SFE) (b) Frequency Feature Extraction (FFE) (c) local frequency cross -modal alignment (LFCA)
+> Conv FG
+> OP
+> FG
+> OP
+> C
+
+: Channel Concatenation  : Element -wise Addition  : Gating Fusion G : Activation 𝝈  : Deformable Convolution 
+
+Xattn : Cross Attention 
+
+AC n : n×n Atrous Convolution  FN : Frequency Normalization FGOP : Frequency -Guided Offset Prediction 
+
+FFT2D : 2D Fast Fourier Transform  iFFT2D : Inverse FFT2D 
+
+> C
+> Conv
+> DC
+> DC
+
+: Amplitude/ Phase Spectrum /Figure 5. Overview of the proposed LFBNet. The LFCA module aligns RGB and thermal modalities in localized frequency space, while the Local Frequency Guidance Map (LFGM) guides the FGSA module for deformable, frequency-aware spatial fusion. The fused four-scale features ( N = 4 ) are then fed into an FPN-based detection head (YOLOv5s) for UAV detection. 
+
+Frequency Guidance Map (LFGM) that converts patch-wise spectral discrepancies into spatially interpretable cues. Given the aligned frequency patches {F rq = Arq ejΦrq } and 
+
+{F tq = Atq ejΦtq } from LFCA, LFGM encodes three com-plementary properties for each patch: phase-based displace-ment, frequency reliability, and spectral coherence. For each patch q, the local phase and energy differences are computed as 
+
+∆Φq = wrap( Φrq − Φtq ),C(q) 
+
+> hf
+
+= Er, (q)
+
+> hf
+
+Er, (q) 
+
+> hf
+
++ Et, (q)
+
+> hf
+
+, C(q) 
+
+> lf
+
+= Et, (q)
+
+> lf
+
+Er, (q) 
+
+> lf
+
++ Et, (q)
+
+> lf
+
+,
+
+(11) where Em, (q)hf and Em, (q)lf denote the averaged high-and low-frequency energies, and wrap( ·) confines phase differences to [−π, π ]. The local cross-spectral coherence, measuring frequency correlation, is computed as 
+
+Coh (q) =
+
+P Frq (Ftq )∗
+
+qP |F rq |2 P |F tq |2
+
+. (12) To extract directional and magnitude cues from the phase variation, we estimate the local displacement as 
+
+[d(q) 
+
+> x
+
+, d (q) 
+
+> y
+
+] = [sin(∆ Φq ), cos(∆ Φq )] ,S(q) 
+
+> ϕ
+
+= ∥∆Φq ∥1, (13) where (d(q) 
+
+> x
+
+, d (q) 
+
+> y
+
+) indicates the orientation of spectral mis-alignment and S(q) 
+
+> ϕ
+
+represents its strength. The complete LFGM vector for patch q is defined as 
+
+G(q)freq = [ d(q) 
+
+> x
+
+, d (q) 
+
+> y
+
+, S (q) 
+
+> ϕ
+
+, C (q) 
+
+> hf
+
+, C (q) 
+
+> lf
+
+, Coh (q)]. (14) To obtain a spatially dense guidance, all patch-wise vec-tors are projected back to the spatial domain via overlap-add interpolation: 
+
+Gfreq (x, y ) = 1
+
+Nq(x,y )
+
+X
+
+> q:( x,y )∈q
+
+G(q)freq , (15) where Nq(x,y ) is the number of overlapping patches cov-ering pixel (x, y ). This yields a pixel-wise map Gfreq ∈
+
+RH×W ×Cg aligned with Fr and Ft, providing frequency-informed cues for offset prediction in FGOP. 
+
+Frequency-Guided Offset Predictor (FGOP). Taking the enhanced spatial features FrX and FtX , together with the projected frequency guidance map Gfreq as input, the FGOP predicts an offset field ∆p for deformable align-ment. To adaptively integrate frequency priors, we first ap-ply gated modulation: 
+
+˜G = σ Conv 1×1([ FrX , FtX ])  ⊙ Gfreq , (16) where σ(·) denotes the sigmoid function. The offset pre-dictor fθ (·) then employs two stacked 3 × 3 convolutions followed by a 1 × 1 projection to generate the sampling off-sets: 
+
+∆p = fθ
+
+
+
+[FrX , FtX , ˜G]
+
+
+
+, (17) producing ∆p ∈ R2Ks×H×W , where Ks is the number of sampling points in the deformable convolution. The predicted offsets encode frequency-informed geometric dis-placements, enabling precise spatial realignment guided by local spectral cues. 
+
+Frequency-Guided Deformable Alignment. Given the enhanced features FrX and FtX and the predicted offsets ∆p
+
+from FGOP, deformable convolution is employed to achieve frequency-guided spatial alignment. For each spatial posi-tion p0, the aligned feature is computed as 
+
+ˆFm(p0) = 
+
+> Ks
+
+X
+
+> k=1
+
+wk · S (FmX , p 0 + pk + ∆ pk(p0)) ,m ∈ { r, t },
+
+(18) where pk denotes the predefined sampling offset, ∆pk(p0)
+
+is the frequency-guided displacement predicted by FGOP, and S(·) denotes bilinear interpolation for non-integer sam-pling locations. Finally, a symmetric cross-conditioned fusion integrates both modalities: 
+
+Fout = Conv 3×3
+
+
+
+[Fr , ˆFt]
+
+
+
++ Conv 3×3
+
+
+
+[Ft, ˆFr ]
+
+
+
+.
+
+(19) This symmetric cross-conditioned fusion enables bidirec-tional interaction between the RGB and thermal branches, yielding a geometrically aligned and spectrally consistent multimodal representation. The fused feature is subse-quently fed into an FPN-based detection head to perform final UAV localization and recognition. 
+
+# 5. Experiments 
+
+5.1. Experimental Settings 
+
+All experiments on the UAV-CB dataset are conducted in PyTorch on a single NVIDIA A100 (40GB) GPU, us-ing ResNet-50 as the backbone and an input resolution of 
+
+640 × 512 . Models are trained for 200 epochs using SGD with a momentum of 0.9, a weight decay of 5×10 −4, an ini-tial learning rate of 0.01, and cosine annealing, with a batch size of 16. Detection performance is reported using AP 50 ,AP 75 , and AP (0 .5:0 .95) . To mitigate modality misalignment, RGB images are coarsely registered to the thermal field of view via cropping, followed by resizing to 640 × 512 for consistent multimodal fusion. The patch number of LFBNet is fixed by the 16 × 16 patch size. For the public RGB–T ground-target detection benchmark DroneVehicle [26], we adopt the same settings except that models are trained for 400 epochs and the input size is set to 640 × 640 to ensure fair comparison with recent RGB–T fusion detectors. 
+
+5.2. Results Comparisons 
+
+We compare our proposed LFBNet with state-of-the-art single-modality and multimodal UAV detectors on the UAV-CB dataset. As summarized in Tab. 2, LFBNet achieves the best performance across all evaluation metrics. Specif-ically, it attains an AP 50 of 84.6%, AP 75 of 57.2%, and AP (0 .5:0 .95) of 54.4%, surpassing the previous best multi-modal baseline C 2Former by 5.3%. Compared with SFD-Fusion, which also adopts frequency-domain information, LFBNet improves AP (0 .5:0 .95) by 5.4%, indicating that its localized frequency alignment and frequency-guided spatial fusion provide stronger modality-alignment capability and improved robustness to camouflage in UAV-CB. To further evaluate the generalization ability of our approach beyond UAV-CB, we conduct comparisons on the public DroneVehicle RGB–T ground-target detection benchmark. As shown in Tab. 3, LFBNet achieves the high-est mAP 50 of 80.1%, surpassing strong multimodal base-lines such as OAFA and C 2Former. Notably, although LF-BNet is designed to address the unique challenges of UAV-CB, it still transfers effectively to DroneVehicle, which dif-fers in sensor configuration, viewpoints, and scene distribu-tion. This cross-dataset improvement shows that the fre-quency–spatial alignment strategy learned from UAV-CB does not overfit to its specific characteristics. Instead, it cap-tures generalizable RGB–T fusion principles. It also high-lights the value of UAV-CB as a challenging benchmark that drives the development of robust multimodal detectors. 
+
+5.3. Ablation Study on Key Components 
+
+To analyze the contribution of each component in LFBNet, we perform an ablation study on the UAV-CB validation set (Tab. 4). Starting from the YOLOv5s+Add baseline, incor-Table 2. Comparison of UAV detection performance on the UAV-CB dataset. 
+
+Method Modality AP 50 (%) AP 75 (%) AP (0 .5:0 .95) (%) Param(M) FLOPs(G) 
+
+Faster R-CNN (NeurIPS’2015)[24] Visible 50.7 29.6 28.5 41.3 75.5 Cascade R-CNN (CVPR’2018)[1] 63.8 33.5 34.7 69.2 103.0 YOLOv3 (ArXiv’2018)[22] 63.7 35.3 36.1 61.5 62.0 YOLOv5s (Ultralytics’2020)[27] 65.4 37.1 37.6 7.2 13.5 Cascade RPN (NeurIPS’2019)[28] 69.3 39.4 38.7 41.9 64.2 YOLOX-S (ArXiv’2021)[5] 66.5 34.7 37.2 9.0 10.7 ViTDet-B (ECCV’2022)[17] 70.9 42.1 40.6 86.0 317.0 RT-DETR (CVPR’2024)[47] 73.4 43.7 44.2 12.0 98.6 YOLOv13S (ArXiv’2025)[15] 67.8 38.7 39.1 9.0 16.8 Faster R-CNN (NeurIPS’2015)[24] Thermal 69.1 41.7 37.0 41.3 75.5 Cascade R-CNN (CVPR’2018)[1] 71.0 44.0 39.1 69.2 103.0 YOLOv3 (ArXiv’2018)[22] 77.2 48.7 42.4 61.5 62.0 YOLOv5s (Ultralytics’2020)[27] 78.2 48.1 41.2 7.2 13.5 Cascade RPN (NeurIPS’2019)[28] 76.5 51.5 47.9 41.9 64.2 YOLOX-S (ArXiv’2021)[5] 77.8 52.4 48.1 9.0 10.7 ViTDet-B (ECCV’2022)[17] 78.3 51.8 46.6 86.0 317.0 RT-DETR (CVPR’2024)[47] 79.5 52.7 49.2 12.0 98.6 YOLOv13S (ArXiv’2025)[15] 76.8 51.9 48.6 9.0 16.8 YOLOv5s+Add (Ultralytics’2020)[27] RGB+T 72.8 45.2 38.5 13.5 26.4 YOLOv5s+CMX (IEEE TITS’2023)[39] 74.3 46.5 39.8 15.2 30.4 UA-CMDet (IEEE TCSVT’2022)[26] 76.3 47.1 46.4 – –C2Former (IEEE TITS’2024)[35] 79.4 53.8 49.1 100.8 324.0 SFDFusion(ArXiv’2024)[9] 79.2 51.8 49.0 21.5 58.5 
+
+LFBNet (Ours) 84.6 57.2 54.4 30.2 65.2  
+
+> Table 3. Performance comparison on the DroneVehicle RGB–T detection benchmark.
+
+Method mAP 50 
+
+UA-CMDet (IEEE TCSVT’2022)[26] 64.0 TSFADet (ECCV’2022)[36] 70.4 C2Former (IEEE TITS’2024)[35] 72.8 OAFA (CVPR’2024)[2] 79.4 
+
+LFBNet (ours) 80.1 
+
+porating the LFCA module boosts AP (0 .5:0 .95) from 38.5% to 47.9%. This substantial gain confirms that frequency-domain alignment effectively reduces cross-modal ampli-tude and phase inconsistencies. Adding the FGSA module alone further improves AP (0 .5:0 .95) to 49.3%, demonstrating its ability to correct geometric misalignment via frequency-guided deformable sampling. When both modules are combined, LFBNet reaches 54.4% AP (0 .5:0 .95) , show-ing strong complementarity: LFCA provides modality-consistent spectral features, while FGSA refines spatial cor-respondence for precise fusion. These results validate the motivation behind our two-stage alignment design and un-derscore the value of jointly exploiting frequency cues and spatial deformability for robust RGB–T UAV detection.  
+
+> Table 4. Ablation study of key components in LFBNet on the UAV-CB validation set.
+
+Variant LFCA FGSA AP (0 .5:0 .95) (%) YOLOv5s+Add ✗ ✗ 38.5 + LFCA only ✓ ✗ 47.9 + FGSA only ✗ ✓ 49.3 
+
+Full LFBNet ✓ ✓ 54.4 
+
+# 6. Conclusion 
+
+We introduced UAV-CB, an RGB–T UAV detection dataset that captures the camouflage and complex backgrounds characteristic of low-altitude environments, and proposed LFBNet, a local frequency–based detector that bridges both frequency–spatial and cross-modality gaps through the LFCA and FGSA modules. Extensive experiments on UAV-CB and public benchmarks demonstrate that LFBNet achieves strong performance and robustness under cluttered and camouflaged conditions. In future work, we will fo-cus on improving the domain adaptability of LFBNet and developing open-environment UAV detection benchmarks to evaluate generalization across unseen weather, lighting, and scene conditions. Acknowledgement 
+
+This work was supported by National Natural Science Foundation of China (NSFC) 62272172 and the Fun-damental Research Funds for the Central Universities 2025ZYGXZR095. This work is supported in part by the Guangdong Pearl River TalentProgram (Introduc-tion of Young Talent) under Grant No. 2019QN01X246. 
+
+# References 
+
+[1] Zhaowei Cai and Nuno Vasconcelos. Cascade r-cnn: Delving into high quality object detection. In 2018 IEEE/CVF Con-ference on Computer Vision and Pattern Recognition , pages 6154–6162, 2018. 8 [2] Chen Chen, Jiahao Qi, Xingyue Liu, Kangcheng Bin, Ruigang Fu, Xikun Hu, and Ping Zhong. Weakly misalignment-free adaptive feature alignment for uavs-based multimodal object detection. In 2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , pages 26826–26835, 2024. 8 [3] Ming Deng, Sijin Sun, Zihao Li, Xiaochuan Hu, and Xing Wu. Fmnet: Frequency-assisted mamba-like linear attention network for camouflaged object detection. arXiv preprint arXiv:2503.11030 , 2025. 3 [4] Deng-Ping Fan, Ge-Peng Ji, Guolei Sun, Ming-Ming Cheng, Jianbing Shen, and Ling Shao. Camouflaged object de-tection. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 2777–2787, 2020. 2 [5] Zheng Ge, Songtao Liu, Feng Wang, Zeming Li, and Jian Sun. YOLOX: Exceeding yolo series in 2021. arXiv preprint arXiv:2107.08430 , 2021. 8 [6] Wanxuan Geng, Junfan Yi, Ning Li, Chen Ji, Yu Cong, and Liang Cheng. Rcsd-uav: An object detection dataset for un-manned aerial vehicles in realistic complex scenarios. Engi-neering Applications of Artificial Intelligence , 151:110748, 2025. 1, 2, 3 [7] Ross Girshick, Jeff Donahue, Trevor Darrell, and Jitendra Malik. Rich feature hierarchies for accurate object detec-tion and semantic segmentation. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , pages 580–587. IEEE, 2014. 2 [8] Dongxuan He, Weijie Yuan, Jun Wu, and Ruiqi Liu. Ubiqui-tous uav communication enabled low-altitude economy: Ap-plications, techniques, and 3gpp’s efforts. IEEE Network ,pages 1–1, 2025. 1 [9] Kun Hu, Qingle Zhang, Maoxun Yuan, and Yitian Zhang. Sfdfusion: an efficient spatial-frequency domain fusion net-work for infrared and visible image fusion. arXiv preprint arXiv:2410.22837 , 2024. 2, 3, 8 [10] Bo Huang, Jianan Li, Junjie Chen, Gang Wang, Jian Zhao, and Tingfa Xu. Anti-uav410: A thermal infrared benchmark and customized scheme for tracking drones in the wild. IEEE Transactions on Pattern Analysis and Machine Intelligence ,46(5):2852–2865, 2024. 1, 2, 3 [11] Yuzhuo Huang, Jingyi Qu, Haoyu Wang, and Jun Yang. An all-time detection algorithm for uav images in urban low al-titude. Drones , 8(7), 2024. 1 [12] Soonmin Hwang, Jaesik Park, Namil Kim, Yukyung Choi, and In So Kweon. Multispectral pedestrian detection: Benchmark dataset and baseline. In 2015 IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , pages 1037–1045, 2015. 2 [13] Nan Jiang, Kuiran Wang, Xiaoke Peng, Xuehui Yu, Qiang Wang, Junliang Xing, Guorong Li, Jian Zhao, Guodong Guo, and Zhenjun Han. Anti-uav: A large multi-modal benchmark for uav tracking. arXiv preprint arXiv:2101.08466 , 2021. 1, 2, 3 [14] Taeheon Kim, Sebin Shin, Youngjoon Yu, Hak Gu Kim, and Yong Man Ro. Causal mode multiplexer: A novel framework for unbiased multispectral pedestrian detection. In Proceed-ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 26784–26793, 2024. 2 [15] Mengqi Lei, Siqi Li, Yihong Wu, Han Hu, You Zhou, Xinhu Zheng, Guiguang Ding, Shaoyi Du, Zongze Wu, and Yue Gao. Yolov13: Real-time object detection with hypergraph-enhanced adaptive visual perception. arXiv preprint arXiv:2506.17733 , 2025. 8 [16] Ke Li, Di Wang, Zhangyuan Hu, Shaofeng Li, Weiping Ni, Lin Zhao, and Quan Wang. Fd2-net: Frequency-driven fea-ture decomposition network for infrared-visible object de-tection. In Proceedings of the AAAI Conference on Artificial Intelligence , pages 4797–4805, 2025. 2 [17] Yanghao Li, Hanzi Mao, Ross Girshick, and Kaiming He. Exploring plain vision transformer backbones for object de-tection. In Computer Vision – ECCV 2022 , pages 280–296, Cham, 2022. Springer Nature Switzerland. 8 [18] Jingjing Liu, Shaoting Zhang, Shu Wang, and Dimitris N Metaxas. Multispectral deep neural networks for pedestrian detection. arXiv preprint arXiv:1611.02644 , 2016. 2 [19] Guiyang Luo, Jinglin Li, Qixun Zhang, Zhiyong Feng, Quan Yuan, Yijing Lin, Hui Zhang, Nan Cheng, and Ping Zhang. Toward low-altitude airspace management and uav opera-tions: Requirements, architecture and enabling technologies. 
+
+arXiv preprint arXiv:2506.08579 , 2025. 1 [20] Youwei Pang, Xiaoqi Zhao, Tian-Zhu Xiang, Lihe Zhang, and Huchuan Lu. Zoomnext: A unified collaborative pyra-mid network for camouflaged object detection. IEEE trans-actions on pattern analysis and machine intelligence , 46(12): 9205–9220, 2024. 2 [21] Maciej Ł. Pawełczyk and Marek Wojtyra. Real world object detection dataset for quadcopter unmanned aerial vehicle de-tection. IEEE Access , 8:174394–174409, 2020. 3 [22] Joseph Redmon and Ali Farhadi. Yolov3: An incremental improvement. arXiv preprint arXiv:1804.02767 , 2018. 8 [23] Joseph Redmon, Santosh Divvala, Ross Girshick, and Ali Farhadi. You only look once: Unified, real-time object de-tection. In Proceedings of the IEEE Conference on Com-puter Vision and Pattern Recognition (CVPR) , pages 779– 788. IEEE, 2016. 2 [24] Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun. Faster r-cnn: Towards real-time object detection with region proposal networks. In Advances in Neural Information Pro-cessing Systems (NeurIPS) , 2015. 2, 8 [25] Jiacheng Ruan, Wenzhen Yuan, Zehao Lin, Ning Liao, Zhiyu Li, Feiyu Xiong, Ting Liu, and Yuzhuo Fu. Mm-camobj: A comprehensive multimodal dataset for camouflaged ob-ject scenarios. In Proceedings of the AAAI Conference on Artificial Intelligence , pages 6740–6748, 2025. 2 [26] Yiming Sun, Bing Cao, Pengfei Zhu, and Qinghua Hu. Drone-based rgb-infrared cross-modality vehicle detection via uncertainty-aware learning. IEEE Transactions on Cir-cuits and Systems for Video Technology , 32(10):6700–6713, 2022. 7, 8 [27] Ultralytics. Yolov5 by ultralytics. https://github. com/ultralytics/yolov5 , 2020. 8 [28] Thang Vu, Hyunjun Jang, Trung X Pham, and Chang Yoo. Cascade rpn: Delving into high-quality region proposal net-work with adaptive convolution. Advances in neural infor-mation processing systems , 32, 2019. 8 [29] Bingshu Wang, Qiang Li, Qianchen Mao, Jinbao Wang, C. L. Philip Chen, Aihong Shangguan, and Haosu Zhang. A survey on vision-based anti unmanned aerial vehicles meth-ods. Drones , 8(9), 2024. 1, 2 [30] Huiying Wang, Chunping Wang, Qiang Fu, Dongdong Zhang, Renke Kou, Ying Yu, and Jian Song. Cross-modal oriented object detection of uav aerial images based on im-age feature. IEEE Transactions on Geoscience and Remote Sensing , 62:1–21, 2024. 1 [31] Zhechao Wang, Peirui Cheng, Mingxin Chen, Pengju Tian, Zhirui Wang, Xinming Li, Xue Yang, and Xian Sun. Drones help drones: A collaborative framework for multi-drone ob-ject trajectory prediction and beyond. Advances in Neural Information Processing Systems , 37:64604–64628, 2024. 1 [32] Bin Xie, Congxuan Zhang, Fagan Wang, Peng Liu, Feng Lu, Zhen Chen, and Weiming Hu. Cst anti-uav: A thermal in-frared benchmark for tiny uav tracking in complex scenes. In Proceedings of the IEEE/CVF International Conference on Computer Vision , pages 6157–6166, 2025. 1, 2, 3 [33] Xinyi Ying, Chao Xiao, Wei An, Ruojing Li, Xu He, Boyang Li, Xu Cao, Zhaoxu Li, Yingqian Wang, Mingyuan Hu, Qingyu Xu, Zaiping Lin, Miao Li, Shilin Zhou, Li Liu, and Weidong Sheng. Visible-thermal tiny object detection: A benchmark dataset and baselines. IEEE Transactions on Pat-tern Analysis and Machine Intelligence , 47(7):6088–6096, 2025. 2 [34] Qianjin Yu, Yinchao Ma, Jianfeng He, Dawei Yang, and Tianzhu Zhang. A unified transformer based tracker for anti-uav tracking. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 3036– 3046, 2023. 1 [35] Maoxun Yuan and Xingxing Wei. C²former: Calibrated and complementary transformer for rgb-infrared object de-tection. IEEE Transactions on Geoscience and Remote Sens-ing , 62:1–12, 2024. 2, 8 [36] Maoxun Yuan, Yinyan Wang, and Xingxing Wei. Transla-tion, scale and rotation: Cross-modal alignment meets rgb-infrared vehicle detection. In European Conference on Com-puter Vision , pages 509–525. Springer, 2022. 8 [37] Shenghai Yuan, Yizhuo Yang, Thien Hoang Nguyen, Thien-Minh Nguyen, Jianfei Yang, Fen Liu, Jianping Li, Han Wang, and Lihua Xie. Mmaud: A comprehensive multi-modal anti-uav dataset for modern miniature drone threats. In 2024 IEEE International Conference on Robotics and Au-tomation (ICRA) , pages 2745–2751, 2024. 1, 2, 3 [38] Haiping Zhang, Di Yuan, Xiu Shu, Zhihui Li, Qiao Liu, Xi-aojun Chang, Zhenyu He, and Guangming Shi. A compre-hensive review of rgbt tracking. IEEE Transactions on In-strumentation and Measurement , 73:1–23, 2024. 2 [39] Jiaming Zhang, Huayao Liu, Kailun Yang, Xinxin Hu, Ruip-ing Liu, and Rainer Stiefelhagen. Cmx: Cross-modal fusion for rgb-x semantic segmentation with transformers. IEEE Transactions on Intelligent Transportation Systems , 24(12): 14679–14694, 2023. 2, 8 [40] Jiandong Zhang, Zhuoyong Shi, Anli Zhang, Qiming Yang, Guoqing Shi, and Yong Wu. Uav trajectory prediction based on flight state recognition. IEEE Transactions on Aerospace and Electronic Systems , 60(3):2629–2641, 2024. 1 [41] Tianlu Zhang, Xueru Liu, Qiang Zhang, and Jungong Han. Siamcda: Complementarity- and distractor-aware rgb-t tracking based on siamese network. IEEE Transactions on Circuits and Systems for Video Technology , 32(3):1403– 1417, 2022. 2 [42] Xue Zhang, Si-Yuan Cao, Fang Wang, Runmin Zhang, Zhe Wu, Xiaohan Zhang, Xiaokai Bai, and Hui-Liang Shen. Re-thinking early-fusion strategies for improved multispectral object detection. IEEE Transactions on Intelligent Vehicles ,10(6):3728–3742, 2025. 2 [43] Xuying Zhang, Bowen Yin, Zheng Lin, Qibin Hou, Deng-Ping Fan, and Ming-Ming Cheng. Referring camouflaged object detection. IEEE Transactions on Pattern Analysis and Machine Intelligence , 2025. 2 [44] Yi Zhang, Wang Zeng, Sheng Jin, Chen Qian, Ping Luo, and Wentao Liu. When pedestrian detection meets multi-modal learning: Generalist model and benchmark dataset. In 
+
+European Conference on Computer Vision , pages 430–448. Springer, 2024. 2 [45] Jie Zhao, Jingshu Zhang, Dongdong Li, and Dong Wang. Vision-based anti-uav detection and tracking. IEEE Transac-tions on Intelligent Transportation Systems , 23(12):25323– 25334, 2022. 1, 3 [46] Tianyi Zhao, Boyang Liu, Yanglei Gao, Yiming Sun, Maoxun Yuan, and Xingxing Wei. Rethinking multi-modal object detection from the perspective of mono-modality fea-ture learning. In Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) , pages 6364–6373, 2025. 2 [47] Yian Zhao, Wenyu Lv, Shangliang Xu, Jinman Wei, Guanzhong Wang, Qingqing Dang, Yi Liu, and Jie Chen. Detrs beat yolos on real-time object detection. In 2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , pages 16965–16974, 2024. 8 [48] Xiaofei Zhou, Zhicong Wu, and Runmin Cong. Decoupling and integration network for camouflaged object detection. 
+
+IEEE Transactions on Multimedia , 26:7114–7129, 2024. 2 [49] Jiawen Zhu, Simiao Lai, Xin Chen, Dong Wang, and Huchuan Lu. Visual prompt multi-modal tracking. In Pro-ceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 9516–9526, 2023. 2 [50] Yaohui Zhu, Xiaoyu Sun, Miao Wang, and Hua Huang. Multi-modal feature pyramid transformer for rgb-infrared object detection. IEEE Transactions on Intelligent Trans-portation Systems , 24(9):9984–9995, 2023. 2

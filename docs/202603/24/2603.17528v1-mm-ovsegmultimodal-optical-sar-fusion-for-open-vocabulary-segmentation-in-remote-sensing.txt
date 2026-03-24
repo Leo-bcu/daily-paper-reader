@@ -1,0 +1,685 @@
+Title: MM-OVSeg:Multimodal Optical-SAR Fusion for Open-Vocabulary Segmentation in Remote Sensing
+
+URL Source: https://arxiv.org/pdf/2603.17528v1
+
+Published Time: Thu, 19 Mar 2026 01:02:51 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# MM-OVSeg: Multimodal Optical–SAR Fusion for Open-Vocabulary Segmentation in Remote Sensing 
+
+## Yimin Wei 1,2,∗ Aoran Xiao 2,∗ Hongruixuan Chen 1,2 Junshi Xia 2 Naoto Yokoya 1,2,†
+
+> 1
+
+## The University of Tokyo 2RIKEN AIP 
+
+4959184626@edu.k.u-tokyo.ac.jp, {xiaoaoran94, Qschrx }@gmail.com, junshi.xia@riken.jp, yokoya@k.u-tokyo.ac.jp 
+
+> ∗
+
+Equal contribution, †Corresponding author 
+
+## Abstract 
+
+Open-vocabulary segmentation enables pixel-level recogni-tion from an open set of textual categories, allowing gen-eralization beyond fixed classes. Despite great potential in remote sensing, progress in this area remains largely lim-ited to clear-sky optical data and struggles under cloudy or haze-contaminated conditions. We present MM-OVSeg, a multimodal Optical–SAR fusion framework for resilient open-vocabulary segmentation under adverse weather con-ditions. MM-OVSeg leverages the complementary strengths of the two modalities—optical imagery provides rich spec-tral semantics, while synthetic aperture radar (SAR) offers cloud-penetrating structural cues. To address the cross-modal domain gap and the limited dense prediction capabil-ity of current vision–language models, we propose two key designs: a cross-modal unification process for multi-sensor representation alignment, and a dual-encoder fusion mod-ule that integrates hierarchical features from multiple vision foundation models for text-aligned multimodal segmenta-tion. Extensive experiments demonstrate that MM-OVSeg achieves superior robustness and generalization across di-verse cloud conditions. The source dataset and code are available here. 
+
+## 1. Introduction 
+
+Open-vocabulary segmentation (OVS) aims to assign se-mantic labels to image regions from an open-ended set of textual categories, enabling recognition beyond the classes observed during training. In remote sensing (RS), OVS is particularly valuable for flexible and scalable land-cover un-derstanding across diverse geographical regions, eliminat-ing the need for exhaustive pixel-level annotations and fixed predefined class sets. This capability promotes improved generalization and adaptability to novel or fine-grained cat-egories commonly encountered in RS imagery. Cloudy optical image  SAR image Ground truth      
+
+> CAT -Seg (CVPR’24) EBSeg (CVPR’24) SegEarth -OV (CVPR’25)
+> MM -OVSeg (ours)
+> Road
+> Water
+> Tree
+> RangeLand
+> Developed space
+> Agricultural land
+> Unimodal segmentation
+> Multimodal segmentation
+
+Figure 1. Existing unimodal OVS methods fail in cloudy envi-ronments due to severely degraded optical inputs. By incorporat-ing SAR, which penetrates clouds and haze, MM-OVSeg produces significantly more accurate and consistent segmentation results. 
+
+Despite recent progress, existing OVS studies in the RS domain [2, 21, 38] remain largely confined to optical RGB data, typically assuming clean, clear-sky imagery. In real-world scenarios, however, RS observations are frequently affected by cloud or haze contamination. Current OVS methods struggle under these low-visibility conditions (Fig-ure 1), limiting their utility for time-sensitive applications such as disaster response, and hindering long-term moni-toring tasks that require consistent and reliable earth obser-vation and scene understanding. In this work, we investigate OVS based on the fusion of optical and synthetic aperture radar (SAR) modalities. Leveraging both modalities offers complementary advan-tages, as optical images provide rich spectral and semantic cues, while SAR data penetrate clouds and capture struc-tural information, enabling robust scene understanding un-der cloudy or adverse weather conditions. However, integrating SAR into an open-vocabulary framework is a profoundly challenging and unsolved prob-lem, presenting two key obstacles. Firstly, vision founda-
+
+> arXiv:2603.17528v1 [cs.CV] 18 Mar 2026
+
+tion models (VFMs) are primarily trained on RGB imagery, whereas SAR exhibits distinct backscattering properties and texture patterns, creating a substantial domain gap between RGB and SAR representations. Secondly, vision–language models (VLMs) such as CLIP [16] and ALIGN [17] are trained with image-level supervision, limiting their capac-ity to generate accurate dense predictions for segmenta-tion. This issue is exacerbated for SAR imagery, where do-main discrepancies further weaken spatial correspondence between visual and textual representations. Consequently, effectively encoding SAR data in a manner compatible with text-aligned RGB representations, while achieving robust multimodal fusion for OVS remains an open challenge. In this work, we propose MM-OVSeg, a multimodal Optical–SAR fusion framework for robust open-vocabulary segmentation. The framework comprises two key com-ponents designed to tackle the challenges above. First, a Cross-Modal Unification (CMU) process leverages paired RGB–SAR data for cross-modal distillation, aligning SAR embeddings with RGB embeddings distilled from VFMs to establish a shared representation space that enables VFMs to effectively leverage SAR cues. Second, a Dual-Encoder Fusion (DEF) module integrates the CLIP [16] encoder (for global semantics) and the DINO [3] encoder (for dense lo-cal representations), extracting complementary RGB and SAR features that are fused and aligned with the CLIP text encoder to enable accurate open-vocabulary segmentation. Together, MM-OVSeg provides a unified and resilient mul-timodal framework for generalizable scene understanding in real-world RS environments. Our main contributions are twofold: First , we introduce the problem of OVS under cloudy conditions in RS, high-lighting the importance of Optical–SAR fusion for robust scene understanding beyond RGB-only imagery. Second ,we propose MM-OVSeg, a multimodal OVS framework featuring a CMU process for aligning SAR embeddings with RGB-based vision foundation models, and a DEF module for integrating global (CLIP) and local (DINO) fea-tures into a unified text-aligned space. Extensive experi-ments on multiple datasets demonstrate that MM-OVSeg achieves superior accuracy, robustness, and generalization under diverse and cloudy conditions. 
+
+## 2. Related Works 
+
+2.1. Open-Vocabulary Segmentation 
+
+OVS has gained significant traction in recent years. Early work such as the Open Vocabulary Parsing Network [55] explored joint pixel–word embedding spaces. More recent methods [5, 11, 20, 22, 25, 38, 56] leverage large-scale vi-sion–language models, including CLIP [16] and ALIGN [17], to associate arbitrary textual concepts with visual re-gions. CLIP-based OVS approaches fall into two-stage and one-stage categories. Two-stage methods [7, 25, 48] gen-erate category-agnostic region proposals and classify them using CLIP. OVSeg [25] fine-tunes CLIP with region–text pairs, while MaskCLIP [8] uses CLIP self-attention for pro-posal refinement. However, dependence on proposal gen-erators trained with limited annotations often limits their generalization. One-stage models [47, 49, 52] avoid ex-ternal proposals and perform segmentation and recognition jointly. CAT-Seg [5] uses similarity matrices as pseudo-masks, and EBSeg fuses predictions from SAM [18] and CLIP. Despite these advances, existing OVS methods focus on natural images and do not address the unique challenges posed by remote sensing imagery. 
+
+2.2. Open-Vocabulary Segmentation in RS 
+
+Recently, OVS has been extended from natural to RS imagery due to its scalability for land-cover understand-ing. Current CLIP-based OVS methods in RS can be broadly categorized as training-free or training-required. Training-free methods leverage CLIP’s inherent localiza-tion ability with minimal architectural changes. For in-stance, SegEarth-OV [23] introduces a feature-upsampling module that enhances low-resolution CLIP features while preserving semantic consistency. Training-required meth-ods, in contrast, learn from labeled base classes to enhance domain adaptation and local detail. Cao et al. [2] proposed a rotation-aggregative similarity module to handle object rotation and scale variation, while Ye et al. [51] and Li et al. [21] combined CLIP with a DINO encoder to ex-tract remote-sensing-specific local cues. However, all these methods focus on single modality while our MM-OVSeg is the first framework for multimodal fusion of OVS in RS. 
+
+2.3. Optical-SAR Integration 
+
+SAR and optical imagery provide complementary cues for Earth observation [4, 42, 46]. Optical sensors capture spec-tral and textural information critical for semantic under-standing, while SAR penetrates cloud and haze and en-codes geometric backscattering, ensuring robustness under adverse conditions. Fusion of these heterogeneous modal-ities has been studied at three main levels: pixel, feature, and decision. Early pixel-level methods combined raw in-tensity values through techniques such as high-pass filter-ing, principal component analysis, or Gram–Schmidt trans-formation [19, 31, 50], yet they were largely application-oriented and limited by modality misalignment. Feature-level approaches extract modality-specific representations and integrate them via concatenation, attention, or cross-modal adaptation [10, 27, 28, 37, 53], while decision-level fusion combines classifier outputs through probabilis-tic or evidential rules [15, 41]. Recent deep networks [1, 13, 24, 34, 36, 43] improve spatial–semantic fusion through attention or transformer modules. However, ex-SAR Image 
+
+RGB Image 
+
+A photo of 
+
+{CLASSLIST} 
+
+Text prompt 
+
+DINO encoder 
+
+(SAR) 
+
+DINO encoder 
+
+CLIP 
+
+visual encoder 
+
+CLIP 
+
+text encoder 
+
+𝑓 sar 
+
+𝑓 rgb 
+
+𝑧 rgb 
+
+𝑧 T
+
+𝑓 d
+
+> Norm Norm
+> Norm
+
+𝑧 T
+
+ℎdt  ℎfuse 
+
+𝑧 rgb 
+
+> Li near  Classifier
+
+𝐶 
+
+𝐶 
+
+Predictions 
+
+ℎgt 
+
+> Full  MM -OVSeg  Training  Cross -Modal Unification
+
+SAR 
+
+DINO encoder 
+
+(SAR) 
+
+DINO encoder 
+
+RGB 
+
+𝑓 sar 
+
+𝑓 rgb   
+
+> Convolution Concat Dot Product Add 𝐶
+> Frozen Trainable Convolution & Sigmoid
+
+25,087 Pairs 
+
+𝐿 𝐶𝑀𝑈 
+
+CMU -Data  ⋯
+
+𝐿 ce 
+
+Ground truth 
+
+Dual -Encoder Fusion Figure 2. Overall optimization framework of MM-OVSeg. The training pipeline consists of two stages. (1) In the Cross-Modal Unification stage, the SAR DINO encoder is trained to align SAR features with the fixed RGB DINO features using the CMU-Data collection of 25,087 RGB and SAR image pairs. (2) In the full MM-OVSeg training stage, the model jointly processes optical and SAR inputs for multimodal open-vocabulary segmentation. The Dual-Encoder Fusion module integrates RGB and SAR dense features and aligns them with CLIP text embeddings, after which a linear classifier predicts the final segmentation map. 
+
+isting SAR–optical segmentation methods largely remain closed-set, relying on fixed annotated classes and lack-ing open-vocabulary generalization. This limitation moti-vates our MM-OVSeg, which enables cross-modal fusion for more robust OVS in RS. 
+
+## 3. Method 
+
+3.1. Problem Definition 
+
+Given a paired set of multimodal RS images, i.e., an op-tical RGB image I ∈ RH×W ×3 and a co-registered SAR image S ∈ RH×W ×1, together with a collection of training textual class categories Ctrain = {T (n)}Nc
+
+> n=1
+
+, where T (n)
+
+denotes the textual description of the n-th category and Nc
+
+is the number of seen classes, the objective of OVS is to learn a segmentation model G : ( I, S, Ctrain ) → Y, that pre-dicts a pixel-wise semantic map Y ∈ { 1, 2, . . . , N c}H×W ,
+
+in which each pixel is assigned to the most relevant textual category. Unlike conventional closed-set segmentation, the label space in OVS is open. At inference time, the model is eval-uated on an extended category set Ctest = Ctrain ∪ C novel ,
+
+where Cnovel represents unseen or novel classes that do not appear during training, i.e., Ctrain ∩ C novel = ∅. Thus, the model must generalize from seen to unseen categories by aligning visual features with textual semantics in a shared embedding space. In the multimodal setting, this challenge is further com-pounded by the heterogeneous nature of the input modal-ities. The model must effectively fuse optical and SAR features (capturing spectral semantics and structural infor-mation, respectively) to produce reliable segmentations un-der diverse conditions such as cloud or haze contamination. The subsequent subsections detail the proposed framework for achieving this multimodal text–visual alignment. 
+
+3.2. MM-OVSeg 
+
+3.2.1. Overview 
+
+The overall framework of MM-OVSeg is depicted in Fig-ure 2. The model integrates multiple pretrained and learned components to achieve multimodal open-vocabulary seg-mentation. Specifically, a pretrained CLIP [16] model pro-vides a visual encoder ΦV and a text encoder ΦT for align-ing the global visual features of optical RGB images with textual representations. In parallel, a pretrained DINO en-coder Frgb extracts dense local features from RGB images, while a SAR-specific DINO encoder Fsar is tuned to pro-duce dense features for SAR images. The RGB and SAR dense features are fused and projected into the CLIP vi-sual feature space, enabling multimodal alignment with the CLIP text embeddings for open-vocabulary prediction. The training pipeline consists of two stages, as shown in Figure 2. First, the SAR DINO encoder Fsar is trained through the Cross-Modal Unification (CMU) process to align SAR representations with the fixed RGB DINO fea-tures. Then, the full MM-OVSeg model is trained for joint optical–SAR segmentation, where the Dual-Encoder Fu-sion (DEF) module performs multimodal feature integra-tion. The following subsections describe them in detail. 
+
+3.2.2. Cross-Modal Unification 
+
+We employ DINO as the backbone for extracting dense vi-sual features that support segmentation. While pretrained on large-scale RGB corpora, DINO does not directly gen-eralize to SAR imagery, whose microwave backscattering differs substantially from optical texture statistics. As a re-sult, despite its robustness to cloud, haze, and illumination variations, exploiting SAR requires training DINO on this modality. However, collecting a large-scale SAR corpus on the scale of DINO’s original RGB training set is unrealistic. To address this challenge, inspired by ImageBind [12], we unify SAR and RGB embeddings using unlabeled, co-registered RGB–SAR pairs. As shown in Fig. 2(a), each RGB image is encoded by the frozen RGB DINO encoder 
+
+Frgb to obtain frgb , while its SAR counterpart is processed by the learnable encoder Fsar to produce fsar . Cross-modal alignment is then optimized via an InfoNCE contrastive loss [30] in an unsupervised manner: 
+
+LCMU = − log exp( fsar f +
+
+> rgb
+
+/τ )exp( fsar f +
+
+> rgb
+
+/τ ) + PNj=1 exp( fsar f −j 
+
+> rgb
+
+/τ )
+
+where f + 
+
+> rgb
+
+is the paired RGB embedding, f −j 
+
+> rgb
+
+are negative embeddings from other RGB samples, and τ is a tempera-ture scalar. Both encoders employ a ViT-B/16 backbone [9]. We extract multi-scale features from the 4th, 8th, and 12th transformer blocks and average their contrastive losses. To facilitate effective cross-modal learning, we curate CMU-Data, a dataset of 25,087 aligned RGB–SAR pairs collected from SpaceNet6 [39] and DFC2023 [33], with spatial resolutions ranging from 0.5 m to 3 m. Random translation, flipping, scaling, and rotation are used for data augmentation for paired data. Although one could analogously train a CLIP-style vi-sual encoder for SAR, we find this unnecessary in practice. The pretrained CLIP visual encoder captures global seman-tic cues (scene layout, object co-occurrence, and contextual relations) that remain largely invariant across optical and SAR modalities. Thus, training an additional CLIP encoder for SAR introduces significant overhead without meaning-ful gains. We provide further discussion in the appendix. 
+
+3.2.3. Dual-Encoder Fusion 
+
+The second stage of MM-OVSeg trains the full multimodal OVS framework. As shown in Fig. 2(b), the pretrained RGB DINO encoder Frgb and the CMU-aligned SAR DINO encoder Fsar are frozen, while the CLIP visual and text encoders (Φ V , ΦT ) remain trainable. The key component in this stage is the Dual-Encoder Fusion (DEF) module, which integrates CLIP and DINO to extract complementary RGB–SAR cues and align them with textual semantics. 
+
+Multimodal dense feature aggregation. Given paired inputs (Irgb , I sar ), dense features are extracted from the 4th, 8th, and 12th transformer blocks of the ViT-B/16 backbone: 
+
+f i 
+
+> rgb
+
+= Fi
+
+> rgb
+
+(Irgb ), f i 
+
+> sar
+
+= Fi
+
+> sar
+
+(Isar ), i ∈ { 1, 2, 3},
+
+Each feature map is projected to a unified dimension by a block-specific convolution layer σi(·). The RGB and SAR features are then fused via element-wise addition: 
+
+f id = σi(f i
+
+> rgb
+
+) + σi(f i
+
+> sar
+
+).
+
+This multimodal representation incorporates spec-tral–textural cues from RGB and structural backscatter from SAR. 
+
+Text–visual alignment. For the same RGB image and corresponding text prompt T , CLIP produces global vi-sual and textual embeddings: zrgb = Φ V (Irgb ), zT =ΦT (T ), where the text prompt follows the template “a photo of {CLASSLIST }” for all training categories Ctrain .Dense visual–text and global visual–text similarities are computed using cosine similarity: hidt = f id · zT , hgt =
+
+zrgb · zT . These similarity maps are transformed by a 
+
+7×7 convolution and sigmoid activation: hidt , h gt =
+
+φ(σ7(hidt )) , φ (σ7(hgt )) To jointly leverage dense and global alignment, DEF fuses them through concatenation and residual enhancement: 
+
+hi 
+
+> fuse
+
+= φ(σ7([ hidt ; hgt ])) + hgt 
+
+The residual connection preserves the generalist semantic structure encoded by CLIP and mitigates feature drift dur-ing multimodal training. Following an FPN-style decoder [26], fused features 
+
+hi 
+
+> fuse
+
+across blocks are bilinearly upsampled and concate-nated with corresponding DINO and CLIP features. A lin-ear classifier is applied to generate pixel-wise predictions. Training is supervised using standard cross-entropy loss 
+
+Lce . At inference, text prompts for all categories in Ctest 
+
+are injected into the model, enabling open-vocabulary seg-mentation across both seen and unseen classes. Index Datasets ( train → test ) weather cloud cover cloud type generalization 
+
+① PIE-cloud → PIE-cloud cloudy varied synthetic intra-domain 
+
+② DDHR-SK → DDHR-SK cloudy varied synthetic intra-domain 
+
+③ OEM-thick → OEM-thick cloudy thick synthetic intra-domain 
+
+④ OEM-thin → OEM-thin cloudy thin synthetic intra-domain 
+
+⑤ PIE-clean → PIE-clean clear sky none none intra-domain 
+
+⑥ DDHR-SK → DDHR-CH cloudy varied synthetic cross-domain 
+
+> Table 1. Evaluation settings for MM-OVSeg. The experiments cover clear sky and cloudy weather, synthetic cloud cover with different opacity levels (thin or thick), and both intra domain and cross domain generalization scenarios.
+
+Method Publication ① ② ③ ④ ⑤ ⑥ Mean CAT-Seg [5] CVPR’24 54.5 54.2 33.8 29.5 55.8 27.8 42.6 EBSeg [38] CVPR’24 50.8 51.1 27.2 25.6 51.0 26.7 38.7 GSNet [51] AAAI’25 57.0 55.0 35.2 37.0 57.2 32.4 45.6 SegEarth-OV [23] CVPR’25 45.1 17.6 28.9 18.5 51.8 24.2 31.0 FGA-Seg [22] Arxiv’25 51.6 51.6 26.0 32.8 52.1 40.6 42.5 
+
+MM-OVSeg (ours) – 57.7 73.1 36.6 40.2 59.7 42.6 51.7       
+
+> Table 2. Comparison of OVS methods across all evaluation settings defined in Table 1. The table reports mIoU scores for each setting and the overall mean. Settings correspond to: ①: PIE-cloud →PIE-cloud; ②: DDHR-SK →DDHR-SK; ③: OEM-thick →OEM-thick; ④:OEM-thin →OEM-thin; ⑤: PIE-clean →PIE-clean; ⑥: DDHR-SK →DDHR-CH. MM-OVSeg achieves the highest accuracy in all settings and obtains the best overall mean score, demonstrating strong robustness under cloudy conditions and superior cross domain generalization.
+
+## 4. Experiments 
+
+4.1. Datasets and Settings 
+
+4.1.1. Experimental Setups 
+
+We comprehensively evaluate MM-OVSeg across multiple multimodal RS datasets under diverse weather and domain conditions. Our evaluation encompasses (1) clear-sky vs. cloudy weather , (2) synthetic cloud cover with varying opacity ( thin vs. thick vs. varied ), and (3) intra-domain and cross-domain generalization. 
+
+OpenEarthMap-SAR [45] comprises 1.5 million seg-mented tiles (1024 × 1024 pixels) collected from aerial and satellite imagery over 35 regions in Japan, France, and the United States, with a ground sampling distance (GSD) of 0.15–0.5 m. Eight land-cover categories are annotated. Fol-lowing the official split, we use 4,333 RGB–SAR image pairs for training and 490 pairs for testing. Since the dataset contains only clear-sky imagery, we apply SatelliteCloud-Generator [6] to synthesize cloud cover, producing two vari-ants: OEM-thin and OEM-thick . Training classes include 
+
+Bareland, Rangeland, Developed space, Tree , and Agricul-tural land , while testing additionally includes novel classes 
+
+Road, Water , and Building .
+
+PIE-RGB-SAR [54] contains multimodal image pairs from the Pearl River Delta, China, with RGB images sourced from Google Satellite and SAR images from the GF-3 satellite’s ultra-fine stripe mode. The RGB and SAR images have approximate GSD of 0.5 m and 3 m, respec-tively. All pairs are cropped to 256 × 256 pixels, yield-ing 4,865 samples (2,433 for training and 2,432 for testing). Two tracks are officially provided: PIE-clean (cloud-free) and PIE-cloud (cloudy). We use training classes Back-ground, City, Forest , and Farmland , and define Road and 
+
+Water as novel test classes. 
+
+DDHR [35] includes RGB images from the GF-2 satel-lite, synthetically clouded using the GNU Image Manipu-lation Program (GIMP) software, paired with SAR images from GF-3 resampled to 1 m resolution. Both modalities are cropped to 256 × 256 pixels. The dataset contains five sub-sets; we use two: DDHR-SK (Pohang, South Korea) and 
+
+DDHR-CH (Xi’an, China). For DDHR-SK, we follow the official split with 3,087 training and 3,086 validation im-ages. DDHR-CH is used entirely for cross-domain testing. Five classes are annotated, among which Forest, City , and 
+
+Farmland are used for training, and Road and Water are treated as novel classes in testing. 
+
+Evaluation Protocol. Table 1 summarizes the evalua-tion setups across the datasets described above. We report mean Intersection over Union (mIoU) as the primary metric for evaluation of semantic segmentation performance. 
+
+4.1.2. Implementation Details 
+
+We implement MM-OVSeg in PyTorch [32] using Detec-tron2 [44] for the segmentation pipeline. Both CLIP and DINO components use a ViT-B/16 backbone. Pretrained 0           
+
+> 50
+> 100
+> Road
+> Water
+> Background
+> City
+> Forest
+> Farmland
+> 96.1
+> 7.0
+> 32.2
+> 75.1
+> 58.9
+> 76.7
+> 0
+> 50
+> 100
+> Road
+> Water
+> City
+> Forest
+> Farmland
+> 21.2
+> 84.8 86.8 87.3 85.6
+> 0
+> 50
+> 100
+> Road
+> Water
+> Building
+> Bareland
+> Rangeland
+> Developed.
+> Tree
+> Agri. Land
+> 32.0
+> 12.9
+> 78.0
+> 14.7 3.1
+> 37.2 50.2 64.7
+> 0
+> 50
+> 100
+> Road
+> Water
+> Building
+> Bareland
+> Rangeland
+> Developed.
+> Tree
+> Agri. Land
+> 17.8
+> 78.8
+> 23.3 6.3
+> 41.4 32.9
+> 57.1 64.3
+> ①: PIE -cloud→PIE -cloud ②: DDHR -SK→DDHR -SK③: OEM -thick→OEM -thick
+> ④: OEM -thin→OEM -thin
+> 0
+> 50
+> 100
+> Road
+> Water
+> Background
+> City
+> Forest
+> Farmland
+> 96.9
+> 11.9
+> 35.1
+> 76.7
+> 59.7
+> 77.5
+> ⑤: PIE -clean→PIE -clean
+> 0
+> 50
+> 100
+> Road
+> Water
+> City
+> Forest
+> Farmland
+> 10.7
+> 34.1
+> 62.4
+> 41.6
+> 64.4
+> ⑥: DDHR -SK→DDHR -CH
+
+Figure 3. IoU performance for each individual class under the six evaluation settings defined in Table 1. Purple bars and blue bars represent 
+
+seen and unseen classes, respectively. 
+
+weights are taken from OpenCLIP [16] and DINO v1 [3]. (1) CMU training: We train the SAR DINO encoder with a batch size of 8 using AdamW [29]. The learning rate is set to 3 × 10 −4 with a weight decay of 1 × 10 −4. The RGB DINO encoder remains frozen. (2) Full MM-OVSeg train-ing: All newly introduced parameters are initialized ran-domly. We fine-tune the model for 120k iterations using AdamW with a batch size of 8 and an initial learning rate of 
+
+2.5 × 10 −4. The CLIP encoders are trained with a smaller learning rate of 2 × 10 −6 to preserve their pretrained align-ment. All experiments are conducted on a single NVIDIA RTX A100 GPU (80 GB). 
+
+4.1.3. Baselines and Comparison Methods 
+
+Since the proposed MM-OVSeg is the first multimodal fu-sion framework for OVS in RS, we compare it with six state-of-the-art single-modality OVS models. These include 1) OVS models in the natural image domain: CAT-Seg [5], EBSeg [38], and FGA-Seg [22]; 2) OVS models in the RS domain: GSNet [51]; and 3) a training-free RS OVS model: SegEarth-OV [23], used as a reference baseline. 
+
+4.2. Main Result 
+
+Table 2 presents a quantitative comparison between MM-OVSeg and recent state-of-the-art methods across all bench-mark datasets. mIoU is reported for each dataset and their overall mean. Overall, MM-OVSeg achieves the highest av-erage performance, reaching 51.7% over six benchmarks, while the second-best method, GSNet, obtains 45.6%. This substantial improvement highlights the effectiveness of the proposed multimodal fusion framework in advancing open-vocabulary segmentation within the remote sensing domain. Besides, unlike prior methods that only excel either on seen or unseen classes, MM-OVSeg demonstrates consistently strong performance across datasets for both seen and un-seen classes. Please refer to Table A3 in the appendix for split seen/unseen class performance comparisons. Figure 3 further visualizes IoU performance for each in-dividual class. While MM-OVSeg outperforms all compet-ing methods by large margins, the model still achieves no-tably higher accuracy on seen classes than on novel unseen categories, underscoring the inherent challenge of OVS in remote sensing—particularly in maintaining robust vi-sual–text alignment. Interestingly, MM-OVSeg attains es-pecially strong performance on the unseen water category. This can be attributed to the characteristically low and ho-mogeneous backscatter of water surfaces in SAR imagery, which provides a reliable cue for discrimination and illus-trates the benefit of incorporating SAR into the multimodal framework. 
+
+Cross-weather robustness. MM-OVSeg delivers con-sistently strong performance under various cloudy and hazy conditions. Its adaptive fusion mechanism effectively ex-ploits the cloud-penetrating capability of SAR while dy-namically weighting RGB and SAR cues according to scene quality. As a result, MM-OVSeg achieves the best perfor-mance in all weather scenarios. Notably, even on the clear-sky benchmark ( ⑤: PIE-clean → PIE-clean), where SAR contributions are less critical, MM-OVSeg still surpasses GSNet by 2.5% mIoU. 
+
+Cloud-type and cloud-cover variability. Across syn-thetic clouds, including thin, thick, and mixed layers, MM-OVSeg yields stable segmentation accuracy. This indicates that the model learns to exploit complementary spectral and 1CAT -Seg  
+
+> (CVPR’24)
+> EBSeg
+> (CVPR’24)
+> GSNet
+> (AAAI’25)
+> MM -OVSeg
+> (Ours)
+> ➀➁➂➃➄
+> GT RGB SAR
+> Tree
+> RangeLand
+> Developed
+> Space
+> Building
+> Bareland
+> SegEarth -OV
+> (CVPR’25)
+> ➅
+> Water
+> Forest
+> Farmland
+> City
+> Road
+> Water
+> Forest
+> Farmland
+> City
+> Road
+> Water
+> Road
+> Water
+> Forest
+> Farmland
+> City
+> Road
+> Water
+> Forest
+> Farmland
+> City
+> Road
+
+Figure 4. Visualization of OVS results. From left to right: input RGB image, input SAR image, ground truth, and segmentation outputs from CAT-Seg, EBSeg, GSNet, SegEarth-OV, and our MM-OVSeg. In the legend, underlined categories represent unseen classes and the remaining categories are seen classes. 
+
+structural cues from the two modalities rather than overfit-ting to specific cloud patterns, confirming the flexibility of our fusion strategy. 
+
+Domain generalization. To evaluate cross-domain ro-bustness, we train on DDHR-SK and test on DDHR-CH (⑥: DDHR-SK →DDHR-CH), which represent distinct ge-ographic regions. As expected, all training-required meth-ods experience performance degradation comparing intra-domain testing ( ②: DDHR-SK →DDHR-SK), reflecting significant domain discrepancy. Nevertheless, MM-OVSeg maintains a clear margin over all competitors, demonstrat-ing leading adaptability to unseen regions. 
+
+Qualitative analysis. Figure 4 provides visual compar-isons. Previous models are highly sensitive to cloud in-terference: thick clouds often cause misclassification, and even thin haze layers can distort predictions. In contrast, MM-OVSeg produces coherent and accurate segmentations by adaptively leveraging both optical and SAR information. Moreover, the model correctly identifies novel categories that are unseen during training, validating its strong text-feature alignment. Additional qualitative results are pro-vided in the appendix. Model Variant Forest City Farmland Road Water mIoU MM-OVSeg 87.3 86.8 85.6 21.2 84.8 73.1               
+
+> w/o CMU 57.2 83.7 81.2 16.8 81.4 64.1
+> w/o CMU&DEF 80.0 90.3 79.0 6.8 19.1 55.0
+
+Table 3. Ablation study of MM-OVSeg on the DDHR-SK →DDHR-SK cloud segmentation task. The proposed DEF module enables effective multimodal fusion, substantially improv-ing over the single-modality baseline. In combination with CMU, the full model achieves the best performance, demonstrating that CMU and DEF are complementary. 
+
+4.3. Ablation Studies 
+
+We conduct ablation experiments to analyze the contribu-tion of each component in MM-OVSeg to open-vocabulary segmentation. All experiments are performed on the DDHR-SK dataset, and results are summarized in Table 3. The baseline model, which uses only optical data with-out the proposed Cross-Modal Unification (CMU) or Dual-Encoder Fusion (DEF) modules, achieves 55.0% mIoU, re-vealing the limitation of single-modality segmentation. In-troducing the DEF module leads to a clear improvement by 9.1%, confirming the effectiveness of multimodal feature Seen Category 1 : Rangeland  Seen Category 2 : Tree           
+
+> Unseen Category 1 : Water Unseen Category 2 : Road
+> 𝑧 rgb RGB Image
+> 𝑓 dℎfuse
+> 𝑧 rgb RGB Image
+> 𝑓 dℎfuse
+> 𝑧 rgb RGB Image
+> 𝑓 dℎfuse
+> 𝑧 rgb RGB Image
+> 𝑓 dℎfuse Figure 5. Visualization of different stages in multimodal fusion within DEF. DEF produces finer spatial localization and stronger alignment between dense and global visual features and text rep-resentations.
+
+integration between RGB and SAR data. Finally, incor-porating both CMU and DEF yields the full MM-OVSeg, which achieves the best performance to 73.1%. These re-sults demonstrate that CMU and DEF are complementary: CMU effectively aligns SAR features with RGB represen-tations, while DEF fuses them adaptively for robust multi-modal segmentation. 
+
+4.4. Discussions 
+
+4.4.1. Feature Visualization and Analysis of DEF 
+
+To better understand how DEF integrates representations from different foundation models and modalities, we vi-sualize the intermediate feature maps generated at various stages of the fusion process. As illustrated in Figure 5, we show (1) the input RGB image for reference, (2) the global visual feature zrgb extracted by the CLIP visual encoder, (3) the multimodal dense feature fd obtained from DINO and DINO-SAR, and (4) the final fused representation hfuse ,which combines dense RGB and SAR features with global CLIP visual and text embeddings. We use text prompts cor-responding to two seen categories (Rangeland, Tree) and two unseen categories (Water, Road), and visualize their at-tention heatmaps. The results reveal several insights. First, the CLIP vi-Loss type mIoU 
+
+baseline (w/o CMU) 64.1 MSE 67.7 L1 69.0 InfoNCE 73.1 
+
+> Table 4. Comparison of loss functions used in the CMU stage.
+
+sual encoder is relatively less affected by cloud interference than DINO, but its attention maps remain coarse because it primarily captures global semantics. Second, CLIP and DINO exhibit complementary attention patterns—regions highlighted strongly by one are often suppressed by the other—indicating that their feature spaces encode different but synergistic cues. Finally, the fused representation hfuse 
+
+provides much finer spatial localization and better align-ment with text prompts, accurately highlighting both seen and unseen categories. These visualizations confirm that DEF effectively unifies dense and global representations across modalities, leading to improved semantic correspon-dence and robustness under cloudy conditions. 
+
+4.4.2. Loss Design in CMU 
+
+We analyze the impact of different loss functions used in the CMU stage. Specifically, we compare MSE loss, L1 loss, and InfoNCE loss to evaluate how they affect the fea-ture alignment between SAR and RGB representations in the DINO encoders. The model without CMU is also in-cluded as a baseline for reference. As shown in Table 4, all three loss functions yield notable improvements over the baseline, confirming the effectiveness of the CMU. Among them, the InfoNCE loss achieves the highest performance, surpassing both MSE and L1 losses by a clear margin. 
+
+## 5. Conclusion 
+
+We presented MM-OVSeg, the first multimodal Opti-cal–SAR framework for open-vocabulary segmentation (OVS) in remote sensing. By introducing two com-plementary modules, including Cross-Modal Unification (CMU) for aligning SAR representations with RGB fea-tures, and Dual-Encoder Fusion (DEF) for integrating dense and global visual features with textual embeddings, MM-OVSeg effectively bridges the modality and semantic gaps that limit existing OVS approaches. Extensive experiments across diverse weather and domain conditions demonstrate that MM-OVSeg achieves superior robustness, general-ization, and segmentation accuracy compared with recent state-of-the-art models. 
+
+Acknowledgement. This work was supported by JST FOR-EST (Grant No. JPMJFR206S), JST CRONOS (Grant No. JPMJCS25K5), JSPS KAKENHI (Grant No. 24KJ0652), and Next Generation AI Research Center of UTokyo. References 
+
+[1] Hu Cao, Yueyue Wang, Joy Chen, Dongsheng Jiang, Xi-aopeng Zhang, Qi Tian, and Manning Wang. Swin-unet: Unet-like pure transformer for medical image segmentation. In European conference on computer vision , pages 205–218. Springer, 2022. 2 [2] Qinglong Cao, Yuntian Chen, Chao Ma, and Xiaokang Yang. Open-vocabulary remote sensing image semantic segmenta-tion. arXiv preprint arXiv:2409.07683 , 2024. 1, 2 [3] Mathilde Caron, Hugo Touvron, Ishan Misra, Herv´ e J´ egou, Julien Mairal, Piotr Bojanowski, and Armand Joulin. Emerg-ing properties in self-supervised vision transformers. In Pro-ceedings of the International Conference on Computer Vi-sion (ICCV) , 2021. 2, 6 [4] Hongruixuan Chen, Jian Song, Olivier Dietrich, Clifford Broni-Bediako, Weihao Xuan, Junjue Wang, Xinlei Shao, Yimin Wei, Junshi Xia, Cuiling Lan, Konrad Schindler, and Naoto Yokoya. BRIGHT : a globally distributed multi-modal building damage assessment dataset with very-high-resolution for all-weather disaster response. Earth System Science Data , 17(11):6217–6253, 2025. 2 [5] Seokju Cho, Heeseong Shin, Sunghwan Hong, Anurag Arnab, Paul Hongsuck Seo, and Seungryong Kim. Cat-seg: Cost aggregation for open-vocabulary semantic segmenta-tion, 2024. 2, 5, 6, 1 [6] Mikolaj Czerkawski, Robert Atkinson, Craig Michie, and Christos Tachtatzis. Satellitecloudgenerator: Controllable cloud and shadow synthesis for multi-spectral optical satel-lite images. Remote Sensing , 15(17), 2023. 5 [7] Jian Ding, Nan Xue, Gui-Song Xia, and Dengxin Dai. De-coupling zero-shot semantic segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 11583–11592, 2022. 2 [8] Zheng Ding, Jieke Wang, and Zhuowen Tu. Open-vocabulary universal image segmentation with maskclip. 
+
+arXiv preprint arXiv:2208.08984 , 2022. 2 [9] Alexey Dosovitskiy. An image is worth 16x16 words: Transformers for image recognition at scale. arXiv preprint arXiv:2010.11929 , 2020. 4 [10] A Garzelli et al. Wavelet-based fusion of optical and SAR image data over urban area. International Archives of Pho-togrammetry Remote Sensing and Spatial Information Sci-ences , 34(3/B):59–62, 2002. 2 [11] Golnaz Ghiasi, Xiuye Gu, Yin Cui, and Tsung-Yi Lin. Scal-ing open-vocabulary image segmentation with image-level labels. In European conference on computer vision , pages 540–557. Springer, 2022. 2 [12] Rohit Girdhar, Alaaeldin El-Nouby, Zhuang Liu, Mannat Singh, Kalyan Vasudev Alwala, Armand Joulin, and Ishan Misra. Imagebind: One embedding space to bind them all. In Proceedings of the IEEE/CVF conference on computer vi-sion and pattern recognition , pages 15180–15190, 2023. 4 [13] Xin He, Yong Zhou, Jiaqi Zhao, Di Zhang, Rui Yao, and Yong Xue. Swin transformer embedding unet for remote sensing image semantic segmentation. IEEE transactions on geoscience and remote sensing , 60:1–15, 2022. 2 [14] Peter Henderson, Jieru Hu, Joshua Romoff, Emma Brunskill, Dan Jurafsky, and Joelle Pineau. Towards the systematic re-porting of the energy and carbon footprints of machine learn-ing. Journal of machine learning research , 21(248):1–43, 2020. 1 [15] Lloyd Haydn Hughes, Diego Marcos, Sylvain Lobry, Devis Tuia, and Michael Schmitt. A deep learning framework for matching of SAR and optical imagery. ISPRS Journal of Photogrammetry and Remote Sensing , 169:166–179, 2020. 2[16] Gabriel Ilharco, Mitchell Wortsman, et al. Openclip: Open-vocabulary image-text pre-training. arXiv preprint arXiv:2212.12086 , 2022. 2, 3, 6, 1 [17] Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu Pham, Quoc Le, Yun-Hsuan Sung, Zhen Li, and Tom Duerig. Scaling up visual and vision-language representa-tion learning with noisy text supervision. In International conference on machine learning , pages 4904–4916. PMLR, 2021. 2 [18] Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer White-head, Alexander C Berg, Wan-Yen Lo, et al. Segment any-thing. In Proceedings of the IEEE/CVF international confer-ence on computer vision , pages 4015–4026, 2023. 2 [19] Samadhan C Kulkarni and Priti P Rege. Pixel level fusion techniques for SAR and optical images: A review. Informa-tion Fusion , 59:13–29, 2020. 2 [20] Boyi Li, Kilian Q Weinberger, Serge Belongie, Vladlen Koltun, and Ren´ e Ranftl. Language-driven semantic seg-mentation. arXiv preprint arXiv:2201.03546 , 2022. 2 [21] Bingyu Li, Haocheng Dong, Da Zhang, Zhiyuan Zhao, Junyu Gao, and Xuelong Li. Exploring efficient open-vocabulary segmentation in the remote sensing. arXiv preprint arXiv:2509.12040 , 2025. 1, 2 [22] Bingyu Li, Da Zhang, Zhiyuan Zhao, Junyu Gao, and Xue-long Li. Fgaseg: Fine-grained pixel-text alignment for open-vocabulary semantic segmentation. arXiv preprint arXiv:2501.00877 , 2025. 2, 5, 6, 1 [23] Kaiyu Li, Ruixun Liu, Xiangyong Cao, Xueru Bai, Feng Zhou, Deyu Meng, and Zhi Wang. Segearth-ov: Towards training-free open-vocabulary segmentation for remote sens-ing images. In Proceedings of the Computer Vision and Pat-tern Recognition Conference , pages 10545–10556, 2025. 2, 5, 6 [24] Xue Li, Guo Zhang, Hao Cui, Shasha Hou, Shunyao Wang, Xin Li, Yujia Chen, Zhijiang Li, and Li Zhang. Mcanet: A joint semantic segmentation framework of optical and SAR images for land use classification. International Jour-nal of Applied Earth Observation and Geoinformation , 106: 102638, 2022. 2 [25] Feng Liang, Bichen Wu, Xiaoliang Dai, Kunpeng Li, Yinan Zhao, Hang Zhang, Peizhao Zhang, Peter Vajda, and Diana Marculescu. Open-vocabulary semantic segmentation with mask-adapted clip. In Proceedings of the IEEE/CVF con-ference on computer vision and pattern recognition , pages 7061–7070, 2023. 2 [26] Tsung-Yi Lin, Piotr Doll´ ar, Ross Girshick, Kaiming He, Bharath Hariharan, and Serge Belongie. Feature pyra-mid networks for object detection. In Proceedings of the IEEE conference on computer vision and pattern recogni-tion , pages 2117–2125, 2017. 4 [27] Meijie Liu, Yongshou Dai, Jie Zhang, Xi Zhang, Junmin Meng, and Qinchuan Xie. Pca-based sea-ice image fusion of optical data by his transform and SAR data by wavelet transform. Acta Oceanologica Sinica , 34(3):59–67, 2015. 2 [28] Ming Liu, Gaoxiang Zhou, Lingfei Ma, Liangzhi Li, and Qiong Mei. Sifnet: A self-attention interaction fusion net-work for multisource satellite imagery template matching. 
+
+International Journal of Applied Earth Observation and Geoinformation , 118:103247, 2023. 2 [29] Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101 , 2017. 6 [30] Aaron van den Oord, Yazhe Li, and Oriol Vinyals. Repre-sentation learning with contrastive predictive coding. arXiv preprint arXiv:1807.03748 , 2018. 4 [31] John Richard Otukei, Thomas Blaschke, and Michael Collins. Fusion of terrasar-x and landsat etm+ data for pro-tected area mapping in uganda. International Journal of Applied Earth Observation and Geoinformation , 38:99–104, 2015. 2 [32] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zem-ing Lin, Natalia Gimelshein, Luca Antiga, Alban Desmai-son, Andreas Kopf, Edward Yang, Zachary DeVito, Mar-tin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chintala. Py-torch: An imperative style, high-performance deep learning library. In Advances in Neural Information Processing Sys-tems (NeurIPS) , 2019. 5 [33] Claudio Persello, Ronny H¨ ansch, Gemine Vivone, Kaiqiang Chen, Zhiyuan Yan, Deke Tang, Hai Huang, Michael Schmitt, and Xian Sun. 2023 ieee grss data fusion contest: Large-scale fine-grained building classification for seman-tic urban reconstruction [technical committees]. IEEE Geo-science and Remote Sensing Magazine , 11(1):94–97, 2023. 4[34] Aditya Prakash, Kashyap Chitta, and Andreas Geiger. Multi-modal fusion transformer for end-to-end autonomous driv-ing. In Proceedings of the IEEE/CVF conference on com-puter vision and pattern recognition , pages 7077–7087, 2021. 2 [35] Bo Ren, Shibin Ma, Biao Hou, Danfeng Hong, Jocelyn Chanussot, Jianlong Wang, and Licheng Jiao. A dual-stream high resolution network: Deep fusion of gf-2 and gf-3 data for land cover classification. International Journal of Ap-plied Earth Observation and Geoinformation , 112:102896, 2022. 5 [36] Swalpa Kumar Roy, Ankur Deria, Danfeng Hong, Behnood Rasti, Antonio Plaza, and Jocelyn Chanussot. Multimodal fusion transformer for remote sensing image classification. 
+
+IEEE Transactions on Geoscience and Remote Sensing , 61: 1–20, 2023. 2 [37] Linus Scheibenreif, Jo¨ elle Hanna, Michael Mommert, and Damian Borth. Self-supervised vision transformers for land-cover segmentation and classification. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 1422–1431, 2022. 2 [38] Xiangheng Shan, Dongyue Wu, Guilin Zhu, Yuanjie Shao, Nong Sang, and Changxin Gao. Open-vocabulary semantic segmentation with image embedding balancing. In Proceed-ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 28412–28421, 2024. 1, 2, 5, 6 [39] Jacob Shermeyer, Daniel Hogan, Jason Brown, Adam Van Etten, Nicholas Weir, Fabio Pacifici, Ronny Han-sch, Alexei Bastidas, Scott Soenen, Todd Bacastow, et al. Spacenet 6: Multi-sensor all weather mapping dataset. In 
+
+Proceedings of the IEEE/CVF conference on computer vi-sion and pattern recognition workshops , pages 196–197, 2020. 4 [40] Oriane Sim´ eoni, Huy V. Vo, Maximilian Seitzer, Federico Baldassarre, Maxime Oquab, Cijo Jose, Vasil Khalidov, Marc Szafraniec, Seungeun Yi, Micha¨ el Ramamonjisoa, Francisco Massa, Daniel Haziza, Luca Wehrstedt, Jianyuan Wang, Timoth´ ee Darcet, Th´ eo Moutakanni, Leonel Sentana, Claire Roberts, Andrea Vedaldi, Jamie Tolan, John Brandt, Camille Couprie, Julien Mairal, Herv´ e J´ egou, Patrick La-batut, and Piotr Bojanowski. DINOv3, 2025. 1 [41] Bj¨ orn Waske and Sebastian van der Linden. Classifying mul-tilevel imagery from SAR and optical sensors by decision fu-sion. IEEE Transactions on Geoscience and Remote Sensing ,46(5):1457–1466, 2008. 2 [42] Yimin Wei, Aoran Xiao, Yexian Ren, Yuting Zhu, Hongruix-uan Chen, Junshi Xia, and Naoto Yokoya. SARlang-1m: A benchmark for vision-language modeling in SAR image un-derstanding. IEEE Transactions on Geoscience and Remote Sensing , 2026. 2 [43] Wenfu Wu, Songjing Guo, Zhenfeng Shao, and Deren Li. Crofusenet: A semantic segmentation network for urban im-pervious surface extraction based on cross fusion of opti-cal and SAR images. IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing , 16:2573– 2588, 2023. 2 [44] Yuxin Wu, Alexander Kirillov, Francisco Massa, Wan-Yen Lo, and Ross Girshick. Detectron2. https://github. com/facebookresearch/detectron2 , 2019. 5 [45] Junshi Xia, Hongruixuan Chen, Clifford Broni-Bediako, Yimin Wei, Jian Song, and Naoto Yokoya. Openearthmap-SAR: A benchmark synthetic aperture radar dataset for global high-resolution land cover mapping. arXiv preprint arXiv:2501.10891 , 2025. 5 [46] Aoran Xiao, Weihao Xuan, Junjue Wang, Jiaxing Huang, Dacheng Tao, Shijian Lu, and Naoto Yokoya. Foundation models for remote sensing and earth observation: A survey. 
+
+IEEE Geoscience and Remote Sensing Magazine , 2025. 2 [47] Bin Xie, Jiale Cao, Jin Xie, Fahad Shahbaz Khan, and Yanwei Pang. Sed: A simple encoder-decoder for open-vocabulary semantic segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 3426–3436, 2024. 2 [48] Mengde Xu, Zheng Zhang, Fangyun Wei, Yutong Lin, Yue Cao, Han Hu, and Xiang Bai. A simple baseline for open-vocabulary semantic segmentation with pre-trained vision-language model. In European Conference on Computer Vi-sion , pages 736–753. Springer, 2022. 2 [49] Mengde Xu, Zheng Zhang, Fangyun Wei, Han Hu, and Xi-ang Bai. Side adapter network for open-vocabulary semantic segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 2945– 2954, 2023. 2 [50] Biyuan Yan and Yingying Kong. A fusion method of SAR image and optical image based on nsct and gram-schmidt transform. In IGARSS 2020-2020 IEEE International Geo-science and Remote Sensing Symposium , pages 2332–2335. IEEE, 2020. 2 [51] Chengyang Ye, Yunzhi Zhuge, and Pingping Zhang. To-wards open-vocabulary remote sensing image semantic seg-mentation. In Proceedings of the AAAI Conference on Arti-ficial Intelligence , pages 9436–9444, 2025. 2, 5, 6, 1 [52] Qihang Yu, Ju He, Xueqing Deng, Xiaohui Shen, and Liang-Chieh Chen. Convolutions die hard: Open-vocabulary seg-mentation with single frozen convolutional clip. Advances in Neural Information Processing Systems , 36:32215–32234, 2023. 2 [53] Yuan Yuan, Lei Lin, Zeng-Guang Zhou, Houjun Jiang, and Qingshan Liu. Bridging optical and SAR satellite image time series via contrastive feature extraction for crop classifica-tion. ISPRS Journal of Photogrammetry and Remote Sens-ing , 195:222–232, 2023. 2 [54] Pan Zhang, Baochai Peng, Chaoran Lu, Quanjin Huang, and Dongsheng Liu. Asanet: Asymmetric semantic aligning net-work for rgb and SAR image land cover classification. IS-PRS Journal of Photogrammetry and Remote Sensing , 218: 574–587, 2024. 5 [55] Hang Zhao, Xavier Puig, Bolei Zhou, Sanja Fidler, and An-tonio Torralba. Open vocabulary scene parsing. In Proceed-ings of the IEEE International Conference on Computer Vi-sion , pages 2002–2010, 2017. 2 [56] Chong Zhou, Chen Change Loy, and Bo Dai. Extract free dense labels from clip. In European conference on computer vision , pages 696–712. Springer, 2022. 2 MM-OVSeg: Multimodal Optical–SAR Fusion for Open-Vocabulary Segmentation in Remote Sensing 
+
+# Supplementary Material 
+
+In this appendix, we present additional experimental re-sults and analyses. Section A provides supplementary train-ing details beyond Section 4.1.2 of the main paper. Section B reports the efficiency and sustainability comparison. To further demonstrate the generalizabilities of MM-OVSeg, we provide Section C with more detailed split performance of seen/unseen classes across six datasets. Section D re-ports results of MM-OVSeg using the ViT-L/14 backbone. Section E provides further studies on CMU, including its extension to CLIP-SAR alignment. Section F includes ad-ditional qualitative visualizations. 
+
+## A. Implementation Details 
+
+In Table A1, we present more detailed implementations of our MM-OVSeg and other methods, including trainable pa-rameter, batch size and learning rate. Method Backbone Param. Batch. Lr CAT-Seg [5] ViT-B/16 25M 4 2e-4 FGA-Seg [22] ViT-B/16 33M 8 2e-4 GSNet [51] ViT-B/16 29M 4 2e-4 EBSeg [38] ViT-B/16 26M 16 1e-4 MM-OVSeg ViT-B/16 31M 8 2.5e-4   
+
+> Table A1. Model implementations. The table reports trainable parameter, batch size and learning rate (Lr).
+
+## B. Efficiency and Sustainability Comparison 
+
+In Table A2, we report training/inference latency, esti-mated carbon emissions [14], and parameter counts for MM-OVSeg and GSNet on DDHR-SK →DDHR-SK. MM-OVSeg incurs additional cost due to SAR integration and dual encoders, but this overhead is accompanied by im-proved segmentation performance and robustness under ad-verse conditions. Time (ms) CO 2 (kg) Parameters mIoU Train Infer Train Infer CMU module 343.7 31.6 1.05 0.006 85M –DEF module 377.2 46.8 1.14 0.008 92M –             
+
+> full MM-OVSeg 955.7 116.9 3.90 0.014 331M 73.1
+> GSNet [51] 700.6 83.2 3.48 0.011 244M 55.0
+> Table A2. Efficiency and sustainability comparison.
+
+## C. Seen vs. Unseen Class Evaluation 
+
+In Table A3, we provide a more detailed breakdown of seen and unseen class performance, supplementing Table 2 from the main paper. All methods show reduced performance on unseen classes, which is expected in OVS. Prior methods often exhibit imbalanced behavior, performing well on ei-ther seen or unseen classes but not both, with inconsistent trends across datasets. In contrast, MM-OVSeg shows more balanced and consistently strong performance on both seen and unseen classes across datasets, indicating improved ro-bustness in the OVS setting. 
+
+## D. Larger Backbones on MM-OVSeg 
+
+We also evaluate how backbone capacity affects the per-formance of MM-OVSeg. While the main paper uses ViT-B/16, here we replace both the CLIP and DINO encoders with ViT-L/14, using pretrained weights from OpenCLIP [16] and DINO v3 [40], respectively. As before, multi-scale features are taken from the 8th, 16th, and 24th transformer blocks. During full MM-OVSeg training, we train for 120k iterations using AdamW with a batch size of 4 and an initial learning rate of 2.5 × 10 −4. All other settings follow those used for the ViT-B/16 backbone. Following the evaluation protocol in Table 2 of the main paper, Table A4 compares MM-OVSeg (ViT-L/14) with re-cent state-of-the-art OVS methods across all benchmark datasets. Mean IoU is reported for each dataset and their overall average. Consistent with the trend observed using ViT-B/16, MM-OVSeg (ViT-L/14) achieves the best overall performance, obtaining 55.0% mIoU across six benchmarks, outperform-ing the ViT-B/16 version (51.7%) due to its increased model capacity. This improvement further validates the strength of our multimodal fusion design for open-vocabulary seg-mentation in remote sensing. Moreover, MM-OVSeg (ViT-L/14) maintains a substantial lead on setting ⑥: DDHR-SK →DDHR-CH, demonstrating strong cross-domain ro-bustness. Figure A1 provides visual comparisons between MM-OVSeg (ViT-L/14) and MM-OVSeg (ViT-B/16). Consis-tent with the quantitative results in Table A4, the ViT-L/14 variant produces clearer boundaries, more stable predictions under cloud cover, and more accurate responses on both seen and unseen categories. This intuitive improvement fur-ther demonstrates how increasing model capacity strength-ens multimodal fusion, reinforcing the effectiveness of our Method Publication ① ② ③ ④ ⑤ ⑥ Mean Unseen Seen Unseen Seen Unseen Seen Unseen Seen Unseen Seen Unseen Seen Unseen Seen CAT-Seg [5] CVPR’24 14.9 74.2 41.1 62.9 32.2 34.6 17.0 36.9 17.1 75.1 7.5 41.5 21.6 54.2 EBSeg [38] CVPR’24 2.5 74.8 26.7 67.4 12.7 35.9 5.5 37.6 0.8 76.0 8.5 38.8 9.5 55.1 GSNet [51] AAAI’25 18.6 76.1 13.0 83.1 32.0 37.1 32.8 39.4 18.0 76.8 8.8 48.1 20.5 60.1 SegEarth-OV [23] CVPR’25 19.3 57.9 7.9 24.1 33.1 26.3 26.9 13.5 23.0 66.2 16.4 29.4 21.1 36.2 FGA-Seg [22] Arxiv’25 13.4 70.6 47.5 54.4 7.2 37.2 23.6 38.2 13.4 71.4 18.7 55.1 20.6 54.5                
+
+> MM-OVSeg -19.6 76.7 53.0 86.5 35.2 37.4 40.0 40.4 23.5 77.7 22.7 56.1 32.3 62.5
+
+Table A3. Performance splits for unseen and seen classes. The table reports mIoU scores for each setting and the overall mean. 
+
+Method Backbone Publication ① ② ③ ④ ⑤ ⑥ Mean CAT-Seg [5] ViT-L/14 CVPR’24 60.7 69.8 38.1 40.2 62.2 41.5 52.1 EBSeg [38] ViT-L/14 CVPR’24 48.9 50.6 23.6 26.9 50.7 31.5 38.7 FGA-Seg [22] ViT-L/14 Arxiv’25 57.1 48.8 23.3 36.5 52.3 41.5 43.3 
+
+MM-OVSeg (ours) ViT-L/14 – 64.5 75.5 39.4 41.2 66.0 43.5 55.0 
+
+Table A4. Comparison of OVS methods with ViT-L/14 backbone across all evaluation settings as illustrated Table 1 of the main paper. The table reports mIoU scores for each setting and the overall mean. Settings correspond to: ①: PIE-cloud →PIE-cloud; ②: DDHR-SK →DDHR-SK; ③: OEM-thick →OEM-thick; ④: OEM-thin →OEM-thin; ⑤: PIE-clean →PIE-clean; ⑥: DDHR-SK →DDHR-CH. MM-OVSeg achieves the highest accuracy in all settings and obtains the best overall mean score, demonstrating strong robustness under cloudy conditions and superior cross domain generalization. 
+
+design for open-vocabulary segmentation in remote sens-ing. 
+
+## E. CMU for CLIP-SAR Alignment 
+
+As discussed in Section 3.2 of the main paper, we also investigate whether a CLIP-style visual encoder can be trained for SAR using the CMU procedure, analogous to the DINO-SAR setup. Following the same strategy, we dis-till multi-scale ViT features from the RGB CLIP encoder into a SAR-specific CLIP encoder using the InfoNCE loss. Table A5 reports the performance of four model variants: • Model #1: baseline without CMU; • Model #2: CMU applied to CLIP only (CLIP-SAR); • Model #3: CMU applied to DINO only (DINO-SAR), which corresponds to MM-OVSeg; • Model #4: CMU applied to both DINO and CLIP for SAR. All CMU variants improve over the baseline, confirm-ing the value of cross-modal alignment. However, DINO-SAR alone (Model #3) achieves the best performance, while adding a CLIP-SAR encoder (Model #4) results in a per-formance drop. This behavior can be explained as fol-lows: DINO provides dense, locally discriminative features that are crucial for pixel-level segmentation, whereas CLIP encoders produce coarse global embeddings optimized for image-level alignment rather than spatial precision. Train-Model index CLIP DINO mIoU #1 ✗ ✗ 64.1 #2 ✓ ✗ 65.4 #3 ✗ ✓ 73.1 
+
+#4 ✓ ✓ 66.5 
+
+Table A5. Ablation on applying CMU to different visual encoders on the ②: DDHR-SK →DDHR-SK segmentation task. 
+
+ing a CLIP-SAR encoder substantially increases the number of global embeddings without providing new local informa-tion, which introduces redundancy and complicates the fu-sion process. 
+
+## F. Additional Visualization Results 
+
+Similar to Figure 4 of the main paper, we provide more qualitative comparisons of MM-OVSeg (as in Ta-ble 2 “SOTA performance”) for both intra-domain and cross-domain settings. Figure A2 shows additional intra-domain examples, and Figure A3 presents cross-domain re-sults. These results further demonstrate the superiority of MM-OVSeg for multimodal open-vocabulary segmentation across diverse weather conditions. 1MM -OVSeg 
+
+(ViT -B/16) 
+
+MM -OVSeg 
+
+(ViT -L/14) GT RGB  SAR 
+
+> ➀➁➂➃➄➅
+
+Tree 
+
+RangeLand 
+
+Developed 
+
+Space 
+
+Building 
+
+Bareland 
+
+Water 
+
+Forest 
+
+Farmland 
+
+City 
+
+Road 
+
+Water 
+
+Forest 
+
+Farmland 
+
+City 
+
+Road 
+
+Water 
+
+Road 
+
+Water 
+
+Forest 
+
+Farmland 
+
+City 
+
+Road 
+
+Water 
+
+Forest 
+
+Farmland 
+
+City 
+
+Road Figure A1. Visualization of OVS results. From left to right: input RGB image, input SAR image, ground truth, and segmentation outputs from MM-OVSeg (ViT-B/16) and MM-OVSeg (ViT-L/14). In the legend, underlined categories represent unseen classes and the remaining categories are seen classes. 1CAT -Seg   
+
+> (CVPR’24)
+> EBSeg
+> (CVPR’24)
+> GSNet
+> (AAAI’25)
+> MM -OVSeg
+> (Ours) GT RGB SAR SegEarth -OV
+> (CVPR’25)
+> Water
+> Forest
+> Farmland
+> City
+> Road
+> ➁➄
+> Water
+> Forest
+> Farmland
+> City
+> Road
+> ➁ ➁➄➄
+
+Figure A2. Intra-domain visualization of OVS results, including ②: DDHR-SK →DDHR-SK and ⑤: PIE-clean → PIE-clean. From left to right: input RGB image, input SAR image, ground truth, and segmentation outputs from CAT-Seg, EBSeg, GSNet, SegEarth-OV, and our MM-OVSeg. In the legend, underlined categories represent unseen classes and the remaining categories are seen classes. 1CAT -Seg   
+
+> (CVPR’24)
+> EBSeg
+> (CVPR’24)
+> GSNet
+> (AAAI’25)
+> MM -OVSeg
+> (Ours) GT RGB SAR SegEarth -OV
+> (CVPR’25)
+> Water
+> Forest
+> Farmland
+> City
+> Road
+
+Figure A3. Cross-domain visualization of OVS results for ⑥: DDHR-SK →DDHR-CH. From left to right: input RGB image, input SAR image, ground truth, and segmentation outputs from CAT-Seg, EBSeg, GSNet, SegEarth-OV, and our MM-OVSeg. In the legend, underlined categories represent unseen classes and the remaining categories are seen classes.

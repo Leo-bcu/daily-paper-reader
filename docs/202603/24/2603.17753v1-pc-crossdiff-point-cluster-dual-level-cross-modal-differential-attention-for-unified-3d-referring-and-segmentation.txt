@@ -1,0 +1,980 @@
+Title: PC-CrossDiff: Point-Cluster Dual-Level Cross-Modal Differential Attention for Unified 3D Referring and Segmentation
+
+URL Source: https://arxiv.org/pdf/2603.17753v1
+
+Published Time: Thu, 19 Mar 2026 01:21:09 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# PC-CrossDiff: Point-Cluster Dual-Level Cross-Modal Differential Attention for Unified 3D Referring and Segmentation 
+
+## Wenbin Tan 1,2 , Jiawen Lin 1, Fangyong Wang 3, Yuan Xie 4, Yong Xie 5* , Yachao Zhang 1* ,Yanyun Qu 1
+
+> 1
+
+Key Laboratory of Multimedia Trusted Perception and Efficient Computing, Ministry of Education of China, School of Informatics, Xiamen University, Xiamen, China 
+
+> 2
+
+School of Big Data, Tongren University, Tongren, China 
+
+> 3
+
+Hanjiang National Laboratory, Wuhan, China 
+
+> 4
+
+School of Computer Science and Technology, East China Normal University, Shanghai, China 
+
+> 5
+
+Department of Computer Science, Nanjing University of Posts and Telecommunications, Nanjing, China wbtan@stu.xmu.edu.cn, yongxie@njupt.edu.cn, yachaozhang@xmu.edu.cn 
+
+Abstract 
+
+3D Visual Grounding (3DVG) aims to localize the referent of natural language referring expressions through two core tasks: Referring Expression Comprehension (3DREC) and Segmentation (3DRES). While existing methods achieve high accuracy in simple, single-object scenes, they suffer from severe performance degradation in complex, multi-object scenes that are common in real-world settings, hindering practical deployment. Existing methods face two key chal-lenges in complex, multi-object scenes: inadequate parsing of implicit localization cues critical for disambiguating visually similar objects, and ineffective suppression of dynamic spa-tial interference from co-occurring objects, resulting in de-graded grounding accuracy. To address these challenges, we propose PC-CrossDiff, a unified dual-task framework with a dual-level cross-modal differential attention architecture for 3DREC and 3DRES. Specifically, the framework intro-duces: (i) Point-Level Differential Attention (PLDA) mod-ules that apply bidirectional differential attention between text and point clouds, adaptively extracting implicit local-ization cues via learnable weights to improve discrimina-tive representation; (ii) Cluster-Level Differential Attention (CLDA) modules that establish a hierarchical attention mech-anism to adaptively enhance localization-relevant spatial re-lationships while suppressing ambiguous or irrelevant spatial relations through a localization-aware differential attention block. To address the scale disparity and conflicting gradients in joint 3DREC–3DRES training, we propose LDGTL , a uni-fied loss function that explicitly reduces multi-task crosstalk and enables effective parameter sharing across tasks. Our method achieves state-of-the-art performance on the ScanRe-fer, NR3D, and SR3D benchmarks. Notably, on the Implicit subsets of ScanRefer, it improves the Overall@0.50 score by 
+
++10.16% for the 3DREC task, highlighting its strong ability to parse implicit spatial cues. 
+
+Code — https://github.com/tanwb/PC-CrossDiff. 
+
+> *
+
+Corresponding Author. Copyright © 2026, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. 47.89 74.35 59.91 52.52 54.58 47.92 68.7 70.95 43.12         
+
+> 45.53 72.73 59.82 50.7 51.99 45.88 64.7 68.43 40.76
+> 44.03 70.75 48.41 60.22 39.06
+> 43.29 67.09 56.9 68.7 39.03
+> 49.24 44.71 40.77 ScanRefer(RES)(Implicit) ScanRefer(RES) NR3D(REC) ScanRefer(REC)(Single) ScanRefer(REC)
+> RefMask3D VPP-Net Au gRefer MCLN Ours ScanRefer(RES)(Multi) SR3D(RES) SR3D(REC) ScanRefer(REC)(Multi)
+
+Figure 1: PC-CrossDiff vs. SOTA on 3DREC and 3DRES. ScanRefer (IoU@0.50), NR3D/SR3D (IoU@0.25). 
+
+## Introduction 
+
+3D Visual Grounding (3DVG) enables machines to inter-pret natural language references in 3D scenes, with two core subtasks: 3D Referring Expression Comprehension (3DREC) for instance-level localization and 3D Referring Expression Segmentation (3DRES) for point-wise segmen-tation (Zhang et al. 2024; Xu et al. 2024; Wu et al. 2024). These tasks are complementary, as 3DREC identifies tar-get objects while 3DRES delineates their boundaries. For example, warehouse robots must detect dynamic obstacles via 3DREC and segment their boundaries via 3DRES. How-ever, addressing these tasks independently fails to lever-age shared cross-modal information to disambiguate multi-object scenes, necessitating a unified framework that bal-ances computational efficiency with robust grounding accu-racy, especially in complex multi-object scenes. This need is further emphasized by the limitations of ex-isting single-task approaches. As shown in Fig. 1 on Scan-
+
+> arXiv:2603.17753v1 [cs.CV] 18 Mar 2026
+
+Refer (Chen, Chang, and Nießner 2020), state-of-the-art methods achieve high accuracy only in rare single-object settings but degrade significantly in multi-object scenes due to visual ambiguity. Specifically, these methods achieve Unique@0.50 >70% in single-object scenes ( 15% of cases), yet their performance drops below 46% in multi-object scenes ( 85% of cases), revealing limited robustness in com-plex multi-object scenes. This performance gap reveals two fundamental limita-tions. (i) Inadequate parsing of implicit localization cues (such as “with magazines” or “beside the laptop”), which are crucial for disambiguating visually similar objects but remain underutilized due to the limited capacity of current frameworks. (ii) Insufficient suppression of dynamic spatial interference. In multi-object scenes, co-occurring objects in-troduce ambiguous spatial relations that existing methods aggregate indiscriminately, which amplifies noise and de-grades performance. Although extensive work has been conducted on single-task 3DREC and 3DRES, such as text–point cloud align-ment (Wu et al. 2023), attribute integration (Xu et al. 2024), and spatial modeling (Wang, Li, and Wang 2024), methods based on textual semantic parsing still primarily target ex-plicit spatial relations (e.g., “A–top–B”) and inadequately capture implicit cues that are critical for disambiguation in complex scenes. While graph-based models (Feng et al. 2021; Huang et al. 2021) and relational CNNs (Wang et al. 2019) capture spatial dependencies, they lack mechanisms to dynamically suppress interference from irrelevant objects. Although MCLN (Qian et al. 2024b) advances dual-task co-learning, the development of a unified framework robust to multi-object interference remains a significant challenge. To bridge this gap, we propose PC-CrossDiff: a Point-Cluster Cross-modal Differential framework for unified 3D referring and segmentation. The proposed framework ad-dresses the core limitations through two key innovations: (1) For implicit cue parsing, we design a lightweight Point-Level Differential Attention (PLDA) module. Unlike conventional methods requiring explicit entity/relation pars-ing and graph construction, PLDA processes full sentences via cross-modal differential attention between point clouds and text to extract visually grounded features, including im-plicit cues, through a learnable weighting mechanism that adaptively focuses on localization-relevant features while suppressing irrelevant ones, enabling target disambiguation in multi-object scenes. (2) For dynamic spatial filtering, we introduce Cluster-Level Differential Attention (CLDA). After modeling spa-tial relations among candidate points to capture global posi-tional context and target-specific features, CLDA employs a Localization-Aware Differential Attention (LDA) block to selectively enhance localization-relevant spatial features while suppressing noise, enabling dynamic spatial relation filtering for robustness. Furthermore, we propose the Dual-Geometry Task-Harmonized Loss ( LDGTL ) to resolve scale disparity and gra-dient conflicts in joint 3DREC–3DRES training, reducing multi-task crosstalk and enabling effective parameter shar-ing across tasks. In summary, our contributions are: • We propose PC-CrossDiff, a unified cross-modal differ-ential learning framework operating at both point and cluster levels. By synergistically integrating local percep-tion with global spatial filtering, it enables competitive performance on both 3DREC and 3DRES within a sin-gle architecture. • We design PLDA to extract implicit spatial cues di-rectly from full-text descriptions via cross-modal dif-ferential attention, supporting accurate disambiguation in complex multi-object scenes; CLDA at the cluster level enables dynamic spatial relation filtering by selec-tively enhancing localization-relevant features through a localization-aware attention mechanism, improving ro-bustness in complex multi-object scenes. • Extensive experiments on ScanRefer, NR3D/SR3D, and their Implicit/Multiple subsets demonstrate that PC-CrossDiff achieves state-of-the-art performance on both 3DREC and 3DRES, significantly outperforming prior approaches. 
+
+## Related work 
+
+3D Visual Grounding 
+
+Advances in 3DVG are driven by the growing demand for in-door applications. Current methods can be categorized into two subtasks: 3DREC (Zhang et al. 2024; Xu et al. 2024) and 3DRES (Wu et al. 2024; Qian et al. 2024a). 3DREC is typically implemented via two-stage architectures, which use 3D object detectors or RPNs for proposal generation be-fore cross-modal alignment (Zhang et al. 2024; Achlioptas et al. 2020), or via single-stage approaches that directly es-tablish visual-textual correspondences (Luo et al. 2022; Jain et al. 2022). Research on 3DRES remains relatively limited. Recent progress focuses on enhancing textual semantic understanding in 3D scenes (Feng et al. 2021; Wu et al. 2024b) and on improving cross-modal feature correspon-dences (Wu et al. 2023; Qian et al. 2024a; Wu et al. 2023, 2025). Transformer-based frameworks (Jain et al. 2022; He et al. 2021; Zhao et al. 2021; Wu et al. 2023) excel through attention-driven visual-textual fusion, alongside ap-proaches in point cloud segmentation (Zhang et al. 2025, 2021). Crucially, unified modeling of both tasks remains rare; MCLN (Qian et al. 2024b) is the only method that at-tempts joint modeling of 3DREC and 3DRES, yet it suffers severe performance degradation in multi-object scenes, lim-iting its practical deployment. This limitation motivates our design of a robust, unified framework. 
+
+Spatial Positional Relationship Extraction 
+
+In recent years, modeling spatial relationships in point clouds has become a focal research area for context-aware feature learning (Wu et al. 2024a). Early CNN-based ap-proaches (Wang et al. 2019; Liu et al. 2019a) encode po-sitional relations through local geometric feature extraction. Subsequent graph-based methods (Wang, Lin, and Wu 2024; Text Tokenizer       
+
+> PointNet++ Dual-task Decoding Heads …
+> K1
+> Cross Attention
+> K2 Q2 VQ1
+> VQ2 Q1 K2 …
+> Head Head 3D REC Decoder 3D RES Decoder
+> Spatial Relation Modeling LDA LDA Point-Level Differential Attention (PLDA) Cluster-Level Differential Attention (CLDA) 3DREC Result 3DRES Result
+> K1
+> SA2 SA3 SA4 SA1
+> FP
+> Learnable Scalar Learnable Scalar Fusion Max
+> A wooden chair with no arms . it is located away from the table.
+> …
+> ……Point cloud Description …
+
+Figure 2: The framework of PC-CrossDiff. Text and visual features are input into the PLDA module to extract implicit local-ization cues and enhance point-level visual features. Simultaneously, the coordinates Fxyz are fed into the CLDA module for Spatial Relation Modeling (SRM), modeling cluster-level relations. These features are enhanced by LDA and integrated into the aligned features F ′ 
+
+> v
+
+and F ′ 
+
+> t
+
+, yielding ˜F ′ 
+
+> v
+
+and ˜F ′ 
+
+> t
+
+. The enhanced features are decoded by 3DREC and 3DRES heads to generate predictions, with LDGTL facilitating task synergy. Feng et al. 2021) capture inter-object spatial dependen-cies. Recent advances further enhance spatial understand-ing; for example, TGNN (Huang et al. 2021) improves lo-cal contextual modeling with graph neural networks, while MA2TransVG (Xu et al. 2024) and G 3LQ (Wang, Li, and Wang 2024) leverage multi-attribute interactions and geo-metric perception, respectively. However, existing methods lack dynamic filtering of spa-tial interference, making it difficult to distinguish hierarchi-cal relationships in multi-object scenes. We address this lim-itation by introducing a cluster-level differential attention mechanism. 
+
+## Methods 
+
+Overview of PC-CrossDiff 
+
+To enhance localization robustness in multi-object scenes, PC-CrossDiff integrates PLDA and CLDA into a unified dif-ferential learning framework. This two-level design syner-gistically combines local perception with global spatial fil-tering, enabling precise visual-text alignment and dynamic suppression of interference from co-occurring objects. As shown in Fig. 2, PC-CrossDiff adopts a DETR-like architec-ture with dual decoders for joint 3DREC and 3DRES. The input point cloud P and text T are processed via PointNet++ (Qi et al. 2017a) and pretrained RoBERTa (Liu et al. 2019b) feature extractors. This yields textual features 
+
+Ft ∈ Rlt×demb (lt: tokens, demb : embedding dim) and high-level visual features F (4)  
+
+> v
+
+∈ Rnsem ×dsem (nsem : points, dsem :semantic dim). The PLDA module computes fine-grained cross-modal localization features F ′ 
+
+> PLDA
+
+∈ Rnsem ×dsem in-corporating implicit cues. These features are fused with in-termediate PointNet++ features F (3)  
+
+> v
+
+and F (2)  
+
+> v
+
+via upsam-pling and aligned cross-modally to produce F ′ 
+
+> v
+
+and F ′ 
+
+> t
+
+. To mitigate interference from multi-level spatial relationships in F ′ 
+
+> v
+
+within multi-object scenes, F ′ 
+
+> t
+
+, F ′
+
+> v
+
+, and positional co-ordinates Fxyz ∈ Rnp×3 (np: points) are processed by the CLDA module to enhance localization-related features. The refined features feed into dual decoders. 
+
+Point-Level Differential Attention 
+
+Inspired by the Differential Transformer (Ye et al. 2024), we propose the Point-Level Differential Attention (PLDA) module to extract implicit spatial cues from descriptions, which enhances discriminative features via a single-layer bidirectional cross-modal differential attention mechanism. The module comprises two symmetric components: (1) Text-to-Visual : Enhances point-level visual features using textual localization references; (2) Visual-to-Text : Extracts implicit localization cues from text guided by visual features. 
+
+Visual-to-Text Cross-modal Differential Attention. 
+
+This layer projects high-level visual features F (4) v to queries (Q) and textual features T to keys ( K)/values ( V ) via learnable matrices W Q, W K , W V ∈ Rdsem ×dsem :
+
+Q = F (4) v W Q, K = T W K , V = T W V . (1) The projections are reshaped into multi-head structures (head dimension dh = dsem /(2 Nh), Nh = 8 ): 
+
+Q = reshape (Q, [nsem , 2Nh, d h]) ⊺ = [ Q1, Q 2],K = reshape (K, [lt, 2Nh, d h]) ⊺ = [ K1, K 2],V = reshape (V, [lt, N h, 2dh]) ⊺ .
+
+(2) Then dual attention kernels are computed as: 
+
+A1 = softmax 
+
+ Q1K⊺
+
+> 1
+
+√dh
+
+
+
+, A 2 = softmax 
+
+ Q2K⊺
+
+> 2
+
+√dh
+
+
+
+. (3) A learnable parameter λ suppresses irrelevant attention: 
+
+λ = exp 
+
+X (λq1 ⊙ λk1 )
+
+
+
+− exp 
+
+X (λq2 ⊙ λk2 )
+
+
+
+,
+
+where λq1 , λ k1 , λ q2 , λ k2 ∈ Rdh are learnable vectors. The visual-to-text cross-modal differential attention is then com-puted as: DiffAttn (F (4) v , T ) = ( A1 − λ ⊙ A2)V. (4) After layer normalization and linear projection, we obtain the visual-to-text cross-modal semantic feature Kv2t , encod-ing implicit localization cues for subsequent fusion. 
+
+Text-to-Visual Cross-modal Differential Attention. 
+
+This component enhances point-level visual features by using textual features T as queries ( Q) and F (4) v as keys (K)/values ( V ). The differential attention operation (Eqs. 1– 4) is applied with the query and key roles interchanged. The learnable λ suppresses irrelevant visual features guided by the textual features, yielding enhanced point-level visual features Kt2v . For more details, see the Appendix. 
+
+Cluster-Level Differential Attention 
+
+To address the challenge of interference from irrelevant ob-jects in multi-object scenes, we propose the Cluster-Level Differential Attention (CLDA) module for dynamic spatial filtering. CLDA first models cluster-level spatial relations with the Spatial Relation Modeling (SRM) block and sub-sequently applies two Localization-Aware Differential At-tention (LDA) blocks to selectively enhance target-relevant features while suppressing noise, thereby achieving robust, dynamic spatial filtering in the presence of multi-object in-terference (Fig. 3). 
+
+Spatial Relation Modeling (SRM). Given position coor-dinates Fxyz ∈ Rnp×3 from F ′ 
+
+> v
+
+(where Fv and F ′ 
+
+> v
+
+share identical coordinates), SRM applies farthest point sampling (FPS) (Qi et al. 2017b) to select Nclust candidate centroids. KNN clustering partitions points into Nclust clusters of size 
+
+Sclust = np/N clust (np = 1024 ). An encoder processes intra-cluster points to obtain rela-tive spatial relationships FiRel ∈ RNclust ×dmod . Inter-cluster spatial relationships are extracted via DGCNN (Wang et al. 2019): 
+
+F ′ 
+
+> oRel
+
+= DGCNN (FiRel , O) ∈ RNclust ×dmod , (5) where O ∈ RNclust ×3 represents cluster centroids, and candi-date target region features are computed using a linear pro-jection F ′ 
+
+> ctr
+
+= OW o + bo, where Wo ∈ R3×dmod .
+
+Localization-Aware Differential Attention (LDA). LDA implements a two-stage process: (1) feature filtering via single-layer unidirectional differential attention, and (2) fea-ture enhancement via multi-head self-attention (Yu et al. 2022), as shown in Fig. 3. For spatial relationship filtering, aligned visual features 
+
+F ′ 
+
+> v
+
+serve as queries ( Q), while inter-cluster relationships 
+
+F ′ 
+
+> oRel
+
+act as keys ( K) and values ( V ). The computation fol-lows Eqs. 1–4: DiffAttn (F ′
+
+> v
+
+, F ′
+
+> oRel
+
+) = ( A1 − λ ⊙ A2)V. (6) Feature Filtering K2 K2 K1 K1 Matmul Matmul Q VLinear Linear Linear                  
+
+> Projection Self-Attention Matmul
+> Multi-head Learnable Scalar
+> LDA Output K
+> Q2 Q1 K1 K2 V
+> 32 0 021 0 10 0 0 0
+> 64 1 143 1 31 1 1 1 32 1 122 1 21 1 1 1
+> //
+
+Figure 3: LDA block. With F ′v as query, DiffAtten (Eq. 6) extracts relevant relations from F ′oRel while suppressing ir-relevant ones. Features then pass self-attention to yield ˜F ′
+
+> v
+
+.This extracts and enhances localization-relevant features from F ′ 
+
+> oRel
+
+into F ′
+
+> v
+
+, followed by self-attention refinement, yielding spatially enhanced features ˜F ′
+
+> v
+
+. Similarly, using F ′
+
+> t
+
+as queries ( Q) and candidate regions F ′ 
+
+> ctr
+
+as keys ( K) and values ( V ), the computation is performed via Eqs. 1–4. The computation selects localization-relevant target region fea-tures from F ′ 
+
+> ctr
+
+and enhances F ′ 
+
+> t
+
+with them, refining target region features via self-attention. See Appendix for details. 
+
+Training Loss 
+
+We propose the Dual-Geometry Task-Harmonized Loss (LDGTL ) for joint 3DREC and 3DRES optimization: 
+
+Dual-Geometry Consistency. We enforce bidirectional alignment between localization ( Bloc ) and segmentation (M) geometries to establish structural coherence: 
+
+Lgeom = ζ(t) [ LIoU (Bloc , Bmask ) + LDice (M, Mbox )] ,
+
+where ζ(t) implements a linear warm-up, LIoU and LDice 
+
+are IoU and Dice losses, and Bmask (mask-derived box) with Mbox (box-derived mask) form a self-supervised con-sistency loop via internal predictions. 
+
+Contribution Balancing. We balance contributions via 
+
+wi = max( e−vi , λ i), where vi is learnable and λi is an em-pirical threshold from MCLN (Qian et al. 2024b), ensuring meaningful task ratios. 
+
+Cross-task Harmonization. To harmonize optimization directions between detection ( Tdet ) and segmentation ( Tseg ), we penalize conflicting gradients as: 
+
+P = η(t) · X
+
+> i∈T det , j ∈T seg
+
+ρij · I [cos( θij ) < τ ] · (τ − cos( θij )) ,where cos( θij ) measures gradient alignment, η(t) is a linear decay factor, τ represents a threshold, I[·] is the indicator function, and ρij denotes task correlations. The full loss LDGTL (denoted as L) integrates all compo-nents: 
+
+L = X
+
+> i∈T det
+
+wiLi + X
+
+> j∈T seg
+
+wj Lj + P
+
+| {z }
+
+> Task-Harmonized
+
++ Lgeom 
+
+| {z } 
+
+> Dual-Geometry
+
+, (7) with dynamically learned weights wi and Lgeom enforcing spatial consistency. 
+
+## Experiments 
+
+Experimental Setup 
+
+We evaluate PC-CrossDiff against the state-of-the-art multi-task baseline MCLN (Qian et al. 2024b) on ScanRefer (Chen, Chang, and Nießner 2020), NR3D/SR3D (Achlioptas et al. 2020), and their chal-lenging subsets (Implicit and Multiple), under identical protocols for fair comparison across 3DREC and 3DRES tasks. Segmentation annotations strictly follow ScanNet’s official standards (Dai et al. 2017). All experiments run on NVIDIA 3090 GPUs. We employ AdamW optimizer with learning rates of 2 × 10 −3 for visual encoders and 2 × 10 −4
+
+for other layers. The temperature coefficient τ = 0 .5 and the number of network layers L = 6 . Evaluation metrics and remaining hyperparameters align with MCLN’s standards. 
+
+Quantitative Comparisons 
+
+Performance on ScanRefer (3DRES). We conduct com-parative experiments on the ScanRefer dataset with TGNN(Huang et al. 2021) and current state-of-the-art meth-ods: X-RefSeg3D(Qian et al. 2024a), 3D-STMN(Wu et al. 2024), SegPoint(He et al. 2025), MCLN(Qian et al. 2024b), and RefMask3D(He and Ding 2024). As shown in Table 1, our PC-CrossDiff achieves superior performance, achiev-ing 60.41%, 52.52%, and 46.39% on Overall@0.25, Over-all@0.50, and mIoU metrics, respectively. Specifically, PC-CrossDiff achieves improvements of 20.08%, 5.81%, and 4.54% over X-RefSeg3D, 3D-STMN, and RefMask3D on Overall@0.25. Similarly, it improves by 18.75%, 12.72%, and 3.28% on Overall@0.50. These results demonstrate that PC-CrossDiff achieves significant performance advantages in 3DRES tasks while maintaining a high inference speed of 4.07 FPS. This is attributed to the lightweight PLDA and CLDA modules, which enhance the model’s robustness in multi-object environments via improved text understanding (especially implicit localization cues) and spatial filtering. 
+
+Performance on Multiple and Implicit Subsets. To eval-uate PC-CrossDiff’s performance in multi-object scenes, we conduct experiments on the Multiple subset of ScanRefer. To further assess its capacity to capture implicit localization cues, we construct an Implicit subset comprising 501 refer-ring expressions with implicit references from the ScanRe-fer validation set (see Appendix). We use the model weights trained under the settings of Table 1 for inference, and the results are summarized in Table 2. On the Multiple@0.50 
+
+Method Venue Overall mIoU FPS 0.25 0.50 
+
+TGNN AAAI’21 37.50 31.40 27.80 2.85 X-RefSeg3D AAAI’24 40.33 33.77 29.94 2.03 3D-STMN AAAI’24 54.60 39.80 39.50 4.14 SegPoint ECCV’24 - - 41.70 -MCLN ECCV’24 58.70 50.70 44.72 4.81 RefMask3D ACMMM’24 55.87 49.24 44.86 1.65 Ours / 60.41 52.52 46.39 4.07 Table 1: Comparison results of 3DRES on the ScanRefer dataset (inference: batchsize=1, on an NVIDIA 3090 GPU). 
+
+Method Multiple Implicit 0.25 0.50 0.25 0.50 
+
+3DRES 
+
+X-RefSeg3D 28.16 23.61 43.71 37.33 3D-STMN 46.20 29.20 57.07 40.32 RefMask3D 48.09 40.77 49.30 44.71 MCLN 53.28 45.88 59.16 51.99 Ours 55.33 47.92 62.15 54.58 
+
+3DREC 
+
+MCLN 51.96 40.76 54.18 38.45 Ours 53.59 43.12 60.76 48.61 
+
+Table 2: Joint Evaluation of 3DRES and 3DREC across Mul-tiple and Implicit Subsets in the ScanRefer Dataset. metric, PC-CrossDiff achieves improvements of 24.31%, 18.72%, and 7.15% over X-RefSeg3D (Qian et al. 2024a), 3D-STMN (Wu et al. 2024), and RefMask3D (He and Ding 2024), respectively. On the Implicit subset, our method obtains a 17.25% gain over X-RefSeg3D and a 14.26% improvement over 3D-STMN in Implicit@0.50. Notably, it outperforms MCLN (baseline) by +10.16% in 3DREC. These results demon-strate PC-CrossDiff’s superior ability to handle complex multi-object scenes and effectively exploit implicit spatial cues. 
+
+Inference Speed. PC-CrossDiff was evaluated under iden-tical hardware and input settings. As shown in Ta-ble 1, our method achieves 4.07 FPS, outperforming X-RefSeg3D (Qian et al. 2024a) and RefMask3D (He and Ding 2024) in terms of both localization accuracy and infer-ence speed. This efficiency stems from the lightweight de-sign of the PLDA and CLDA modules; for instance, PLDA uses a single layer of cross-modal differential attention with only 2.10M parameters, introducing a negligible increase in model size and complexity. See the Appendix for details. 
+
+Performance on ScanRefer (3DREC). Table 3 compares PC-CrossDiff with recent single-stage and two-stage meth-ods. In the two-stage setting, we compare with MVT (Huang et al. 2022), 3D-SPS (Luo et al. 2022), BUTD-DETR (Jain et al. 2022), ViL3DRel (Chen et al. 2022), 3D-VLP (Jin Method Venue Multiple Overall 0.25 0.50 0.25 0.50 
+
+Two-stage Model 
+
+MVT CVPR’22 31.92 25.26 40.80 33.26 3D-SPS CVPR’22 40.32 29.82 48.82 36.98 BUTD-DETR ECCV’22 44.73 33.97 50.42 38.60 ViL3DRel NIPS’22 40.30 30.71 47.94 37.73 3D-VLP CVPR’23 43.51 33.41 51.41 39.46 EDA CVPR’23 49.13 37.64 54.59 42.26 3DRefTR-SP ICCV’23 50.07 38.65 55.45 43.48 3D-VisTA ICCV’23 43.70 39.10 50.60 45.80 VPP-Net CVPR’24 50.53 39.03 55.65 43.29 G3-LQ CVPR’24 51.48 40.80 56.90 45.58 
+
+Dual-Task 
+
+MCLN ECCV’24 51.96 40.76 57.17 45.53 Ours / 53.59 43.12 58.47 47.89 
+
+Single-stage Model 
+
+3D-SPS CVPR’22 39.48 29.61 47.65 36.43 BUTD-DETR ECCV’22 44.20 32.81 49.76 37.05 EDA CVPR’23 48.11 36.82 53.83 41.70 G3-LQ CVPR’24 50.23 39.72 55.95 44.72 AugRefer AAAI’25 49.96 39.06 55.68 44.03 TSP3D CVPR’25 - - 56.45 46.71 TSP3D* CVPR’25 50.66 41.30 55.82 45.69 
+
+Dual-task 
+
+MCLN ECCV’24 49.72 38.41 54.30 42.64 Ours / 51.59 42.02 57.37 46.68 
+
+Table 3: Comparison results of single-stage and two-stage 3DREC on the ScanRefer dataset (*: Reproduction). et al. 2023), EDA (Wu et al. 2023), 3D-VisTA (Zhu et al. 2023), VPP-Net (Shi, Wu, and Lee 2024), G3-LQ (Wang, Li, and Wang 2024), MA2TransVG (Xu et al. 2024), and MCLN. PC-CrossDiff achieves 58.47% and 47.89% on Overall@0.25 and Overall@0.50, respectively, surpassing all baselines. On Multiple@0.50, it improves by 2.36% over MCLN. In the single-stage setting, we compare with Au-gRefer (Wang et al. 2025), TSP3D (Guo et al. 2025), and other state-of-the-art models. PC-CrossDiff exceeds MCLN and AugRefer by 3.61% and 2.96% on Multiple@0.50, and improves by 4.04% and 2.65% on Overall@0.50. Notably, its Overall@0.50 score surpasses several two-stage models, including VPP-Net, G3-LQ, and MCLN. 
+
+Performance on SR3D/NR3D. Following MCLN’s eval-uation protocol, we compare PC-CrossDiff with 3D-SPS (Luo et al. 2022), MVT (Huang et al. 2022), BUTD-DETR (Jain et al. 2022), LAR (Bakr, Alsaedy, and Elho-seiny 2022), EDA (Wu et al. 2023), VPP-Net (Shi, Wu, and Lee 2024), and MCLN. As shown in Table 4, PC-CrossDiff achieves state-of-the-art performance on both benchmarks. Specifically, on SR3D’s 3DREC task, PC-CrossDiff outper-forms VPP-Net and MCLN by 2.25% and 2.52%, respec-tively, with a 2.71% improvement over VPP-Net on NR3D, 
+
+Method Venue SR3D NR3D 
+
+3D-SPS CVPR’22 62.60 51.50 MVT CVPR’22 64.50 55.10 BUTD-DETR ECCV’22 65.60 49.10 LAR NIPS’22 59.60 48.90 EDA CVPR’23 68.10 52.10 VPP-Net CVPR’24 68.70 56.90 AugRefer AAAI’25 60.22 48.41 
+
+Dual-Task 
+
+MCLN ECCV’24 68.43 59.82 Ours / 70.95 59.91 
+
+Table 4: 3DREC performance on SR3D and NR3D (Acc@0.25IoU). demonstrating strong generalization capability. 
+
+Component 3DREC 3DRES 
+
+LDGTL PLDA CLDA 0.25 0.50 0.25 0.50 mIoU 
+
+w/o w/o w/o 56.76 44.86 58.43 49.66 43.85 
+
+✓ w/o w/o 56.95 45.50 58.49 50.86 44.78 
+
+✓ ✓ w/o 57.56 46.20 59.19 50.99 45.12 
+
+✓ w/o ✓ 57.69 46.18 59.61 51.88 45.68 
+
+✓ ✓ ✓ 58.47 47.89 60.41 52.52 46.39 
+
+Table 5: Ablation study of LDGTL , PLDA, and CLDA on 3DREC/3DRES ( ✓: enabled; w/o: disabled). 
+
+Ablation Studies 
+
+All ablation studies are conducted on the ScanRefer dataset to evaluate performance on both 3DREC and 3DRES tasks. To systematically evaluate the LDGTL , PLDA, and CLDA modules, we conduct ablation studies on the ScanRefer benchmark. As shown in Table 5, introducing LDGTL alone improves the Overall@0.50 score by 1.2% on the 3DRES task, validating the necessity of the loss in mitigating learn-ing imbalance. Adding PLDA alone boosts performance by 1.33%, validating its ability to extract implicit localization cues through bidirectional attention and refine point-level features. Similarly, incorporating CLDA alone yields gains of 2.22%, demonstrating its effectiveness in dynamic spatial relation modeling and noise suppression for robust local-ization in multi-object scenes. When all three components are combined, the model achieves optimal performance with notable improvements on the Multiple and Implicit subsets (Appendix 3.1), demonstrating synergy across components. To evaluate the robustness of localization accuracy to cluster size, we analyze its impact. As shown in Ta-ble 6, when the cluster size increases from Sclust = 8 to 
+
+Sclust = 16 , performance varies by less than 0.32% for 3DREC@0.25. This stability indicates that our functional decoupling design effectively mitigates clustering-induced errors, with additional details provided in the Appendix. We evaluate feature transfer from the PLDA module to the CLDA 3DREC 3DRES 
+
+Nclust Sclust 0.25 0.50 0.25 0.50 mIoU 
+
+256 4 56.11 46.37 57.83 50.88 44.66 128 8 58.15 47.09 60.21 52.40 46.16 64 16 58.47 47.89 60.41 52.52 46.39 
+
+32 32 57.36 47.01 59.25 51.53 45.54 Table 6: Ablation study of cluster configurations ( Nclust and 
+
+Sclust ) on 3DREC and 3DRES tasks. CLDA module’s Max block (Fig. 2) and analyze differen-tial attention (DiffAtten, Eq. 4) through two experiments: (i) Comparing original visual features F (4) v with Kt2v  
+
+> λ
+
+obtained via text-guided DiffAtten; (ii) Comparing original text fea-tures Ft with Kv2t  
+
+> λ
+
+obtained via vision-guided DiffAtten. 
+
+Component 3DREC 3DRES 0.25 0.50 0.25 0.50 mIoU 
+
+F (4) v 56.94 45.98 58.87 50.97 44.94 
+
+Kt2v  
+
+> λ
+
+58.06 46.92 60.25 51.84 46.13 
+
+Ft 57.93 46.71 60.02 52.42 46.27 
+
+Kv2t  
+
+> λ
+
+58.47 47.89 60.41 52.52 46.39 
+
+Table 7: Comparison of localization accuracy when integrat-ing different feature configurations from PLDA into CLDA. As shown in Table 7, both F (4) v and Ft, when pro-cessed by DiffAtten, significantly improve localization ac-curacy over their original counterparts, validating the ef-fectiveness of cross-modal differential attention. Notably, text-based Kv2t  
+
+> λ
+
+achieves optimal performance through two mechanisms: (i) Ft provides more precise target informa-tion; (ii) PLDA enhances discriminative localization cues in text while suppressing irrelevant features and improves fea-ture discriminability. 
+
+Component 3DREC 3DRES 0.25 0.50 0.25 0.50 mIoU 
+
+⋆ 56.64 45.81 58.54 50.63 44.85 PLDA+CLDA 58.47 47.89 60.41 52.52 46.39 
+
+Table 8: Performance comparison of our dual-level differ-ential attention and standard cross-attention ( ⋆: standard Transformer-based (Vaswani et al. 2017)). Table 8 shows that replacing the proposed dual-level differential attention with standard Transformer atten-tion (Vaswani et al. 2017) degrades Overall@0.50 by 2.08% and 1.89% on 3DREC and 3DRES, respectively. This degra-dation reveals that standard attention fails to preserve im-plicit semantic cues and suppress irrelevant spatial interfer-ence. In contrast, our framework explicitly addresses these Expression                       
+
+> It is a narrow wood
+> console table . The table
+> sits in the kitchen , along
+> the wall that has the tv. It
+> sits under the tv .
+> There is a large painting
+> on the wall .This the long
+> skinny table under the
+> painting hanging on the
+> wall .It is wooden with a
+> glass top.
+> MCLN Ours
+> Along the wall are several
+> chairs .There is a brown
+> one on the top row at the
+> end ,closest to the black
+> chairs.
+> Obj ect Implicit Localization Cue Explicit Relation
+
+Figure 4: Comparison of PC-CrossDiff (ours) and MCLN (baseline) for 3DREC and 3DRES with implicit cues in complex multi-object scenes. GT boxes are yellow. issues by leveraging PLDA for extracting implicit localiza-tion cues and CLDA for dynamic spatial filtering, validating the need for a dual-level design. 
+
+## Qualitative Results 
+
+We compare PC-CrossDiff with the state-of-the-art dual-task method MCLN (Qian et al. 2024b) on complex multi-object scenes. As shown in Fig. 4, MCLN mislocalizes tar-gets due to missing implicit cues (Rows 1–2). In contrast, PC-CrossDiff successfully captures target locations, partic-ularly for implicit or occluded instances (Rows 1–3). The superior performance stems from two key mechanisms: bidi-rectional cross-modal interaction in PLDA mitigates seman-tic ambiguity in implicit localization, while dynamic spatial weighting in CLDA resolves spatial relationship ambiguity. These components jointly enable robust and accurate local-ization in complex multi-object scenes. 
+
+## Conclusion 
+
+In this paper, we propose PC-CrossDiff, a novel dual-hierarchy optimization framework, to address the challenges of inadequate implicit semantic parsing and spatial interfer-ence in 3DVG for multi-object scenes. PLDA introduces a text-point cloud bidirectional differential attention mecha-nism to adaptively extract implicit localization cues, miti-gating semantic ambiguity caused by explicit relation pars-ing in conventional approaches. CLDA enhances localiza-tion robustness through dynamic spatial relationship model-ing with suppression of irrelevant interference, enabling ef-ficient reasoning in multi-object scenes. A unified multi-task model integrating 3DREC and 3DRES achieves state-of-the-art performance on ScanRefer and NR3D/SR3D bench-marks, demonstrating its effectiveness in handling multi-object scenes. Acknowledgements 
+
+This work was supported in part by the National Natural Science Foundation of China under Grant 62176224, Grant 62176092, Grant 62222602, Grant 62306165, and Grant 62172234; in part by the Fundamental Research Funds for the Central Universities under Grant 20720250031; in part by the Science and Technology on Sonar Laboratory under Grant 2024-JCJQ-LB-32/07; in part by the Guizhou Provin-cial Department of Science and Technology under Grant Qian Ke He QN [2025] 337; and in part by the Tongren Mu-nicipal Science and Technology Bureau under Grant Tong-shi [2025] 54. 
+
+## References 
+
+Achlioptas, P.; Abdelreheem, A.; Xia, F.; Elhoseiny, M.; and Guibas, L. 2020. ReferIt3D: Neural Listeners for Fine-Grained 3D Object Identification in Real-World Scenes. In Vedaldi, A.; Bischof, H.; Brox, T.; and Frahm, J.-M., eds., 
+
+Computer Vision – ECCV 2020 , 422–440. Springer Interna-tional Publishing. ISBN 978-3-030-58452-8. Ahmed, I.; Islam, S.; Datta, P. P.; Kabir, I.; Chowdhury, N. U. R.; and Haque, A. 2025. Qwen 2.5: A comprehensive review of the leading resource-efficient llm with potentioal to surpass all competitors. Authorea Preprints .Bakr, E.; Alsaedy, Y.; and Elhoseiny, M. 2022. Look around and Refer: 2d Synthetic Semantics Knowledge Distillation for 3d Visual Grounding. 35: 37146–37158. Chen, D. Z.; Chang, A. X.; and Nießner, M. 2020. Scan-Refer: 3D Object Localization in RGB-D Scans Using Nat-ural Language. In Vedaldi, A.; Bischof, H.; Brox, T.; and Frahm, J.-M., eds., Computer Vision – ECCV 2020 , ECCV, 202–221. Springer International Publishing. ISBN 978-3-030-58565-5. Chen, S.; Guhur, P.-L.; Tapaswi, M.; Schmid, C.; and Laptev, I. 2022. Language Conditioned Spatial Relation Reasoning for 3D Object Grounding. 35: 20522–20535. Dai, A.; Chang, A. X.; Savva, M.; Halber, M.; Funkhouser, T.; and Niessner, M. 2017. ScanNet: Richly-Annotated 3D Reconstructions of Indoor Scenes. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recogni-tion , CVPR, 5828–5839. Feng, M.; Li, Z.; Li, Q.; Zhang, L.; Zhang, X.; Zhu, G.; Zhang, H.; Wang, Y.; and Mian, A. 2021. Free-Form Description Guided 3D Visual Graph Network for Object Grounding in Point Cloud. In CVPR , CVPR, 3722–3731. Guo, W.; Xu, X.; Wang, Z.; Feng, J.; Zhou, J.; and Lu, J. 2025. Text-Guided Sparse Voxel Pruning for Efficient 3D Visual Grounding. In Proceedings of the IEEE/CVF Con-ference on Computer Vision and Pattern Recognition , 3666– 3675. He, D.; Zhao, Y.; Luo, J.; Hui, T.; Huang, S.; Zhang, A.; and Liu, S. 2021. TransRefer3D: Entity-and-Relation Aware Transformer for Fine-Grained 3D Visual Grounding. In Pro-ceedings of the 29th ACM International Conference on Mul-timedia , MM ’21, 2344–2352. Association for Computing Machinery. ISBN 978-1-4503-8651-7. He, S.; and Ding, H. 2024. RefMask3D: Language-Guided Transformer for 3D Referring Segmentation. In Proceedings of the 32nd ACM International Conference on Multimedia ,MM ’24, 8316–8325. Association for Computing Machin-ery. ISBN 979-8-4007-0686-8. He, S.; Ding, H.; Jiang, X.; and Wen, B. 2025. SegPoint: Segment Any Point Cloud via Large Language Model. In Leonardis, A.; Ricci, E.; Roth, S.; Russakovsky, O.; Sattler, T.; and Varol, G., eds., Computer Vision – ECCV 2024 , 349– 367. Springer Nature Switzerland. ISBN 978-3-031-72670-5. Huang, P.-H.; Lee, H.-H.; Chen, H.-T.; and Liu, T.-L. 2021. Text-Guided Graph Neural Networks for Referring 3D In-stance Segmentation. 35(2): 1610–1618. Huang, S.; Chen, Y.; Jia, J.; and Wang, L. 2022. Multi-View Transformer for 3D Visual Grounding. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 15524–15533. Jain, A.; Gkanatsios, N.; Mediratta, I.; and Fragkiadaki, K. 2022. Bottom Up Top Down Detection Transformers for Language Grounding in Images and Point Clouds. In Avidan, S.; Brostow, G.; Ciss´ e, M.; Farinella, G. M.; and Hassner, T., eds., Computer Vision – ECCV 2022 , ECCV, 417–433. Springer Nature Switzerland. ISBN 978-3-031-20059-5. Jin, Z.; Hayat, M.; Yang, Y.; Guo, Y.; and Lei, Y. 2023. Context-Aware Alignment and Mutual Masking for 3d-Language Pre-Training. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition ,10984–10994. Liu, Y.; Fan, B.; Xiang, S.; and Pan, C. 2019a. Relation-Shape Convolutional Neural Network for Point Cloud Anal-ysis. In Proceedings of the IEEE/CVF Conference on Com-puter Vision and Pattern Recognition , CVPR, 8895–8904. Liu, Y.; Ott, M.; Goyal, N.; Du, J.; Joshi, M.; Chen, D.; Levy, O.; Lewis, M.; Zettlemoyer, L.; and Stoyanov, V. 2019b. Roberta: A robustly optimized bert pretraining approach. 
+
+arXiv preprint arXiv:1907.11692 .Luo, J.; Fu, J.; Kong, X.; Gao, C.; Ren, H.; Shen, H.; Xia, H.; and Liu, S. 2022. 3D-SPS: Single-Stage 3D Visual Ground-ing via Referred Point Progressive Selection. In CVPR ,CVPR, 16454–16463. Qi, C. R.; Yi, L.; Su, H.; and Guibas, L. J. 2017a. Point-Net++: Deep Hierarchical Feature Learning on Point Sets in a Metric Space. In Advances in Neural Information Process-ing Systems , volume 30. Curran Associates, Inc. Qi, C. R.; Yi, L.; Su, H.; and Guibas, L. J. 2017b. Point-Net++: Deep Hierarchical Feature Learning on Point Sets in a Metric Space. In Advances in Neural Information Process-ing Systems , volume 30. Curran Associates, Inc. Qian, Z.; Ma, Y.; Ji, J.; and Sun, X. 2024a. X-RefSeg3D: En-hancing Referring 3D Instance Segmentation via Structured Cross-Modal Graph Neural Networks. 38(5): 4551–4559. Qian, Z.; Ma, Y.; Lin, Z.; Ji, J.; Zheng, X.; Sun, X.; and Ji, R. 2024b. Multi-Branch Collaborative Learning Network for 3D Visual Grounding. In ECCV , ECCV. arXiv. Shi, X.; Wu, Z.; and Lee, S. 2024. Viewpoint-Aware Visual Grounding in 3D Scenes. In CVPR , CVPR, 14056–14065. Vaswani, A.; Shazeer, N.; Parmar, N.; Uszkoreit, J.; Jones, L.; Gomez, A. N.; Kaiser, L. u.; and Polosukhin, I. 2017. Attention is All you Need. In Guyon, I.; Luxburg, U. V.; Bengio, S.; Wallach, H.; Fergus, R.; Vishwanathan, S.; and Garnett, R., eds., Advances in Neural Information Process-ing Systems , volume 30. Curran Associates, Inc. Wang, S.; Lin, Y.; and Wu, Y. 2024. Omni-Q: Omni-Directional Scene Understanding for Unsupervised Visual Grounding. In CVPR , CVPR, 14261–14270. Wang, X.; Zhao, N.; Han, Z.; Guo, D.; and Yang, X. 2025. AugRefer: Advancing 3D Visual Grounding via Cross-Modal Augmentation and Spatial Relation-based Referring. 39(8): 8006–8014. Wang, Y.; Li, Y.; and Wang, S. 2024. Gˆ3-LQ: Marrying Hyperbolic Alignment with Explicit Semantic-Geometric Modeling for 3D Visual Grounding. In CVPR , CVPR, 13917–13926. Wang, Y.; Sun, Y.; Liu, Z.; Sarma, S. E.; Bronstein, M. M.; and Solomon, J. M. 2019. Dynamic Graph CNN for Learn-ing on Point Clouds. 38(5): 146:1–146:12. Wu, C.; Ma, Y.; Chen, Q.; Wang, H.; Luo, G.; Ji, J.; and Sun, X. 2024. 3D-STMN: Dependency-Driven Superpoint-Text Matching Network for End-to-End 3D Referring Expression Segmentation. 38(6): 5940–5948. Wu, Y.; Cheng, X.; Zhang, R.; Cheng, Z.; and Zhang, J. 2023. EDA: Explicit Text-Decoupling and Dense Alignment for 3D Visual Grounding. In CVPR , CVPR, 19231–19242. Wu, Y.; Xing, M.; Zhang, Y.; Luo, X.; Xie, Y.; and Qu, Y. 2024a. UniDSeg: Unified Cross-Domain 3D Semantic Seg-mentation via Visual Foundation Models Prior. Advances in Neural Information Processing Systems , 37: 101223– 101249. Wu, Y.; Xing, M.; Zhang, Y.; Xie, Y.; Fan, J.; Shi, Z.; and Qu, Y. 2023. Cross-Modal Unsupervised Domain Adaptation for 3D Semantic Segmentation via Bidirectional Fusion-then-Distillation. In Proceedings of the 31st ACM International Conference on Multimedia , MM ’23, 490–498. New York, NY, USA: Association for Computing Machinery. ISBN 979-8-4007-0108-5. Wu, Y.; Xing, M.; Zhang, Y.; Xie, Y.; Peng, K.; and Qu, Y. 2025. Fusion-then-Distillation: Toward Cross-modal Posi-tive Distillation for Domain Adaptive 3D Semantic Segmen-tation. IEEE Transactions on Circuits and Systems for Video Technology .Wu, Y.; Xing, M.; Zhang, Y.; Xie, Y.; and Qu, Y. 2024b. CLIP2UDA: Making Frozen CLIP Reward Unsupervised Domain Adaptation in 3D Semantic Segmentation. In Pro-ceedings of the 32nd ACM International Conference on Mul-timedia , MM ’24, 8662–8671. New York, NY, USA: Associ-ation for Computing Machinery. ISBN 979-8-4007-0686-8. Xu, C.; Han, Y.; Xu, R.; Hui, L.; Xie, J.; and Yang, J. 2024. Multi-Attribute Interactions Matter for 3D Visual Ground-ing. In CVPR , CVPR, 17253–17262. Ye, T.; Dong, L.; Xia, Y.; Sun, Y.; Zhu, Y.; Huang, G.; and Wei, F. 2024. Differential Transformer. In The Thirteenth International Conference on Learning Representations .Yu, X.; Tang, L.; Rao, Y.; Huang, T.; Zhou, J.; and Lu, J. 2022. Point-BERT: Pre-Training 3D Point Cloud Trans-formers With Masked Point Modeling. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 19313–19322. Zhang, Y.; Hu, R.; Li, R.; Qu, Y.; Xie, Y.; and Li, X. 2024. Cross-Modal Match for Language Conditioned 3D Object Grounding. 38(7): 7359–7367. Zhang, Y.; Lan, Y.; Xie, Y.; Li, C.; and Qu, Y. 2025. Cross-cloud consistency for weakly supervised point cloud seman-tic segmentation. IEEE Transactions on Neural Networks and Learning Systems .Zhang, Y.; Qu, Y.; Xie, Y.; Li, Z.; Zheng, S.; and Li, C. 2021. Perturbed self-distillation: Weakly supervised large-scale point cloud semantic segmentation. In Proceedings of the IEEE/CVF international conference on computer vision ,15520–15528. Zhao, L.; Cai, D.; Sheng, L.; and Xu, D. 2021. 3DVG-Transformer: Relation Modeling for Visual Grounding on Point Clouds. In CVPR , CVPR, 2928–2937. Zhu, Z.; Ma, X.; Chen, Y.; Deng, Z.; Huang, S.; and Li, Q. 2023. 3D-VisTA: Pre-trained Transformer for 3D Vision and Text Alignment. In Proceedings of the IEEE/CVF Interna-tional Conference on Computer Vision , 2911–2921. Appendix 
+
+1 Methodological Supplementary Explanation 
+
+Text-to-Visual Cross-modal Differential Attention. 
+
+This component enhances point-level visual features by using textual features T ∈ Rl×dsem as queries ( Q) and high-level visual features F (4) v ∈ Rnsem ×dsem as keys ( K)and values ( V ). Specifically, we project T and F (4) v via learnable matrices W Q, W K , W V ∈ Rdsem ×dsem :
+
+Q = T W Q, K = F (4) v W K , V = F (4) v W V . (8) The projected tensors are reshaped into a multi-head structure compatible with dual-channel differential attention (head dimension dh = dsem /(2 Nh), Nh = 8 ): 
+
+Q ≜ reshape (Q, [l, 2Nh, d h]) ⊺ = [ Q1, Q 2]
+
+K ≜ reshape (K, [nsem , 2Nh, d h]) ⊺ = [ K1, K 2]
+
+V ≜ reshape (V, [nsem , N h, 2dh]) ⊺ .
+
+(9) We compute two attention kernels as follows: 
+
+A1 = softmax 
+
+ Q1K⊺
+
+> 1
+
+√dh
+
+
+
+, A 2 = softmax 
+
+ Q2K⊺
+
+> 2
+
+√dh
+
+
+
+.
+
+To adaptively regulate feature filtering during training, we introduce parameterized differential coefficients: DiffAttn (T, F (4)  
+
+> v
+
+) = ( A1 − λ ⊙ A2)V, (10) where λ ∈ Rl×nsem ×Nh is computed as: 
+
+λ = exp 
+
+X (λq1 ⊙ λk1)
+
+
+
+− exp 
+
+X (λq2 ⊙ λk2)
+
+
+
+,
+
+with λq1, λ k1, λ q2, λ k2 ∈ Rdh being learnable vectors that modulate the differential strength. This mechanism enables the model to suppress irrelevant visual features guided by the textual features, thereby enhancing the discriminability of local visual representations. The output of Eq. (10) is processed through layer nor-malization, dimension transformation, and linear projection to yield the enhanced point-level visual features Kt2v ∈
+
+Rl×dsem .
+
+Implementation Mechanism Analysis of CLDA. As shown in Algorithm 1, after cross-modal alignment, the spatial coordinates of visual features F ′ 
+
+> v
+
+∈ Rnp×dmod are processed by Spatial Relation Modeling (SRM) to extract two key components: inter-cluster spatial relation features 
+
+F ′ 
+
+> oRel
+
+∈ RNclust ×dmod and candidate object region features 
+
+F ′ 
+
+> ctr
+
+∈ RNclust ×dmod .Algorithm 1: The Working Process of CLDA. 
+
+1: Step 1: Spatial Relation Modeling (SRM) 
+
+2: Compute cluster centroids O ∈ RB×Nclust ×3 via FPS (Qi et al. 2017b). 
+
+3: Partition points into Nclust clusters of size Sclust =
+
+np/N clust (np = 1024 ). 
+
+4: Extract intra-cluster relations FiRel using encoder. 
+
+5: Compute inter-cluster spatial relationships: 
+
+F ′ 
+
+> oRel
+
+= DGCNN( FiRel , O) ∈ RB×Nclust ×dmod .
+
+6: Compute the candidate object region features: 
+
+F ′ 
+
+> ctr
+
+= OW o + bo ∈ RB×Nclust ×dmod ,
+
+where Wo ∈ R3×dmod .
+
+7: Step 2: Dual-Branch LDA for Dynamic Filtering and Enhancement 
+
+8: % Branch 1: Spatial Filtering. 
+
+9: Q ← F ′
+
+> v
+
+, K, V ← F ′
+
+> oRel
+
+10: Compute suppression factor: 
+
+λ = exp 
+
+X (λq1 ⊙ λk1)
+
+
+
+− exp 
+
+X (λq2 ⊙ λk2)
+
+
+
+,
+
+with λq1, λ k1, λ q2, λ k2 ∈ Rdh learnable. 
+
+11: Compute attention maps and differential output: 
+
+A1 = softmax 
+
+ QK ⊺
+
+√dh
+
+
+
+, A2 = softmax 
+
+ QK ⊺
+
+√dh
+
+
+
+,F ′ 
+
+> oRel filt
+
+← (A1 − λ ⊙ A2)V. 
+
+12: Update: ˜F ′ 
+
+> v
+
+← F ′ 
+
+> v
+
++ MLP( F ′
+
+> oRel filt
+
+)
+
+13: % Branch 2: Target Enhancement. 
+
+14: Q ← F ′ 
+
+> t
+
+, K, V ← F ′
+
+> ctr
+
+15: Compute: 
+
+A1 = softmax 
+
+ QK ⊺
+
+√dh
+
+
+
+, A2 = softmax 
+
+ QK ⊺
+
+√dh
+
+
+
+,F ′ 
+
+> ctr enh
+
+← (A1 − λ ⊙ A2)V. 
+
+16: Update: ˜F ′ 
+
+> t
+
+← F ′ 
+
+> t
+
++ F ′
+
+> ctr enh
+
+17: return ˜F ′
+
+> v
+
+, ˜F ′
+
+> t
+
+The Cluster-Level Differential Attention (CLDA) module adopts a dual-branch Localization-aware Differential Atten-tion (LDA) mechanism to jointly refine spatial and semantic representations. In the first stage, spatial filtering , aligned visual features F ′ 
+
+> v
+
+serve as queries ( Q), while F ′ 
+
+> oRel
+
+acts as both keys ( K) and values ( V ). The differential attention op-eration is formulated as: DiffAttn (F ′
+
+> v
+
+, F ′
+
+> oRel
+
+) = ( A1 − λ ⊙ A2)V, (11) where A1 and A2 denote the attention maps computed from 
+
+F ′ 
+
+> v
+
+and F ′
+
+> oRel
+
+, respectively, and λ ∈ RNclust ×Nclust is a learnable parameter optimized during training. This mecha-nism suppresses irrelevant spatial relations through adaptive learning and modulation of λ, enabling selective suppres-sion of irrelevant localization cues and preserving location-sensitive features. The output is passed through a multi-layer perceptron (MLP), added to F ′
+
+> v
+
+, and further refined via multi-head self-attention to produce spatially enhanced vi-sual features ˜F ′
+
+> v
+
+.In the second stage, target enhancement , textual features 
+
+F ′ 
+
+> t
+
+are used as queries ( Q), while F ′ 
+
+> ctr
+
+serves as keys ( K)and values ( V ). The same differential attention mechanism is applied: DiffAttn (F ′ 
+
+> t
+
+, F ′
+
+> ctr
+
+) = ( A1 − λ ⊙ A2)V, (12) which selectively extracts discriminative region features from F ′ 
+
+> ctr
+
+and injects them into F ′ 
+
+> t
+
+. These enriched fea-tures are then refined via multi-head self-attention to yield enhanced textual features ˜F ′ 
+
+> t
+
+.Finally, both modalities undergo additional refinement through transformer blocks and layer normalization. This design leverages SRM to capture global spatial configura-tions and candidate object regions, which are selectively integrated into aligned visual and textual features via the LDA filtering mechanism. During decoding, the enhanced features enable precise parsing of object identities and spa-tial relationships, significantly reducing interference from ir-relevant localization features and improving performance in complex multi-object scenes. 
+
+Mechanism of Noise Suppression in Cross-modal Dif-fAttn. Cross-modal differential attention (DiffAttn) is de-signed to suppress irrelevant visual noise during 3D ob-ject localization by leveraging a dual-channel decomposi-tion mechanism that explicitly models the cancellation of distracting attention scores, inspired by the noise-canceling property of differential attention (Ye et al. 2024). Unlike standard self-attention, which aggregates all context signals uniformly, DiffAttn separates the query and key-value repre-sentations into two distinct subspaces, Q1, Q 2 and K1, K 2,using a structured reshaping operation (Eq. 9). This enables the computation of two independent attention matrices: 
+
+A1 = softmax 
+
+ Q1K⊺
+
+> 1
+
+√dh
+
+
+
+, A 2 = softmax 
+
+ Q2K⊺
+
+> 2
+
+√dh
+
+
+
+,
+
+where A1 captures semantic alignment between textual de-scriptions and visual features, while A2 encodes potential distractive or inconsistent responses. The critical innovation lies in the differential suppression mechanism: DiffAttn (T, F (4)  
+
+> v
+
+) = ( A1 − λ ⊙ A2)V, (13) where the learnable parameter λ ∈ Rdh dynamically regu-lates the strength of A2’s suppression. The trainable param-eter λ is computed as: 
+
+λ = exp 
+
+X (λq1 ⊙ λk1)
+
+
+
+− exp 
+
+X (λq2 ⊙ λk2)
+
+
+
+.
+
+During training, both A1 and λ ⊙ A2 contain components corresponding to spatially widespread, task-irrelevant noise (e.g., background clutter or features unrelated to object localization). The differential subtraction effectively sup-presses the shared, broadly distributed noise in A1, thereby reducing irrelevant interference. This differential suppres-sion mechanism has proven effective in the Differential Transformer (Ye et al. 2024). By learning λ end to end, the model adaptively controls the suppression strength of distracting attention patterns, promoting improved localiza-tion accuracy. Consequently, the model learns to optimally suppress features unrelated to object localization, preserv-ing discriminative information and enhancing the represen-tational quality of the filtered features, thereby improving their discriminability in multi-object scenes. 
+
+2 Extended Performance Comparisons 
+
+3DREC and 3DRES on SR3D. As shown in Table 9, PC-CrossDiff achieves state-of-the-art performance on both the 3DREC and 3DRES tasks on the SR3D dataset. It at-tains 61 .27% on 3DREC and 62 .04% on 3DRES at Over-all@0.50, representing absolute improvements of 3.97 and 
+
+4.16 over the previous SOTA method, MCLN (Qian et al. 2024b), respectively. These improvements highlight the model’s strong generalization ability in jointly modeling ob-ject recognition and spatial localization. 
+
+Method 3DREC 3DRES 0.25 0.50 0.25 0.50 mIoU 
+
+MCLN 68.43 57.30 64.70 57.88 49.84 Ours 70.95 61.27 68.70 62.04 53.43 
+
+Table 9: Performance comparison of 3DREC and 3DRES on the SR3D dataset. 
+
+3DREC and 3DRES on NR3D. We further evaluate PC-CrossDiff compared to baseline methods on the NR3D dataset for both 3DREC and 3DRES. 
+
+Method 3DREC 3DRES 0.25 0.50 0.25 0.50 mIoU 
+
+MCLN † 53.75 45.82 51.79 46.58 40.47 Ours 59.91 50.48 57.56 52.64 46.00 
+
+Table 10: Performance comparison of joint 3DREC and 3DRES tasks on the NR3D dataset ( †reproduced results; 200 epochs). As shown in Table 10, our method achieves state-of-the-art performance on both 3DREC and 3DRES, with abso-lute improvements of 4.66 and 6.06 over MCLN (Qian et al. 2024b) on the Overall@0.50 metric, respectively. These gains highlight the model’s strong generalization ability. 
+
+3 Extended Ablation Studies 3.1 Multi-object Scenes Localization Ablation 
+
+To evaluate the impact of PLDA and CLDA on localiza-tion performance in complex multi-object scenes, we con-duct ablation studies on the Multiple subset of ScanRefer for 3DREC and 3DRES. As shown in Table 11, introducing PLDA alone im-proves 3DREC@0.25 from 51.96% to 52.35% (+0.39%) PLDA / CLDA 3DREC 3DRES 0.25 0.50 0.25 0.50 
+
+w/o w/o 51.96 40.76 53.28 45.88 
+
+✓ w/o 52.35 41.51 53.84 46.67 w/o ✓ 52.74 41.50 54.57 47.56 
+
+✓ ✓ 53.59 43.12 55.48 47.98 
+
+Table 11: Ablation study of PLDA and CLDA on ScanRefer-Multiple for 3DREC and 3DRES. ✓: included; w/o: no CLDA. and 3DRES@0.25 from 53.28% to 53.84% (+0.56%), demonstrating its effectiveness in leveraging textual seman-tic cues for localization in multi-object scenes. When only CLDA is used, 3DREC@0.25 increases to 52.74% (+0.78%), 3DREC@0.50 to 41.50% (+0.74%), and 3DRES@0.25 to 54.57% (+1.29%), indicating that CLDA’s spatial relation filtering effectively reduces semantic ambi-guity and enhances understanding of 3D spatial relation-ships. Jointly enabling PLDA and CLDA yields the best perfor-mance: 53.59% (3DREC@0.25), 43.12% (3DREC@0.50), 55.48% (3DRES@0.25), and 47.98% (3DRES@0.50), sig-nificantly outperforming either module alone. This confirms the efficacy of the point-cluster dual-level collaborative de-sign: PLDA disentangles implicit semantic clues from text, while CLDA refines cluster-level spatial relations and ob-ject features, together improving robustness and accuracy in complex multi-object scenes. 
+
+3.2 Robustness of CLDA to Cluster Size Variations 
+
+To investigate the impact of cluster size (i.e., cluster count 
+
+Nclust = 1024 /S clust ) on CLDA performance, we conduct ablation studies by varying Nclust from 32 to 256, corre-sponding to cluster sizes of Sclust = 32 and Sclust = 4 ,respectively. As shown in Table 12, CLDA remains effec-tive across different cluster configurations and improves the 0.50 metrics and mIoU over the baseline without CLDA for all tested settings. 
+
+CLDA 3DREC 3DRES 
+
+Nclust Sclust 0.25 0.50 0.25 0.50 mIoU 
+
+/ / 56.76 44.86 58.43 49.66 43.85 256 4 56.11 46.37 57.83 50.88 44.66 128 8 58.15 47.09 60.21 52.40 46.16 64 16 58.47 47.89 60.41 52.52 46.39 
+
+32 32 57.36 47.01 59.25 51.53 45.54 Table 12: Ablation study of cluster configurations ( Nclust 
+
+and Sclust ) on 3DREC and 3DRES tasks. / denotes no CLDA. When Nclust = 256 (Sclust = 4 ), the fine-grained par-titioning may introduce noisy, low-level spatial relations. Although 3DREC@0.25 decreases to 56.11% (vs. 56.76% in the baseline), CLDA still improves 3DREC@0.50 from 44.86% to 46.37%, 3DRES@0.50 from 49.66% to 50.88%, and mIoU from 43.85% to 44.66%, suggesting robustness under over-segmentation. Conversely, with Nclust = 32 (Sclust = 32 ), coarse clus-tering may result in loss of fine-grained geometric details. Nonetheless, CLDA improves 3DREC@0.25 to 57.36% (+0.60%) and 3DRES@0.25 to 59.25% (+0.82%), demon-strating its capacity to recover useful spatial relationships despite information loss. Further analysis reveals minimal variation across interme-diate settings: as Nclust decreases from 128 to 64 ( Sclust in-creases from 8 to 16), 3DREC@0.25 increases by 0.32% (from 58.15% to 58.47%), and 3DREC@0.50 rises by 0.80%. This underscores CLDA’s high stability under vary-ing clustering configurations. In summary, CLDA maintains consistent performance across diverse cluster sizes, demonstrating robustness under both fine-grained and coarse partitioning. Its stable behavior arises from the “filter-then-enhance” mechanism, enabling reliable spatial relation modeling in complex multi-object scenes. Algorithm 2: Construction of the Implicit Subset from Scan-Refer. 
+
+Require: D = {(si, o i, n i, d i)}Ni=1 : Scene-object-description triplets, 
+
+Pexplicit : Explicit spatial markers (case-insensitive regex), 
+
+Pimplicit : Pre-compiled patterns for implicit relations, Qwen: Interface to large language model. 
+
+Ensure: Simplicit ⊆ D : Descriptions with implicit spatial cues.  
+
+> 1:
+
+Compile Pexplicit and Pimplicit into case-insensitive regu-lar expressions.  
+
+> 2:
+
+Initialize Simplicit ← ∅  
+
+> 3:
+
+for each di ∈ D do  
+
+> 4:
+
+if di contains any p ∈ Pexplicit then  
+
+> 5:
+
+continue  
+
+> 6:
+
+end if  
+
+> 7:
+
+rrule ← match regex (di, Pimplicit ) 
+
+> 8:
+
+if use qwen and ¬rrule then  
+
+> 9:
+
+rfinal ← parse (QwenAPI (build prompt (di)))  
+
+> 10:
+
+else  
+
+> 11:
+
+rfinal ← rrule  
+
+> 12:
+
+end if  
+
+> 13:
+
+if rfinal then  
+
+> 14:
+
+Simplicit ← S implicit ∪ { (si, o i, n i, d i)} 
+
+> 15:
+
+end if  
+
+> 16:
+
+end for  
+
+> 17:
+
+return Simplicit 
+
+3.3 Construction of the Implicit Subset from ScanRefer 
+
+To rigorously evaluate the 3DVG model’s ability to inter-pret implicit spatial relationships in natural language, we construct an implicit subset from ScanRefer via a hybrid rule-based and LLM-assisted detection pipeline. The goal is to identify descriptions expressing spatial relationships via physical interactions (e.g., resting on , attached to ), func-tional dependencies (e.g., supporting , holding ), or contex-tual associations (e.g., embedded in ), excluding explicit spa-tial terms like above , left , or between .The detection process, formalized in Algorithm 2, starts by compiling two complementary pattern libraries. Pexplicit is converted into case-insensitive regular expressions for effi-cient filtering of explicit cues. Pimplicit covers three semantic categories of implicit relations and is pre-compiled for fast matching. All descriptions containing any explicit marker are im-mediately excluded. For the remaining candidates, we apply a rule-first, LLM-backup strategy: if no rule match is found, the description is sent to the Qwen-turbo(Ahmed et al. 2025) API via a structured prompt to determine whether it ex-presses an implicit spatial relationship, with output parsed into binary labels. Conflicts between rule and LLM predic-tions are flagged for manual review to ensure labeling accu-racy. The final implicit subset contains 2,490 instances, includ-ing 1,989 from the original training split and 501 from the original validation split. In our experimental setup, only the 501 instances from the original ScanRefer validation set are used as the held-out test set for evaluating implicit spatial reasoning. Critically, this subset is never used during train-ing, ensuring unbiased evaluation of the model’s generaliza-tion to unseen implicit descriptions. This design ensures that performance gains on implicit cues reflect genuine under-standing rather than memorization, improving the reliability of the evaluation.

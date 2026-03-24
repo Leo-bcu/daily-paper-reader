@@ -1,0 +1,477 @@
+Title: Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping
+
+URL Source: https://arxiv.org/pdf/2603.16788v1
+
+Published Time: Wed, 18 Mar 2026 01:44:53 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+Justin McMillen 1 Robert Van Alphen 2 Taha Sadeghi Chorsi 2 Jason Shabaga 3
+
+Mel Rodgers 2 Rocco Malservisi 2 Timothy Dixon 2 Yasin Yilmaz 1
+
+# Abstract 
+
+Forecasting permafrost thaw from aerial lidar re-quires projecting 3D point cloud features onto 2D prediction grids, yet naive aggregation meth-ods destroy the vertical structure critical in for-est environments where ground, understory, and canopy carry distinct information about subsur-face conditions. We propose a projection de-coder with learned height embeddings that en-able height-dependent feature transformations, al-lowing the network to differentiate ground-level signals from canopy returns. Combined with stratified sampling that ensures all forest strata remain represented, our approach preserves the vertical information critical for predicting sub-surface conditions. Our approach pairs this de-coder with a Point Transformer V3 encoder to pre-dict dense thaw depth maps from drone-collected lidar over boreal forest in interior Alaska. Ex-periments demonstrate that z-stratified projection outperforms standard averaging-based methods, particularly in areas with complex vertical veg-etation structure. Our method enables scalable, high-resolution monitoring of permafrost degra-dation from readily deployable UAV platforms. 
+
+# 1. Introduction 
+
+Regions around the globe are facing environmental impacts from climate warming, including ecosystem shifts and in-frastructure hazards. The circumpolar north has experienced widespread permafrost thaw throughout the last 50 years. Permafrost, defined as soil, rock, or organic material that re-mains frozen for at least two consecutive years (Lewkowicz et al., 2025), stores substantial organic carbon. This thaw-
+
+> 1
+
+Electrical Engineering Department, University of South Florida, Tampa, FL, USA 2Geoscience Department, University of South Florida, Tampa, FL, USA 3XXX Department, University of Colorado Boulder, Boulder, CO, USA. Correspondence to: Yasin Yilmaz <yasiny@usf.edu >, Timothy Dixon <thd@usf.edu >.
+
+Preprint. March 18, 2026. 
+
+ing can create a feedback loop, releasing more greenhouse gasses that intensify warming. The boreal forest of Alaska’s interior is one such place experiencing warming (Intergovernmental Panel on Cli-mate Change (IPCC), 2023). This region’s discontinuous permafrost is controlled by interactions between climate, ecology, and hydrology. Boreal forests provide thick or-ganic soils and canopies which allow permafrost to remain frozen at mean annual air temperatures above 0°C (Bonan & Shugart, 1989; Jorgenson et al., 2010; Zhu et al., 2019). Disturbances such as warming temperatures or wildfires increase the likelihood of thaw initiation (Camill, 1999; Yoshikawa et al., 2002; Jorgenson et al., 2022), which can induce ground subsidence (thermokarst) that develops into sinkhole like features. This change in topography can ex-pand laterally, changing boreal forest into wetlands, releas-ing green houses gases, and destabilizing infrastructure. (Osterkamp et al., 2000; Haughton, 2018; Van der Sluijs et al., 2018; Dearborn et al., 2021). There is a growing need for modeling which can detect and predict thermokarst induced surface deformation (Turetsky et al., 2019). While traditional field measurements remain accurate, they are spatially limited (Bartsch et al., 2023; GTN-P, 2015). Airborne lidar offers high-resolution 3D coverage of terrain and vegetation (Reutebuch et al., 2003), but the input is an unordered 3D point cloud, yet the desired output is a georeferenced 2D map suitable for analysis and decision-making. Existing 3D-to-2D projection methods aggregate point fea-tures within fixed spatial bins, an approach suited to au-tonomous driving but problematic in forests (Li et al., 2023; Hu et al., 2022). Vertical structure carries predictive signal about subsurface conditions, yet standard aggregation over-samples dense canopy while underrepresenting sparse but informative ground returns (Fisher et al., 2016; Kropp et al., 2020; Meng et al., 2010; Campbell et al., 2018). We propose a projection decoder with learned height em-beddings that preserve vertical structure during 3D-to-2D transformation. Our method applies farthest point sampling in the z-dimension to ensure all forest strata are represented 1
+
+> arXiv:2603.16788v1 [eess.IV] 17 Mar 2026 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping
+
+regardless of point density, then augments selected points with learned z-embeddings that enable height-dependent feature trhansformations. Combined with multi-scale fea-ture fusion, our approach produces high-resolution thaw depth maps from single-date lidar. We summarize our contributions as follows: • A learned height embedding that enables the network to apply height-dependent feature transformations during 3D-to-2D projection, allowing differentiation between ground-level and canopy-derived information. • A multi-scale late fusion decoder that independently projects features from each encoder stage, capturing both fine detail and global context. • Experimental analysis showing that explicit height en-coding is the critical component for accurate thaw pre-diction, outperforming both naive aggregation and his-togram baselines in both regression and classification formulations. 
+
+# 2. Related Work 
+
+2.1. Permafrost Monitoring and Forecasting 
+
+The CALM project (Circumpolar Active Layer Monitor-ing) has conducted in-situ monitoring of permafrost for more than three decades (Brown et al., 2000). The project employs temperature monitoring, mechanical probing, and vertical displacement measurements to estimate active layer thickness (ALT), the layer that undergoes seasonal freeze-thaw. Regional or global monitoring efforts expand on these ground-based measures with remotely sensed data (Jorgen-son & Grosse, 2016; Kokelj et al., 2023). Lidar, radar, elec-tromagnetic, and spectral imagery have all added to the tools with which permafrost and its related environmental expres-sions can be studied (Pastick et al., 2013; Li et al., 2015; Chorsi et al., 2024; Lu & Han, 2025). Unoccupied aerial ve-hicles (UAVs) have also established a role in permafrost and active layer studies due to their capacity to produce high-resolution digital surface models through photogrammetry (Gaffey & Bhardwaj, 2020). UAV-lidar, like photogramme-try, can produce point clouds and digital surface models, but where they differ is the ability for ground penetration (Gao et al., 2024; Renette et al., 2024). UAV-lidar can produce full vertical profiles from the ground surface up into the canopy producing a product with higher information den-sity. In order to fully utilize such large datasets, machine learning models have become standard tools. These mod-els have been used to extrapolate permafrost extent, detect thaw induced landslides, and predict active layer thickness (Pastick et al., 2013; Li et al., 2017; Lou et al., 2023). 
+
+2.2. 3D Computer Vision 
+
+Point cloud deep learning has evolved from per-point pro-cessing to transformer architectures capable of handling large-scale outdoor lidar. PointNet introduced learning di-rectly on unstructured point sets using shared MLPs and symmetric pooling for permutation invariance (Qi et al., 2016). PointNet++ extended this through hierarchical set abstraction layers with multi-scale grouping to handle non-uniform densities (Qi et al., 2017). The Point Transformer series introduced attention mechanisms for capturing long-range dependencies. Point Transformer applied vector atten-tion within local neighborhoods (Zhao et al., 2021). Point Transformer V2 unified multi-head and vector attention with partition-based pooling (Wu et al., 2022), and Point Transformer V3 prioritized scalability by replacing k-NN searches with serialized neighbor mapping and Flash Atten-tion (Wu et al., 2024). These efficiency gains make PTv3 suitable as an encoder backbone for processing large drone-collected point clouds. 
+
+2.3. 3D-to-2D Feature Projection 
+
+The autonomous driving domain has developed bird’s-eye-view (BEV) projection methods for dense prediction (Li et al., 2023). VoxelNet introduced voxel feature encod-ing to transform points within spatial bins (Zhou & Tuzel, 2017), while PointPillars improved efficiency by organizing points into vertical pillars and using PointNets to learn per-pillar features scattered to pseudo-images (Lang et al., 2019). Camera-based approaches such as Lift-Splat-Shoot (Philion & Fidler, 2020) and BEVFormer (Li et al., 2022) lift image features to 3D before aggregating to BEV grids. BEVFusion (Liu et al., 2024) unified lidar and camera modalities in a shared BEV space. These BEV methods were designed primarily for object detection rather than continuous dense regression, and typi-cally employ fixed spatial binning that allows dense regions to dominate aggregated features. Our approach instead queries k-nearest neighbors in XY for each output pixel, then applies farthest point sampling in Z to ensure vertical coverage. We then augment selected points with learned height embeddings, with learned height embeddings en-abling height-dependent feature transformations. 
+
+# 3. Data Collection 
+
+We chose a small field site operated by the U.S. Army Corps of Engineers’ Cold Regions Research and Engineering Lab. This site (Farmer’s Loop 2 (FL2)), located in Fairbanks, Alaska, is one of two thermokarst study areas on Farmer’s Loop Road. This site was chosen as it contains several thermokarst indicators. Figure 1 shows both the site’s lo-cation in Alaska, as well as a bird’s eye view of the data 2Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping  
+
+> Figure 1. Orthophoto field map of Farmer’s Loop 2 field site. Extent of the orhtophoto matches the extent of the lidar data. Inset: Location of Fairbanks, AK where our field site is located.
+
+collection site. It displays thermokarst related microtopo-graphic shifts, changing vegetation cover, and hydrologic conditions indicative of rapidly thawing permafrost. Specif-ically, vegetation here is moving to a predominantly woody vegetation cover which can be indicative of warming soils along side recent measurements showing a deepening active layer. We collected data at FL2 at the end of freeze in May 2024 and at the end of summer thaw in August 2024 to capture the ground-truth thaw map. An md-Lidar1000HR UAV equipped with a small-form-factor dual lidar-camera system was used. The UAV is pictured in Figure 2. The UAV-lidar is a combination of a Velodyne Puck VLP-16 lidar and a SONY IMX264 camera. Images are captured simul-taneously with the lidar data. The VLP-16 lidar outputs a near-infrared laser pulse (903 nm wavelength) at a rep-etition rate of approximately 290,000 pulses per second, with a scan angle of 15° on either side of nadir and a 360° horizontal field of view. To enable ground-truth comparison to the lidar point cloud we deployed check points throughout the field site. Check-point locations were selected to optimize for visibility to the UAV-lidar and GNSS satellites. A Trimble R10 was used as the base station with a Trimble R12 rover used to survey each check point. Additionally, the Trimble R10 acted as a GNSS base station for post-proccessing UAV trajectories. The raw lidar data from May and August are converted to elevation maps using the LP360 software by GeoCue. The difference between the two elevation maps provides the  
+
+> Figure 2. md-Lidar1000HR UAV with lidar and RGB camera.
+
+ground truth elevation change. Our objective is to forecast the elevation change by using the lidar point cloud from May as input. Samples of point cloud, ground truth map, and forecasted map can be seen in Figure 5. 
+
+# 4. Methodology 
+
+4.1. Point Cloud Creation 
+
+The LP360 software offers a simple pipeline that steps through each stage of lidar point cloud creation. Importantly, UAV trajectories are corrected based on post-processed base station location and updated GNSS satellite orbits. Finally, images collected in-flight are matched across the point cloud resulting in a final point cloud with RGB color information. The final point cloud was checked for any misalignment in geolocation with ground control points. The processed point cloud was exported alongside an interpolated digital terrain model (DTM) based on the classified ground points of the point cloud. For each time step this gives us a full colorized and classified point cloud as well as an interpolated DTM for further use. Given the colored point cloud P = {(pi, fi)}Ni=1 where 
+
+pi ∈ R3 denotes spatial coordinates and fi ∈ R4 denotes per-point attributes (RGB, intensity), our goal is to predict a dense thaw depth map Y ∈ RH×W . We frame this as a 3D-to-2D projection problem analogous to bird’s-eye-view perception in autonomous driving, but targeting continuous regression rather than object detection. 
+
+4.2. Encoder 
+
+We adopt Point Transformer V3 (PTv3) (Wu et al., 2024) as our point cloud encoder. PTv3 processes 7-dimensional input (XYZ coordinates, RGB, and intensity) through a hi-erarchical architecture, producing multi-scale point features at four stages with channel dimensions {64 , 128 , 256 , 512 }.Each stage captures structure at a different spatial granular-ity: early stages preserve fine-grained local detail while later 3Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping       
+
+> Figure 3. Model architecture overview. A point cloud with per-point features (XYZ, RGB, intensity) is processed by a Point Transformer V3 encoder, which produces multi-scale point features at four hierarchical stages. Each stage is independently projected to a 2D feature map via our height-aware projection mechanism with learned z-embeddings (see Fig. 4), preserving vertical forest structure during the 3D-to-2D transformation. The resulting feature maps are concatenated and fused through 1×1convolutions. A lightweight convolutional head produces the final per-pixel thaw depth prediction, supporting both regression and classification formulations.
+
+stages encode broader context. We leverage all four scales in our decoder, treating the encoder as a fixed architectural component and focusing our contribution on the projection mechanism. The entire architecture is shown graphically in Fig. 3. 
+
+4.3. Multi-Scale Z-Stratified Projection Decoder 
+
+The core challenge in projecting 3D point features to a 2D grid lies in preserving height-dependent information. In forest environments, features from ground, understory, and canopy carry distinct signals about subsurface conditions, yet naive aggregation conflates them. We propose a decoder that (1) ensures all vertical strata are represented through stratified sampling, and (2) learns height-dependent feature transformations via explicit z-embeddings. We propose a multi-scale decoder that processes each en-coder stage independently before fusing their 2D representa-tions. This late-fusion strategy allows fine scales to capture local geometric detail while coarse scales provide global context. This overall 3D to 2D projection module is shown graphically in Fig. 4. For each encoder stage s ∈ { 1, 2, 3, 4}, we first project point features to a common dimension D = 128 via a learned linear layer. We then define a regular grid of H ×W = 64 ×
+
+64 query locations Q = {qj }HW j=1 in normalized [−1, 1] 2
+
+space, where each query represents a cell center for feature aggregation. For each query qj , we identify M = 2 k candidate points nearest in XY-distance, where k = 32 is the target neigh-borhood size. Rather than selecting the k nearest points, we apply farthest point sampling (FPS) over the M candidates in the z-dimension to select k points. FPS iteratively builds a subset by always selecting the point maximally distant from all previously selected points; applied to z-coordinates, this produces a set that spans the full vertical extent of the local point distribution. This ensures all forest strata remain represented regardless of point density. Selected points are augmented with positional context. For each selected point (pi, fi) in query qj ’s neighborhood, we embed the z-coordinate in pi through a learnable MLP 
+
+ψ : R → RD and add it to the projected features ϕ(fi):
+
+˜fi = ϕ(fi) + ψ(zi) (1) where ϕ is the stage-specific linear projection. This embed-ding allows the network to learn height-dependent feature transformations. We aggregate neighborhood features by exploiting vertical ordering. The k selected points are sorted by z-coordinate (ground to canopy), and their features are concatenated into a single vector encoding the full vertical profile: 
+
+vj = [ w1˜fπ(1) ; w2˜fπ(2) ; . . . ; wk˜fπ(k)] (2) where π is the z-sorting permutation and wi are spatially-decaying weights based on XY-distance: 
+
+wi = exp  −λ · max(0 , ∥qj − pxy i ∥ − τ ) (3) with threshold τ = 0 .1 and falloff λ = 10 . Points within the threshold receive unit weight; beyond it, influence decays exponentially. This is to prevent extremely far points from contributing excessively in sparse areas. The concatenated profile vj ∈ RkD is projected back to RD
+
+via a two-layer MLP with LayerNorm and GELU activation, yielding the aggregated feature gj for query location j.Each scale produces an independent feature map G(s) =[gj ] ∈ RH×W ×D . We concatenate these along the channel dimension and fuse via 1 × 1 convolutions: 
+
+Y = Conv 1×1
+
+ [G(1) ; G(2) ; G(3) ; G(4) ] (4) with intermediate GroupNorm and GELU activations, pro-gressively reducing from 4D channels to the final output dimension (1 for regression, C for classification). 4Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping                
+
+> Figure 4. Height-aware projection mechanism. (a) Input point cloud with vertical forest structure (ground, understory, canopy) above a query grid cell qj. (b) From XY-nearest candidates ( M= 2 k), farthest point sampling in the z-dimension selects kpoints that span the full vertical extent. (c) Selected points are sorted by height and augmented with learned z-embeddings that enable height-dependent feature transformations. (d) The concatenated profile vector ( k×D) is projected through an MLP to produce a single aggregated feature. (e) This process repeats for all query locations, yielding an H×W×Dfeature map.
+
+# 5. Experiments 
+
+We evaluate our method on a dataset of aerial lidar col-lected over permafrost terrain in Fairbanks, Alaska. The dataset comprises temporally paired acquisitions: May im-agery serves as model input, while August imagery provides ground truth after seasonal thaw. Ground truth thaw depth is derived from interpolated elevation change between the two acquisitions (see Section 3) 1.The continuous thaw depth raster is partitioned into 64 × 64 
+
+spatial tiles. Tiles containing data voids, or errors (tiles with change values greater than ±1m) are excluded, yielding 781 valid samples. From these valid samples, each fifth was designated as an evaluation tile, leaving 624 tiles for training and 157 for evaluation. 
+
+5.1. Preprocessing 
+
+For each tile, we extract all points from the May acquisition whose XY coordinates fall within the tile boundary. Spatial X and Y coordinates are normalized to [−1, 1] (tile-local), while Z is normalized to [0 , 1] globally across the dataset to preserve relative elevation information. Per-point fea-tures (RGB, intensity) are standardized to zero mean and unit variance. Ground truth thaw depths are transformed to approximate a standard normal distribution. We clip the 1st and 99th percentiles to remove outliers before normalization. Predictions are denormalized for evaluation. 
+
+5.2. Implementation Details 
+
+We implement our model in PyTorch using Point Trans-former V3 as the encoder backbone. We use [2 , 2, 2, 2] 
+
+> 1The dataset and codes will be publicly available.
+
+layers in each stage. The decoder uses hidden dimension 
+
+D = 128 , k = 32 neighbors, candidate multiplier M = 2 ,XY falloff threshold τ = 0 .1 and falloff rate λ = 10 . More discussion on hyperparameter selection can be found in the Appendix. Output grid resolution is 64 ×64 . PTv3 is trained from scratch on our dataset. We use AdamW optimizer with learning rate 1 × 10 −5 and a polynomial learning scheduler. We start training with a 2 epoch warm up linearly ramping from 10% to the full learning rate. The model is trained for a total of 100 epochs. We use batch size 1 with gradient accumulation over 2 steps, yielding an effective batch size of 2. Using Farthest Point Sampling (FPS), we cap the upper limit of points per tile to 60,000. Mixed precision (FP16) training and Flash Attention are also used to improve training speed and reduce memory size. Data augmentation includes random 90 ◦ rotations and random jitter in the xyz coordinates. We evaluate after each epoch and retain the checkpoint with lowest validation loss. 
+
+5.3. Evaluation Metrics 
+
+Regression and classification models are trained with mean squared error (MSE) and cross entropy with inverse square weights. We report task-specific metrics on the held-out test set. 
+
+Regression. For continuous thaw depth prediction, we report root mean squared error (RMSE), mean absolute error (MAE), and coefficient of determination ( R2). All error metrics are computed in original units (centimeters) after denormalization. 
+
+Classification. While continuous predictions offer fine-5Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping  
+
+> Table 1. Class distribution for dataset after discretizing the contin-uous ground truth labels.
+
+Class Boundary (cm) Percentage High Heave > 1.6 24.8% Medium-high Heave [1 .6, 1.0) 16.2% Medium-low Heave [1 .0, 0.5) 15.9% Low Heave [0 .5, 0.2) 8.5% No Change [0 .2, −0.2] 11.4% Low Thaw (−0.2, −1.0] 16.1% High Thaw < −1.0 7.1% grained detail, operational deployment often benefits from discrete severity categories. We evaluate a seven-class for-mulation spanning High Heave to High Thaw, with bound-aries and class distributions shown in Table 1. To measure classification performance, we report both class specific and mean Intersection over Union (mIoU). Additionally, since the classes form an ordinal scale from thaw to heave, we additionally report metrics that account for class ordering. Quadratic Weighted Kappa (QWK) measures agreement between predictions and ground truth while penalizing dis-agreements quadratically by ordinal distance: QWK = 1 −
+
+P 
+
+> i,j
+
+wij Oij 
+
+P 
+
+> i,j
+
+wij Eij 
+
+, wij = (i − j)2
+
+(K − 1) 2 (5) where Oij is the observed confusion matrix, Eij is the ex-pected confusion matrix under random agreement, K is the number of classes, and wij weights disagreements by squared class distance. QWK ranges from −1 (systematic disagreement) to 1 (perfect agreement), with 0 indicating chance-level performance. Mean Absolute Error in Class Units (MAECU) directly measures average ordinal displacement: MAECU = 1
+
+N
+
+> N
+
+X
+
+> n=1
+
+|ˆyn − yn| (6) where ˆyn and yn are predicted and true class indices, re-spectively. Unlike mIoU, both metrics capture whether misclassifications fall to neighboring classes (minor error) or opposite ends of the scale (severe error). 
+
+5.4. Baselines 
+
+To evaluate the contribution of our proposed decoder, we compare it against a multi-scale mean-pooling baseline that shares the same PTv3 encoder and CNN refinement archi-tecture. For each encoder stage i, point features fj ∈ RDi
+
+are first projected to a common dimension via a learned linear layer. Points are then binned to a 2D grid based on their XY coordinates, with features aggregated via mean pooling: 
+
+gxy = 1
+
+|N xy |
+
+X
+
+> j∈N xy
+
+˜fj (7) where Nxy denotes the set of points falling within grid cell 
+
+(x, y ), and ˜fj are features projected to the common dimen-sion. The grids from all encoder stages are concatenated channel-wise and passed through the same convolutional refinement network used by our method. This baseline represents a straightforward application of PTv3 to dense prediction. It utilizes multi-scale fusion and identical output processing, differing only in the 3D-to-2D projection mech-anism. Crucially, mean pooling across all heights causes ground-level information to be diluted by canopy returns, which dominate point density in forested scenes. Our z-stratified decoder addresses this by explicitly preserving vertical structure during projection. To isolate whether categorical vegetation structure alone pre-dicts thaw depth, we evaluate a histogram baseline that uses no learned point features. For each grid cell, we compute the proportion of points belonging to each LP360 classification category (ground, low vegetation, medium vegetation, high vegetation) along with log point density. This 6-channel feature map (5 class proportions + density) is processed by a lightweight CNN with three convolutional layers. This baseline tests whether the predictive signal is simply ”what vegetation types are present” versus learned geometric and radiometric features. 
+
+5.5. Results 
+
+We evaluate our approach under both regression and classifi-cation formulations. Regression directly predicts continuous thaw depth, while classification assigns pixels to discrete severity categories. 
+
+Regression. Table 2 presents regression performance on the held-out evaluation set. The histogram approach per-forms worst (R 2 = 0 .656 ), confirming that categorical veg-etation proportions alone poorly predict thaw depth. Mean-pooling improves (R 2 = 0 .705 ) by leveraging learned point features, but conflates canopy and ground-level informa-tion. Our decoder substantially outperforms both, reduc-ing RMSE by 70% relative to mean pooling ( 0.515 →
+
+0.121 cm ) and achieving R 2 = 0 .984 . These gains demon-strate that height-dependent feature encoding is vital for accurate thaw prediction. 
+
+Classification. Table 3 reports classification performance. The histogram baseline achieves only 23.3 mIoU, demon-strating that categorical vegetation proportions alone are insufficient for thaw prediction despite vegetation struc-ture’s known correlation with permafrost dynamics. The mean-pooling baseline improves substantially to 57.5 mIoU, 6Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping   
+
+> Table 2. Regression results. Best results in bold .
+
+Method RMSE ↓ MAE ↓ R2 ↑
+
+Histogram 0.556 0.460 0.656 Mean-pooling 0.515 0.265 0.705 
+
+Ours 0.121 0.089 0.984 
+
+indicating that learned point features capture information beyond vegetation categories. Our method achieves a 8.6-point improvement in mIoU over the mean-pooling base-line, with the largest gains at the ordinal extremes: +18 .6
+
+points for High heave (C1) and +27 .9 points for High Thaw (C7). Accurate discrimination at the extremes is particularly important for infrastructure monitoring, where confusing severe thaw with heave could lead to opposite intervention decisions. The ordinal metrics reveal more about how the models misclassify. QWK improves from 0.52 (histogram) to 0.75 (mean-pooling) to 0.97 (ours), indicating that when our model does misclassify, predictions remain closer to the true severity on the thaw-heave spectrum. This is corrobo-rated by the reduction in MAECU from 0.53 (mean-pooling) to 0.19 class units. This shows that explicitly augmenting features by height enables the network to better distinguish ground surface conditions. 
+
+5.6. Ablation Study 
+
+We ablate key decoder components in Table 4, showing both classification and regression results. Removing the learned z-embedding produces the largest performance drop ( −7.4 points in mIoU), indicating that height-dependent feature modulation is the most critical component of our decoder. Without explicit elevation en-coding, the model cannot distinguish features originating from canopy versus ground returns during aggregation, even when the projection strategy preserves their spatial separa-tion. Replacing our stratified profile sampling with mean pooling reduces mIoU by 3.8 points. Mean pooling allows dense canopy returns to dominate the aggregated features, diluting the sparse but informative ground-level points that carry the strongest signal for thaw prediction. Taking only the closest 
+
+k neighbors, rather than using FPS to maximize the z-profile of each pixel, produces a drop in mIoU of 0.8 points. This drop indicates that spreading out sampled points maximizes the information available to the decoder. Without it, sampled points may be extremely close together, which intuitively should carry redundant information if they represent the same object. Conversely, setting M = 4 reduces miou by 
+
+3.2 points. This is because a higher M allows for farther points to be sampled by FPS during decoding, which are too far away to contribute meaningful local information. Finally, using only the final encoder stage ( S4) decreases mIoU by 4.6 points. Earlier stages capture fine-grained local geometry at higher point density, while later stages provide broader semantic context. Fusing across scales al-lows the decoder to leverage both detailed surface structure and coarse vegetation patterns. 
+
+# 6. Discussion 
+
+Our results demonstrate that learned height encoding is es-sential for accurate dense prediction in forested lidar scenes. The 70% reduction in RMSE and near-perfect R2 of 0.974 
+
+indicate that our decoder successfully preserves ground-level information beneath dense canopy coverage, enabling larger gains at the extremes of the thaw-heave spectrum where accurate prediction matters most for downstream decision-making. The histogram baseline’s poor performance ( 23 .3 mIoU) confirms that categorical vegetation structure alone is insuf-ficient despite vegetation’s established relationship with per-mafrost thermal dynamics. The 34-point gap between his-togram and mean-pooling baselines indicates that PTv3 cap-tures meaningful representations beyond categorical struc-ture. The ablation study shows that learned z-embeddings contribute more to performance than the sampling strategy itself ( −7.4 vs −0.8 mIoU). This suggests the decoder’s effectiveness lies not in only including points from multi-ple heights, but in learning how to weight features based on their vertical origin, essentially functioning as a learned vertical attention mechanism. From an application perspective, forecasting sub-centimeter thaw depth from single-timepoint winter lidar enables proac-tive infrastructure management by identifying at-risk areas before thaw occurs The strong performance on extreme classes is the most valuable in this context. Distinguishing severe thaw from heave represents the difference between subsidence risk requiring intervention and frost-driven uplift that may self-correct. This work is not without limitations. Most significantly, our evaluation is constrained to a single geographic site in interior Alaska, comprising 781 spatial tiles. While the held-out evaluation set was spatially disjoint from training data, the model has not been tested on different forest types, permafrost regimes, or climatic conditions. The extent to which learned representations transfer across sites remains an open question. Beyond permafrost monitoring, our approach addresses a general challenge in 3D scene understanding: projecting volumetric features to 2D when informative content is oc-cluded by dominant structures. Applications include under-story estimation in forestry, road surface prediction beneath vegetation, and ground-level inference in urban scenes. Fu-ture work should prioritize cross-site validation and multi-7Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping  
+
+> Table 3. Classification results. Per-class IoU and mean IoU (%). QWK = Quadratic Weighted Kappa; MAECU = Mean Absolute Error in Class Units.
+
+Method C1 C2 C3 C4 C5 C6 C7 mIoU ↑ QWK ↑ MAECU ↓
+
+Histogram 50.2 21.8 14.3 11.9 11.1 29.0 24.6 23.3 0.52 1.27 Mean-pooling 70.8 67.7 65.1 42.8 54.7 63.5 37.9 57.5 0.75 0.53 
+
+Ours 89.4 67.5 68.0 43.3 60.1 67.6 65.8 66.1 0.97 0.19   
+
+> Figure 5. Qualitative comparison. Each row: input point cloud, regression ground truth, regression prediction, classification ground truth, classification prediction.
+> Table 4. Ablation study on decoder components.
+
+Variant mIoU (%) RMSE (cm) Full model 66.1 0.121 
+
+Projection strategy 
+
+Mean pooling (no profile) 62.3 0.297 Closest-k (no FPS in z) 65.3 0.151 
+
+M = 4 candidates 62.9 0.272 
+
+Feature encoding 
+
+w/o z-embedding 58.7 0.448 
+
+Multi-scale fusion 
+
+No multi-scale ( S4 only) 61.5 0.192 temporal sequences to learn seasonal dynamics. Interpreting the learned z-embeddings’ relationship to vegetation strata could yield insights for both remote sensing and permafrost modeling. 
+
+# 7. Conclusion 
+
+We presented a projection decoder with learned height em-bedding for dense prediction from aerial lidar in forested environments. By augmenting point features with explicit z-encodings, our approach enables the model to learn height-dependent feature transformations that differentiate ground-level signals from canopy returns. Combined with stratified sampling that ensures all forest strata remain represented, the vertical information critical for predicting subsurface conditions is preserved. This enables thaw depth prediction from single-date winter point clouds, achieving a 70% re-duction in RMSE and near-perfect ordinal agreement (QWK = 0.97 ) on our permafrost monitoring task. The ablation analysis reveals that learned z-embeddings contribute more to performance than the projection strat-egy itself, suggesting that the decoder’s effectiveness lies in learning height-dependent feature transformations rather than just sampling across strata. This finding has many implications beyond permafrost: any dense prediction task where vertically-distributed 3D structure must be collapsed 8Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+to 2D (understory estimation in forestry, road surface predic-tion beneath vegetation, ground-level inference in occluded urban scenes) may benefit from explicit elevation encoding during projection. 
+
+# Impact Statement 
+
+We present a projection decoder with learned height embed-dings that enables accurate dense predictions from aerial lidar in forested environments, achieving sub-centimeter permafrost thaw estimation from single-date acquisitions. Our approach addresses the general challenge in 3D scene understanding of inferring ground-level properties beneath occluding structures, with immediate applications in Arctic infrastructure monitoring and climate change mitigation. 
+
+# References 
+
+Bartsch, A., Strozzi, T., and Nitze, I. Permafrost monitoring from space. Surveys in Geophysics , pp. 1579–1613, 2023. ISSN 44. doi: 10.1007/s10712-023-09770-3. Bonan, G. B. and Shugart, H. H. Environmental factors and ecological processes in boreal forests. Annu. Rev. Ecol. Syst , 20:1–28, 1989. URL www.annualreviews. org .Brown, J., Hinkel, K. M., and Nelson, F. E. The circumpolar active layer monitoring (calm) program: Research designs and initial results 1. Polar Ge-ography , 24(3):166–258, 2000. doi: 10.1080/ 10889370009377698. URL https://doi.org/10. 1080/10889370009377698 .Camill, P. Patterns of boreal permafrost peatland vegetation across environmental gradients sensitive to climate warm-ing. Canadian Journal of Botany , 77:721–733, 1999. ISSN 00084026. doi: 10.1139/B99-008. Campbell, M. J., Dennison, P. E., Hudak, A. T., y M. Parham, L., and Butler, B. W. Quanti-fying understory vegetati on density using small-footprint airborn e lidar. Remote Sensing of Environment , 215:330–342, 2018. ISSN 0034-4257. doi: https://doi.org/10.1016/j.rse.2018.06. 023. URL https://www.sciencedirect.com/ science/article/pii/S0034425718303018 .Chorsi, T. S., Meyer, F. J., and Dixon, T. H. To-ward long-term monitoring of regional permafrost thaw with satellite interferometric synthetic aperture radar. The Cryosphere , 18:3723–3740, 2024. ISSN 19940416. URL https://link.gale.com/ apps/doc/A805497895/AONE?u=tamp44898& sid=bookmark-AONE&xid=6842e4aa .Dearborn, K. D., Wallace, C. A., Patankar, R., and Baltzer, J. L. Permafrost thaw in boreal peatlands is rapidly altering forest community composition. 
+
+Journal of Ecology , 109:1452–1467, 3 2021. ISSN 1365-2745. doi: 10.1111/1365-2745.13569. URL 
+
+https://onlinelibrary.wiley.com/doi/ full/10.1111/1365-2745.13569https: //onlinelibrary.wiley.com/doi/ abs/10.1111/1365-2745.13569https: //besjournals.onlinelibrary.wiley. com/doi/10.1111/1365-2745.13569 .Fisher, J., Estop Aragon ´es, C., Thierry, A., Charman, D., Wolfe, S., Hartley, I., Murton, J., Williams, M., and Phoenix, G. The influence of vegetation and soil charac-teristics on active-layer thickness of permafrost soils in boreal forest. Global change biology , 22, 02 2016. doi: 10.1111/gcb.13248. Gaffey, C. and Bhardwaj, A. Applications of un-manned aerial vehicles in cryosphere: Latest ad-vances and prospects. Remote Sensing , 12:948, 2020. doi: https://doi.org/10.3390/rs12060948. Copy-right - © 2020. This work is licensed under http://creativecommons.org/licenses/by/3.0/ (the “Li-cense”). Notwithstanding the ProQuest Terms and Con-ditions, you may use this content in accordance with the terms of the License. Last updated - 2023-12-04 Subject-sTermNotLitGenreText - Greenland; Antarctica. Gao, K., Li, G., Chen, D., Su, A., Cao, Y., Li, C., Wu, G., Du, Q., Lin, J., Wang, X., Huang, S., Tang, L., and Jia, H. Pavement damage characteristics in the permafrost regions based on uav images and airborne lidar data. Cold Regions Science and Technology , 228:104313, 12 2024. ISSN 0165-232X. doi: 10.1016/J.COLDREGIONS.2024.104313. URL https://www.sciencedirect.com/ science/article/pii/S0165232X24001940 .GTN-P. Global Terrestrial Network for Permafrost meta-data for permafrost boreh oles (TSP) and active layer monitoring ( CALM) sites, 2015. URL https://doi. org/10.1594/PANGAEA.842821 . Supplement to: Biskaborn, Boris K ; Lanckman, Jean-Pierre; Lantuit, Hugues ; Elger, Kirsten; Streletskiy, Dmitry A; Cable, William L; Romanovsky, Vladimir E (2015): The new database of the Global Terrestrial Network for Permafrost (GTN -P). Earth System Science Data, 7(2), 24 5-259, https://doi.org/10.5194/essd-7-24 5-2015. Haughton, E. Permafrost thaw-induced forest to wetland conversion: potential impacts on snowmelt and basin runoff in northwestern Canada . PhD thesis, Wilfrid Laurier University, 2018. URL https://scholars. wlu.ca/etd .9Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+Hu, J. S. K., Kuai, T., and Waslander, S. L. Point density-aware voxels for lidar 3d object detection, 2022. URL 
+
+https://arxiv.org/abs/2203.05662 .Intergovernmental Panel on Climate Change (IPCC). 
+
+Climate Change 2021: The Physical Science Ba-sis. Working Group I Contribution to the Sixth Assessment Report of the Intergovernmental Panel on Climate Change . Cambridge University Press, 2023. doi: 10.1017/9781009157896. URL https: //www.cambridge.org/core/product/ 415F29233B8BD19FB55F65E3DC67272B .Jorgenson, M. T. and Grosse, G. Remote sensing of landscape change in permafrost regions. Per-mafrost and Periglacial Processes , 27(4):324–338, 2016. doi: https://doi.org/10.1002/ppp.1914. URL 
+
+https://onlinelibrary.wiley.com/doi/ abs/10.1002/ppp.1914 .Jorgenson, M. T., Romanovsky, V., Harden, J., Shur, Y., O’donnell, J., Schuur, E. A. G., Kanevskiy, M., Marchenko, S., Jorgenson, M. T. ., Romanovsky, V., Marchenko, S., Shur, Y., Kanevskiy, M., and Schuur, E. A. G. Resilience and vulnerability of permafrost to climate change. Canadian Journal of Forest Research ,40:1219–1236, 2010. doi: 10.1139/X. Jorgenson, M. T., Kanevskiy, M., Roland, C., Hill, K., Schirokauer, D., Stehn, S., Schroeder, B., and Shur, Y. Repeated permafrost formation and degradation in boreal peatland ecosystems in relation to climate ex-tremes, fire, ecological shifts, and a geomorphic legacy. 
+
+Atmosphere , 13:1170, 7 2022. ISSN 20734433. doi: 10.3390/atmos13081170. Kokelj, S. V., Gingras-Hill, T., Daly, S. V., Morse, P. D., Wolfe, S. A., Rudy, A. C., van der Sluijs, J., Weiss, N., Brendan O’Neill, H., Baltzer, J. L., Lantz, T. C., Gib-son, C., Cazon, D., Fraser, R. H., Froese, D. G., Giff, G., Klengenberg, C., Lamoureux, S. F., Quinton, W. L., Turetsky, M. R., Chiasson, A., Ferguson, C., Newton, M., Pope, M., Paul, J. A., Wilson, M. A., and Young, J. M. The northwest territories thermokarst mapping collective: a northern-driven mapping collaborative toward under-standing the effects of permafrost thaw. Arctic Science ,9(4):886–918, 2023. doi: 10.1139/as-2023-0009. URL 
+
+https://doi.org/10.1139/as-2023-0009 .Kropp, H., Loranty, M. c. M., Natali, S. M., Kholodov, A. L., Rocha, A. V., My ers Smith, I., Abbot, Benjamin W an d Abermann, J., Blanc-Betes, E., Blok, D., Blume-Werry, G., Boike, J., Breen, A. L., Ca hoon, S. M. P., Christiansen, C. T., Douglas, T. A., Epstein, H. a. E., Frost, G. V., Goeckede, M., Høye, T. T., Mamet, S. e. D., O’Donnell, J. A., Olefe ldt, D., Phoenix, G. K., Sal mon, V. G., Sannel, A. B. K., Smith, S. L., Sonnentag, Oliver a nd Vaughn, L. S., Williams, M. h., Elberling, B., Gough, Laura a nd Hjort, J., Lafleur, P. M., E uskirchen, E. S., Heijmans, M. u. M., Humphreys, E. R., Iwata, H., Jones, B. M., Jorgens on, M. T., Gr ¨unberg, I., Kim, Y., Laun-dre, J., Mauritz, M., Michelsen, A., Sch aepman Strub, G., Tape, Ken D a nd Ueyama, M., Lee, Bang-Yong a nd Langley, K., and Lund, M. Shallow soils are warmer under trees and tall shrubs across arctic and boreal ecosys-tems. Environmental Research Letters , 16(1):015001, dec 2020. doi: 10.1088/1748-9326/abc994. URL https: //doi.org/10.1088/1748-9326/abc994 .Lang, A. H., Vora, S., Caesar, H., Zhou, L., Yang, J., and Beijbom, O. Pointpillars: Fast encoders for ob-ject detection from point clouds, 2019. URL https: //arxiv.org/abs/1812.05784 .Lewkowicz, A., O’Neill, H., Wolfe, S., Roy-L ´eveill ´ee, P., V.E., R., Hoeve, E., Gruber, S., Brooks, H., Rudy, A., Koenig, C., Brown, N., and Bonnaventure, P. Glossary of permafrost science and engineering. Technical report, Canadian Permafrost Association, 2025. URL http: //doi.org/10.3138/cpa-gpse .Li, A., Tan, X., Wu, W., Liu, H., and Zhu, J. Predicting active-layer soil thickness using topographic variables at a small watershed scale. PLoS ONE , 12, 9 2017. ISSN 19326203. doi: 10.1371/JOURNAL.PONE.0183742. Li, H., Sima, C., Dai, J., Wang, W., Lu, L., Wang, H., Zeng, J., Li, Z., Yang, J., Deng, H., Tian, H., Xie, E., Xie, J., Chen, L., Li, T., Li, Y., Gao, Y., Jia, X., Liu, S., Shi, J., Lin, D., and Qiao, Y. Delving into the devils of bird’s-eye-view perception: A review, evaluation and recipe, 2023. URL https://arxiv.org/abs/2209.05324 .Li, Z., Zhao, R., Hu, J., Wen, L., Feng, G., Zhang, Z., and Wang, Q. Insar analysis of surface deformation over permafrost to estimate active layer thickness based on one-dimensional heat transfer model of soils open. Scien-tific Reports , 5:15542, 10 2015. doi: 10.1038/srep15542. URL www.nature.com/scientificreports/ .Li, Z., Wang, W., Li, H., Xie, E., Sima, C., Lu, T., Yu, Q., and Dai, J. Bevformer: Learning bird’s-eye-view rep-resentation from multi-camera images via spatiotempo-ral transformers, 2022. URL https://arxiv.org/ abs/2203.17270 .Liu, Z., Tang, H., Amini, A., Yang, X., Mao, H., Rus, D., and Han, S. Bevfusion: Multi-task multi-sensor fusion with unified bird’s-eye view representation, 2024. URL 
+
+https://arxiv.org/abs/2205.13542 .Lou, P., Wu, T., Chen, J., Fu, B., Zhu, X., Chen, J., Wu, X., Yang, S., Li, R., Lin, X., Shang, C., Wen, A., Wang, 10 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+D., La, Y., and Ma, X. Recognition of thaw slumps based on machine learning and uavs: A case study in the qilian mountains, northeastern qinghai-tibet plateau. 
+
+International Journal of Applied Earth Observation and Geoinformation , 116:103163, 2 2023. ISSN 1569-8432. doi: 10.1016/J.JAG.2022.103163. Lu, P. and Han, J. Remote sensing for identification and mapping of thermokarst landforms: A review. Permafrost and Periglacial Processes , 36:329–342, 6 2025. ISSN 10991530. doi: 10.1002/PPP.2275. Meng, X., Currit, N., and Zhao, K. Ground filtering al-gorithms for airborne lidar data: A review of critical issues. Remote Sensing , 2(3):833–860, 2010. ISSN 2072-4292. doi: 10.3390/rs2030833. URL https: //www.mdpi.com/2072-4292/2/3/833 .Osterkamp, T. E., Viereck, L., Shur, Y., Jorgenson, M. T., Racine, C., Doyle, A., and Boone, R. D. Observations of thermokarst and its impact on bo-real forests in alaska, u.s.a. Arctic, Antarctic, and Alpine Research , 32:303–315, 8 2000. ISSN 1523-0430. doi: 10.1080/15230430.2000.12003368. URL 
+
+https://www.tandfonline.com/doi/abs/ 10.1080/15230430.2000.12003368 .Pastick, N. J., Jorgenson, M. T., Wylie, B. K., Minsley, B. J., Ji, L., Walvoord, M. A., Smith, B. D., Abraham, J. D., and Rose, J. R. Extending airborne electromagnetic surveys for regional active layer and permafrost mapping with remote sensing and ancillary data, yukon flats ecoregion, central alaska. Permafrost and Periglacial Processes , 24: 184–199, 4 2013. ISSN 10456740. doi: 10.1002/PPP. 1775. Philion, J. and Fidler, S. Lift, splat, shoot: Encoding images from arbitrary camera rigs by implicitly unprojecting to 3d, 2020. URL https://arxiv.org/abs/2008. 05711 .Qi, C. R., Su, H., Mo, K., and Guibas, L. J. Pointnet: Deep learning on point sets for 3d classification and segmenta-tion. arXiv preprint arXiv:1612.00593 , 2016. Qi, C. R., Yi, L., Su, H., and Guibas, L. J. Pointnet++: Deep hierarchical feature learning on point sets in a metric space. arXiv preprint arXiv:1706.02413 , 2017. Renette, C., Olvmo, M., Thorsson, S., Holmer, B., and Reese, H. Multitemporal uav lidar detects seasonal heave and subsidence on palsas. The Cryosphere , 18: 5465–5480, 11 2024. ISSN 1994-0424. doi: 10.5194/ tc-18-5465-2024. URL https://tc.copernicus. org/articles/18/5465/2024/ .Reutebuch, S. E., McGaughey, R. J., Andersen, H.-E., and Carson, W. W. Accuracy of a high-resolution l idar terrain model under a conifer fores t canopy. Cana-dian Journal of Remote Se nsing , 29(5):527–535, 2003. doi: 10.5589/m03-022. URL https://doi.org/10. 5589/m03-022 .Turetsky, M. R., Abbott, B. W., Jones, M. C., Anthony, K. W., Olefeldt, D., Schuur, E. A. G., Koven, C., McGuire, A. D., Grosse, G., Kuhry, P., Hugelius, G., Lawrence, D. M., Gibson, C., and Sannel, A. B. K. Permafrost collapse is accelerating carbon release. Nature , pp. 32– 24, 2019. ISSN 569. doi: 10.1038/d41586-019-01313-4. Van der Sluijs, J., Kokelj, S. V., Fraser, R. H., Tunnicliffe, J., and Lacelle, D. Permafrost terrain dynamics and in-frastructure impacts revealed by uav photogrammetry and thermal imaging. Remote Sensing , 10(11), 2018. ISSN 2072-4292. doi: 10.3390/rs10111734. URL https: //www.mdpi.com/2072-4292/10/11/1734 .Wu, X., Lao, Y., Jiang, L., Liu, X., and Zhao, H. Point transformer v2: Grouped vector attention and partition-based pooling. In NeurIPS , 2022. Wu, X., Jiang, L., Wang, P.-S., Liu, Z., Liu, X., Qiao, Y., Ouyang, W., He, T., and Zhao, H. Point transformer v3: Simpler, faster, stronger. In CVPR , 2024. Yoshikawa, K., Bolton, W. R., Romanovsky, V. E., Fukuda, M., and Hinzman, L. D. Impacts of wildfire on the permafrost in the boreal forests of interior alaska. Journal of Geophysical Research: Atmospheres , 107:FFR 4–1, 1 2002. ISSN 2156-2202. doi: 10.1029/2001JD000438. URL https://onlinelibrary.wiley.com/ doi/full/10.1029/2001JD000438https: //onlinelibrary.wiley.com/doi/abs/ 10.1029/2001JD000438https://agupubs. onlinelibrary.wiley.com/doi/10.1029/ 2001JD000438 .Zhao, H., Jiang, L., Jia, J., Torr, P., and Koltun, V. Point transformer, 2021. URL https://arxiv.org/ abs/2012.09164 .Zhou, Y. and Tuzel, O. Voxelnet: End-to-end learning for point cloud based 3d object detection, 2017. URL 
+
+https://arxiv.org/abs/1711.06396 .Zhu, D., Ciais, P., Krinner, G., Maignan, F., Puig, A. J., and Hugelius, G. Controls of soil organic matter on soil thermal dynamics in the northern high latitudes. Nature Communications 2019 10:1 , 10: 1–9, 7 2019. ISSN 2041-1723. doi: 10.1038/ s41467-019-11103-1. URL https://www.nature. com/articles/s41467-019-11103-1 .11 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+# A. Dataset Details 
+
+A.1. Ground Truth Raster Properties 
+
+The ground truth elevation change raster was derived from temporally paired UAV-lidar acquisitions (May to August 2024), computed as (August elevation − May elevation). Negative values indicate thaw (ground subsidence), while positive values indicate heave (frost uplift or vegetation growth). Table 5 summarizes the raster properties.  
+
+> Table 5. Ground truth raster properties.
+
+Property Value Coordinate Reference System EPSG:32606 (UTM Zone 6N) Spatial Resolution 0.10 m × 0.10 m Raster Dimensions 2261 × 2307 pixels Geographic Extent 226.1 m × 230.7 m Total Area 5.22 ha Valid Data Coverage 67.0% Valid Value Range [−2.33 , +5 .70] cm 
+
+A.2. Elevation Change Statistics 
+
+Table 6 presents comprehensive statistics for the ground truth elevation change distribution. The positive mean (+0.99 cm) and median (+0.72 cm) indicate the site is heave-dominated overall, with localized thaw features corresponding to active thermokarst (including a central pond). The positive skewness (+0.96) reflects the asymmetric distribution with a longer tail toward extreme heave values, including vegetation growth in a grassy strip along the eastern edge.  
+
+> Table 6. Ground truth elevation change statistics. Negative values indicate thaw (subsidence); positive values indicate heave (uplift).
+
+Statistic Value (cm) Statistic Value Minimum (max thaw) −2.33 Skewness +0 .96 
+
+Maximum (max heave) +5 .70 Kurtosis 0.45 
+
+Mean +0 .99 Coef. of Variation 164 .6% 
+
+Median +0 .72 Valid Pixels 3,495,868 Std. Dev. 1.62 
+
+A.3. Thaw vs. Heave Distribution  
+
+> Table 7. Overall distribution of thaw and heave pixels.
+
+Category Pixels Percentage Thaw (negative, subsidence) 808,730 23.1% No Change ( ±0.2 cm) 396,961 11.4% Heave (positive, uplift) 2,290,177 65.5% 
+
+A.4. Spatial Autocorrelation 
+
+We quantify spatial autocorrelation using Moran’s I statistic, which measures the degree to which values at nearby locations are more similar (positive autocorrelation) or more dissimilar (negative autocorrelation) than expected under spatial randomness. Moran’s I is defined as: 
+
+I = N
+
+P
+
+> i
+
+P 
+
+> j
+
+wij 
+
+·
+
+P
+
+> i
+
+P 
+
+> j
+
+wij (xi − ¯x)( xj − ¯x)
+
+P
+
+> i
+
+(xi − ¯x)2 (8) 12 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+where N is the number of spatial units (pixels), xi is the value at location i, ¯x is the global mean, and wij is the spatial weight between locations i and j (typically 1 for adjacent pixels and 0 otherwise). The statistic ranges from −1 (perfect dispersion) through 0 (spatial randomness) to +1 (perfect clustering). The ground truth exhibits strong positive spatial autocorrelation (Moran’s I = 0.99), indicating that thaw and heave patterns form spatially coherent clusters rather than random noise. This high value confirms that elevation change is governed by spatially continuous physical processes (e.g., thermokarst expansion, frost heave) rather than pixel-independent noise. From a modeling perspective, this supports the use of convolutional operations in the output head, as neighboring predictions are highly correlated and spatial context provides meaningful information. 
+
+# B. Class Distribution Analysis 
+
+B.1. Per-Class Statistics 
+
+Table 8 provides detailed statistics for each severity class. The dataset exhibits moderate class imbalance: High Thaw (C7) contains only 7.1% of pixels, while High Heave (C1) contains 24.8%—a 3.5 × imbalance ratio. This reflects the physical reality that severe thermokarst subsidence is spatially localized (e.g., the pond feature), while heave dominates the surrounding stable permafrost and vegetated areas.  
+
+> Table 8. Per-class statistics for the 7-class formulation. Boundaries defined on elevation change (negative = thaw, positive = heave). Imbalance ratio computed as (max class count) / (class count).
+
+Class Boundary (cm) Count % Weight Imbalance C1: High Heave > +1 .6 868,553 24.8 1.00 1.0 ×
+
+C2: Med-High Heave (+1 .0, +1 .6] 566,837 16.2 1.53 1.5 ×
+
+C3: Med-Low Heave (+0 .5, +1 .0] 556,133 15.9 1.56 1.6 ×
+
+C4: Low Heave (+0 .2, +0 .5] 298,654 8.5 2.91 2.9 ×
+
+C5: No Change [−0.2, +0 .2] 396,961 11.4 2.19 2.2 ×
+
+C6: Low Thaw [−1.0, −0.2) 561,384 16.1 1.55 1.5 ×
+
+C7: High Thaw < −1.0 247,346 7.1 3.51 3.5 ×
+
+The heave-dominated distribution (65.5% of pixels in C1–C4) reflects the Farmer’s Loop site characteristics: predominantly stable permafrost with seasonal frost heave, a grassy strip exhibiting vegetation growth between acquisitions (+5.70 cm maximum), and localized thermokarst features including a central pond ( −2.33 cm maximum subsidence). The 3.5 ×
+
+imbalance for High Thaw (C7) motivates our use of inverse-frequency class weighting and highlights the challenge of detecting rare but critical subsidence events for infrastructure monitoring. 
+
+# C. Implementation Details 
+
+C.1. Full Hyperparameter Configuration 
+
+The complete set of hyperparameters are shown in Table 9. 
+
+C.2. XY Distance Weighting Parameters 
+
+The z-stratified projection decoder uses a threshold-based exponential weighting scheme to control how points contribute to each grid cell based on their XY distance. For each grid cell query location, the weight assigned to a neighboring point at XY distance d is: 
+
+w(d) = exp ( −λ · max(0 , d − τ )) (9) where τ is the distance threshold below which points receive full weight, and λ controls the decay rate beyond the threshold. We select τ = 0 .1 and λ = 10 based on empirical analysis of our dataset’s point distribution. Figure 6 shows the relationship between these parameters and point coverage. 
+
+Threshold Selection ( τ = 0 .1). The left panel shows the percentage of k-nearest neighbors (k=64) that fall within a given threshold distance. We plot this number because when M = 2 , FPS is sampling from 64 of the nearest points to generate 13 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping  
+
+> Table 9. Complete hyperparameter configuration.
+
+Component Parameter Value 
+
+Encoder (PTv3) Stages 4Layers per stage [2, 2, 2, 2] Channel dimensions [64, 128, 256, 512] Input features 7 (XYZ, RGB, intensity) 
+
+Decoder Hidden dimension D 128 Neighbors k 32 Candidate multiplier M 2Output grid size 64 × 64 
+
+XY falloff threshold τ 0.1 XY falloff rate λ 10 
+
+Training Optimizer AdamW Learning rate 1 × 10 −5
+
+LR scheduler Polynomial decay Warmup epochs 2Total epochs 100 Batch size 1Gradient accumulation 2 steps Max points per tile 60,000 Precision Mixed (FP16) 
+
+Augmentation Rotation Random 90° multiples Jitter XYZ coordinate noise 
+
+Loss (Classification) Type Cross-entropy Class weights Inverse frequency 
+
+Loss (Regression) Type MSE the Z-profile for the decoder. At τ = 0 .1, approximately 94.8% of selected neighbors receive full weight ( w = 1 ). This ensures that the vast majority of points used in aggregation contribute without attenuation, while still allowing the weighting scheme to downweight the small fraction of points that may be spatially misaligned due to variance in point cloud density. A smaller threshold would unnecessarily penalize well-positioned points, while a larger threshold would effectively disable the weighting mechanism entirely. 
+
+Falloff Selection ( λ = 10 ). The right panel illustrates weight decay curves for various λ values. With λ = 10 , points at distance d = 0 .2 (twice the threshold) receive weight w ≈ 0.37 , and points at d = 0 .3 receive w ≈ 0.14 . This provides a smooth transition that maintains spatial locality without introducing discontinuities. Lower values (e.g., λ = 1 ) would allow distant points to contribute nearly equally, potentially blurring spatial boundaries. Higher values (e.g., λ = 20 ) would create sharper cutoffs that approach hard thresholding, which we found less stable during training. The combination of τ = 0 .1 and λ = 10 thus implements a “soft locality” constraint: points within approximately one grid cell spacing contribute fully, while more distant points are progressively downweighted rather than excluded entirely. 
+
+C.3. Neighborhood Size Selection 
+
+We use k = 32 neighbors per grid cell, informed by both empirical analysis and established conventions in point cloud deep learning (Qi et al., 2017; Zhao et al., 2021). As described in Section C.4, we first retrieve M · k = 64 candidate points (the nearest neighbors in XY), then select k = 32 
+
+from this pool. Crucially, farthest point sampling (FPS) in the z-dimension will preferentially select points near the spatial boundary of the candidate pool, since XY distance is not taken into consideration. This means the effective spatial extent of the final k points is largely determined by the M · k candidate pool, not k alone. 14 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping           
+
+> Figure 6. XY distance weighting analysis. Left: Fraction of k-nearest neighbors within threshold distance. Right: Weight falloff curves for different λvalues at τ= 0 .1.
+> Figure 7. Spatial extent of k-nearest neighbors. The y-axis shows the average maximum distance among the k neighbors selected for each grid cell. The red dashed line indicates the grid cell spacing; values below this line indicate insufficient coverage.
+
+Figure 7 shows the average maximum distance among k-nearest neighbors as a function of k, computed across sample tiles from our dataset. The dashed line indicates the grid cell spacing in normalized coordinates ( 2/64 ≈ 0.031 ). With M = 2 ,our 64-point candidate pool extends well beyond the cell boundary, and FPS will reliably select points from this outer region to capture vertical extremes. This ensures complete spatial coverage while the XY weighting scheme (Section C.2) appropriately downweights these more distant points during feature aggregation. 
+
+C.4. Candidate Pool Multiplier 
+
+The hybrid sampling strategy first identifies M · k candidate points (the M · k nearest neighbors in XY), then selects k
+
+points from this pool using a combination of closest-k and farthest point sampling (FPS) in the z-dimension. The multiplier 
+
+M controls the size of this candidate pool. Larger M provides more candidates for FPS to select from, potentially enabling better vertical diversity. However, expanding the candidate pool necessarily includes points at greater XY distances, which may be spatially misaligned with the target grid cell. This creates a tradeoff between vertical sampling diversity and horizontal spatial fidelity. At M = 1 , the candidate pool equals the final selection size ( M · k = k), reducing the method to simple k-nearest neighbors. This eliminates the z-stratified sampling that motivates our decoder design. We evaluated M ∈ { 2, 4} and found that M = 2 
+
+achieves 66.1 mIoU compared to 62.9 mIoU for M = 4 . This 3.1 point improvement demonstrates that the candidate pool 15 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+should be kept spatially tight. With M = 4 (128 candidates for k = 32 ), the outer candidates lie at XY distances where even the exponential downweighting cannot fully compensate for spatial misalignment. The resulting feature aggregation conflates information from neighboring grid cells, degrading prediction accuracy. In contrast, M = 2 (64 candidates) restricts the pool to a compact spatial neighborhood while still providing sufficient candidates for FPS to achieve meaningful vertical diversification. 
+
+C.5. Data Normalization 
+
+• Spatial coordinates: X, Y normalized to [−1, 1] per-tile; Z normalized to [0 , 1] globally across the dataset to preserve relative elevation information. • Per-point features: RGB and intensity standardized to zero mean, unit variance using dataset-wide statistics. • Ground truth: Normalized to zero mean and unit variance for training. Predictions are denormalized for evaluation. 
+
+# D. Computational Cost  
+
+> Table 10. Computational requirements. Inference time measured on an NVIDIA RTX 4090M Laptop GPU.
+
+Method Parameters GPU Memory Inference Histogram Baseline 0.2M 0.02 GB 0.76 ms/tile Mean-pooling + PTv3 39.4M 4.3 GB 119 ms/tile Ours (Z-Stratified) 41.1M 4.6 GB 133 ms/tile Our decoder adds 1.7M parameters (+4.3%) and 14ms inference time (+11.8%) compared to mean-pooling, while achieving 8.6-point mIoU improvement and 70% RMSE reduction—a favorable accuracy-efficiency tradeoff. 
+
+# E. Broader Applicability 
+
+While developed for permafrost monitoring, our z-stratified projection addresses a general challenge: preserving vertically-distributed information when projecting 3D data to 2D beneath occluding structures. Potential applications include: • Forestry: Understory biomass estimation from canopy-penetrating lidar • Urban mapping: Ground-level inference beneath building overhangs • Autonomous driving: Road surface estimation under vegetation • Archaeology: Subsurface feature detection through forest cover 
+
+# F. Ground Truth Visualization and Analysis 
+
+This section presents visualizations of the ground truth elevation change data to provide insight into the dataset characteristics and support reproducibility. 
+
+F.1. Value Distribution 
+
+Figure 8 shows the distribution of elevation change values across the study site. The histogram (a) reveals a right-skewed distribution centered around +0 .7 cm, with the majority of pixels falling in the heave regime (positive values). The vertical dashed lines indicate the class boundaries used for the 7-class classification formulation. The distribution exhibits a clear peak in the low heave range ( 0 to +1 .0 cm) and a longer tail toward extreme heave values reaching +5 .7 cm, corresponding to vegetation growth in grassy areas. The box plots (b) illustrate the within-class value distributions, ordered from High Thaw (C7, leftmost) to High Heave (C1, rightmost). The thaw classes (C6–C7) show tight distributions corresponding to the localized thermokarst feature, while High Heave (C1) exhibits greater spread due to varying vegetation growth rates. The median values progress monotonically across classes, confirming that the ordinal class structure captures a meaningful physical gradient from subsidence to uplift. 16 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping  
+
+> Figure 8. Ground truth value distribution. (a) Histogram of elevation change values with class boundaries (dashed red lines). Negative values indicate thaw (subsidence); positive values indicate heave (uplift). (b) Box plots showing the value distribution within each class, ordered from High Thaw (C7) to High Heave (C1).
+
+F.2. Spatial Distribution 
+
+Figure 9 presents the spatial distribution of ground truth values across the Farmer’s Loop study site. The continuous map (a) reveals distinct spatial patterns: a localized thaw feature (thermokarst with central pond) appears in warm colors (red/orange) in the south-central region, while heave dominates the surrounding areas (cool colors), with the most extreme heave along a grassy strip on the eastern edge where vegetation growth between May and August contributes to positive elevation change. The classified map (b) discretizes these patterns into the 7-class formulation. The High Thaw class (C7, dark red) forms coherent spatial clusters corresponding to active thermokarst features, while the High Heave class (C1, dark blue) dominates the vegetated eastern strip. The strong spatial coherence (Moran’s I = 0.99) is visually evident, with similar classes clustering together rather than appearing randomly distributed.  
+
+> Figure 9. Spatial distribution of ground truth elevation change. (a) Continuous values in centimeters, with warm colors indicating thaw (subsidence) and cool colors indicating heave (uplift). (b) 7-class discretization showing the spatial extent of each severity category. Coordinates are in UTM Zone 6N (EPSG:32606).
+
+17 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+F.3. Class Imbalance Analysis 
+
+Figure 10 quantifies the class distribution and resulting imbalance. The bar chart (a) shows that the dataset is heave-dominated, with 65.5% of pixels falling in heave classes (C1–C4). High Heave (C1) is the most prevalent class at 24.8%, while High Thaw (C7) is the least common at 7.1%. The imbalance ratios (b) reveal moderate class imbalance with a maximum ratio of 3.5 × between the largest (C1) and smallest (C7) classes. This imbalance reflects the physical reality that severe thermokarst subsidence is spatially localized, making accurate detection of High Thaw the most challenging and arguably most important task for infrastructure monitoring. The inverse-frequency weights shown in Table 8 ensure that the rare High Thaw class (C7) receives proportionally higher loss contributions during training.  
+
+> Figure 10. Class distribution analysis. (a) Percentage of pixels in each class, showing the heave-dominated nature of the dataset. (b) Imbalance ratios computed as (max class count) / (class count), with the dashed line indicating balanced classes. High Thaw (C7) is 3.5 ×
+> underrepresented relative to High Heave (C1).
+
+# G. Qualitative Results 
+
+Figure 11 presents qualitative results on three representative evaluation tiles, showing both regression and classification outputs alongside ground truth. Across all examples, the model demonstrates robust performance in capturing the dominant spatial patterns of permafrost dynamics, with classification predictions that closely match ground truth class boundaries. The regression outputs provide additional granularity for continuous monitoring applications. 18 Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping 
+
+Figure 11. Qualitative results on three evaluation tiles. Each row shows (left to right): input point cloud with RGB coloring, regres-sion ground truth, regression prediction, classification ground truth, and classification prediction. Regression colormaps show thaw (red/negative) to heave (blue/positive) in centimeters. Classification legend indicates severity from High Thaw (C7, red) through No Change (C5, cream) to High Heave (C1, dark blue). The model accurately captures spatial patterns of thaw and heave across diverse tile conditions. 
+
+19

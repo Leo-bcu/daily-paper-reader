@@ -1,0 +1,1016 @@
+Title: Towards High-Quality Image Segmentation: Improving Topology Accuracy by Penalizing Neighbor Pixels
+
+URL Source: https://arxiv.org/pdf/2603.18671v1
+
+Published Time: Fri, 20 Mar 2026 01:02:43 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+# Towards High-Quality Image Segmentation: Improving Topology Accuracy by Penalizing Neighbor Pixels 
+
+## Juan Miguel Valverde Dim P. Papadopoulos Rasmus Larsen Anders Bjorholm Dahl Technical University of Denmark 
+
+{jmvma,dimp,rlar,abda }@dtu.dk 
+
+## Abstract 
+
+Standard deep learning models for image segmentation cannot guarantee topology accuracy, failing to preserve the correct number of connected components or structures. This, in turn, affects the quality of the segmentations and compromises the reliability of the subsequent quantifica-tion analyses. Previous works have proposed to enhance topology accuracy with specialized frameworks, architec-tures, and loss functions. However, these methods are of-ten cumbersome to integrate into existing training pipelines, they are computationally very expensive, or they are re-stricted to structures with tubular morphology. We present SCNP, an efficient method that improves topology accu-racy by penalizing the logits with their poorest-classified neighbor, forcing the model to improve the prediction at the pixels’ neighbors before allowing it to improve the pixels themselves. We show the effectiveness of SCNP across 13 datasets, covering different structure morphologies and im-age modalities, and integrate it into three frameworks for semantic and instance segmentation. Additionally, we show that SCNP can be integrated into several loss functions, making them improve topology accuracy. Our code can be found at https://jmlipman.github.io/SCN P-SameClassN eighborPenalization .
+
+## 1. Introduction 
+
+Deep learning has become the de-facto standard in image segmentation, yet its standard inference process, which of-ten treats pixels independently, inherently fails to ensure topology accuracy. This results in the breakage of thin, tubular structures and in small isolated spurious regions (false positives), leading to errors in the number of con-nected components and, thus, deteriorating image segmen-tation quality (see Figure 1). This shortcoming limits the application of deep learning image segmentation models in many areas. In fields such as microscopy and medical imag-ing, where the analysis relies on accurate counts of struc-Model trained without SCNP trained with SCNP    
+
+> Number of connected components: 9
+> Number of connected components: 5
+> Number of connected components in the ground truth: 3
+> Image and ground truth (white) Model
+
+Figure 1. SCNP improves topology accuracy. Arrows indicate breakage in the structures. 
+
+tures such as cells or axons, or in satellite imagery, where the connectivity of roads is a known prior, it is essential to obtain topologically accurate segmentations. While achiev-ing topologically perfect segmentations often requires post-processing, models that produce fewer topological errors significantly decrease the burden of manual correction. Prior work has investigated several research directions to enhance topology accuracy, including specialized archi-tectures or modules [15, 18, 37, 45, 59, 61], deep learning-based post-processing methods [4], data augmentation [49], and loss functions [2, 16, 17, 24, 33, 35, 43, 44, 46, 57]. Loss functions offer an elegant and practical solution: they are architecture-agnostic, simple to incorporate, and they require no additional steps after inference. Most topol-ogy loss functions are, however, computationally very ex-pensive or only work on tubular structures. Persistence homology (PH)-based [11] topology loss functions ( e.g ., [17, 33, 46]) need to compute PH during the optimiza-tion, increasing the training time dramatically, from hours to days. Skeletonization-based topology loss functions ( e.g ., 
+
+> arXiv:2603.18671v1 [cs.CV] 19 Mar 2026
+
+[2, 43, 44]) are CPU-efficient alternatives, but they are unsuitable for datasets with non-tubular structures, such as cells, organs, and brain lesions. Furthermore, the skeletonization-based clDice loss [44], which has been shown to be very effective compared to many other topol-ogy loss functions [48], demands a large GPU memory and it requires tuning a hyper-parameter that determines its ef-fectiveness. In summary, to date, there is no plug-and-play, CPU and GPU efficient method that has been demonstrated to improve topology accuracy in datasets with structures of varied morphologies. In this paper, we present Same Class Neighbor Penal-ization (SCNP), a method for improving topology accu-racy that can be easily incorporated into existing training pipelines, as, in practice, it only requires adding three lines of code (see lines 3-5 in Algorithm 1 and Appendix A). SCNP alters the gradients of the logits by penalizing the logits based on their neighborhood. Specifically, SCNP penalizes several times the poorest classified predictions around the neighborhood of each logit, forcing the model to improve “bad” neighbors before allowing it to improve better pixel predictions. Additionally, unlike topology loss functions, SCNP is CPU and GPU efficient, requiring only a few extra GPU MBs and milliseconds per iteration (Ap-pendix B). Our contributions are: • We present SCNP, a novel method to improve topology accuracy that is efficient and simple to integrate into train-ing pipelines without modifying models’ architectures and loss functions. • We provide a theoretical motivation and practical intu-ition for our SCNP method, demonstrating the advanta-geous properties of the gradients it generates. • We show on 13 datasets and three frameworks for seman-tic and instance segmentation that optimizing Cross En-tropy Dice loss with SCNP generally yields more accurate segmentations topologically than several topology and non-topology loss functions, which are computationally more expensive and/or require expensive hyper-parameter tuning. • We show that the only hyperparameter of SCNP is intu-itive to tune. • We show that SCNP can be incorporated into several stan-dard loss functions, including Cross Entropy, Dice [31], Tversky [42], clDice [44], and Focal loss [27], making them produce segmentations topologically more accurate. 
+
+## 2. Related work 
+
+In image segmentation, not all misclassifications affect seg-mentation quality equally, and accounting for their impor-tance during training is a central challenge. Prior work ad-dresses this by re-weighting the loss according to semantic class ( e.g ., Dice loss [31], weighted Cross Entropy [39]), error type ( e.g ., Tversky loss [42]), or spatial location/con-text within the image ( e.g ., RWLoss [47], Boundary loss [22]). Additionally, and as the central focus of this pa-per, misclassification importance can be weighted based on whether the pixels are critical to the topology of the objects or structures to be segmented, affecting their total number of connected components, holes, and cavities. Such cate-gory of loss functions is referred to as “topology loss func-tions”, which can be subdivided into two groups depending on whether they rely on persistence homology. 
+
+Persistence homology (PH) [11] is a technique from topo-logical data analysis used to quantify the birth and death of topological features (connected components, holes, and cavities). PH does this through a “filtration”, a step-by-step method for gradually constructing a topological space to ob-serve how these features appear and disappear. The result-ing PH information is summarized in a persistence diagram, which is a scatter plot where each point represents a single topological feature, with its coordinates indicating the in-tensity at which it was born and died. Topology loss func-tions employ this framework to identify which pixels are critical for preserving the correct topological structure by applying a filtration to the softmax/sigmoid normalized out-puts of a neural network. Hu et al. [17] presented TopoLoss, one of the first topology loss functions employing PH. Oner et al. [34] proposed a new filtration method to allow PH to capture not only global topological correctness but also the local structure and connectivity of predicted delineations. Stucki et al. [46] introduced Betti Matching, an alternative to the Wasserstein distance for comparing persistence di-agrams. Xu et al. [54] proposed to decompose the topo-logical features in the persistence diagram into noisy and non-noisy, and introduced a loss term to remove the noisy features. Zhang et al. [58] focused on test-time refinement by iteratively improving the segmentation masks based on the a-priori known number of topological features that the segmentations must have. Due to the reliance on PH, all these methods are extremely expensive to compute, increas-ing the iteration time from a few milliseconds to several seconds depending on the image size (Appendix B). Fur-thermore, to partially overcome this issue, most of these methods only compute PH on very small image patches, disregarding global topology. Our method is, in contrast, CPU efficient, and it can be computed on entire images. 
+
+Skeletonization -based topology loss functions do not rely on PH homology, focusing on improving the accuracy in or around the skeleton of the structures. Shit et al. [44] proposed a loss function called clDice, inspired by Dice loss, that involves comparing the skeleton of the prediction against the full ground truth volume, and the skeleton of the ground truth against the full prediction volume. To compute these skeletons, Shit et al. [44] introduced a differentiable “soft-skeletonization” technique. Viti et al. [50] modified clDice’s soft-skeletonization to ensure that the topological features in the ground truth remain connected. Liu et al. [28], Shi et al. [43] included in the penalization of skele-ton pixels the distance to the mask (as in RWLoss [47] and Boundary loss [22]) and the skeleton thickness. Kirchhoff et al. [24] introduced Skeleton Recall (SkelRecall), a com-putationally efficient alternative to clDice that eliminates the need to compute the prediction’s skeleton, thereby re-ducing GPU memory usage. SkelRecall focuses on mea-suring the recall on a dilated version of the ground-truth skeleton, making it particularly effective when training with under-segmented noisy labels [48]. Zhang et al. [57] pro-posed to find critical pixels, that change the topology of the structures, with either a skeletonization method or PH to, ul-timately, penalize those critical pixels with MSE loss. The major disadvantages of skeletonization-based loss functions is that they are restricted to tubular structures. In contrast, our method works on structures of any shape. 
+
+Neighbor -aware methods that consider pixels’ neighboring regions represent another research direction relevant to our work. Rota Bulo et al. [40] proposed to apply Max Pooling to the per-pixel Cross-Entropy loss map to amplify the worst pixel misclassifications. Wu et al. [52] incorporated an ad-ditional branch during training to predict pixel “affinities” alongside the primary segmentation maps. These affinities, which are binary matrices indicating whether two pixels belong to the same class, require selecting an appropriate neighborhood size to exclude pixels that are either trivially close (likely the same class) or too distant (likely unrelated). Yuan and Xu [56] introduced NeighborLoss, which penal-izes individual pixels in proportion to the number of neigh-bors classified as a different class, regardless of whether such classification is correct. Fu et al. [12] proposed to magnify small structures with Max Pooling on the planar projections of both the prediction and ground truth. To fur-ther enhance the delineation of fine details and boundary smoothness, total variation [41] is often employed as a reg-ularization term to encourage smooth, well-defined edges (see, e.g ., [38]). Another relevant line of research are Con-ditional Random Fields (CRFs) methods [25], which explic-itly model contextual dependencies among pixels and they can be either applied as a post-processing step [5] or inte-grated into training [60]. Our method can be used jointly with existing architectures, it can be incorporated to any loss function, and it does not rely on affinity matrices or CRFs, which increase complexity and computational cost. 
+
+## 3. Method 
+
+In this section, we introduce Same Class Neighbor Pe-nalization (SCNP), an efficient method to improve topol-ogy accuracy that penalizes the logits by propagating their worst neighbors, i.e ., the poorest-classified neighboring log-its (see Figure 2). This propagation of the worst neighbors, Background (Same-class Max pooling) Neighborhood (3x3) Foreground (Same-class Min poling) Logits ( Z) SCNP Logits ( Z)3.3 1.7 3.3 4.4 1.3 1.7 1.3 -1.2 -1.2 2.7 3.6 3.6 3.1 3.1 2.7 3.6 3.6 3.6 3.6 4.4 -1.2 4.4 -1.2 3.3 3.6        
+
+> SCNP
+> 2.9 3.8 3.3 0.7 2.3 1.9 1.7 3.9 4.1 1.5 3.1 2.9 2.7 1.6 2.6 2.4 3.6 2.5 1.1 4.4 1.3 3.5 -1.2 1.4 1.2
+
+Same Class Neighbor Penalization (SCNP)  
+
+> Figure 2. Logits (left) and logits after applying SCNP (right). SCNP propagates small values across the foreground-class logits, and large values across the background-class logits.
+
+that occurs only during training, forces the models to im-prove a pixel’s neighbors before allowing it to improve the pixel itself. The rationale and motivation behind SCNP’s strategy stems from an observation: the pixels correspond-ing to small structure breakages and isolated false positives are, necessarily, the worst neighbors of their neighbors. Thus, improving the accuracy of logits’ poorest-predicted neighbors will lead to improving topology accuracy. SCNP achieves this by selectively propagating the gradients of the pixels with the poorest predictions instead of propagating the gradients of all pixels indiscriminately, as the standard optimization of loss functions does by default. Through-out the paper, we indicate that a loss function optimized the SCNP-penalized logits with an upper bar, e.g ., LCE or CE .
+
+3.1. Definition 
+
+Let Z ∈ RB×C×H×W be the unnormalized output of a neu-ral network ( i.e ., the logits) and let Y ∈ { 0, 1}B×C×H×W
+
+be the one hot-encoded ground truth. For simplicity, let 
+
+z ∈ RC×HW and y ∈ { 0, 1}C×HW denote a single batch instance of Z and Y, respectively, with the logit zki cor-responding to channel/class k at pixel i. SCNP is defined as: 
+
+˜zki =
+
+
+
+min  
+
+> j∈Ω( i)|ykj =1
+
+(zkj ) if yki = 1 max  
+
+> j∈Ω( i)|ykj =0
+
+(zkj ) if yki = 0 , (1) where Ω( i) represents the neighbor pixels/voxels of zki . For each channel in Z, SCNP makes each logit corresponding to the foreground class ( i.e ., if yi = 1 in Eq. (1)) take the smallest value among its foreground-class neighbors, and, simultaneously, SCNP makes each logit corresponding to the background class ( i.e ., if yi = 0 in Eq. (1)) take the largest value among its background-class neighbors. After computing the SCNP logits ( i.e ., ˜Z = SCNP (Z)), optimiza-.38 .27 Channel 1 .40 .26 .50 .27 .56 .43 .46 .31 .36 .27 .26 .30 .49 .19 .21 .23 .31 .36 .33 .48 .20 .24 .25 .35 .31 Channel 2 Channel 3    
+
+> 2.3
+> 1.9 2.4 3.1 4.2 3.5 3.1 2.3 4.3
+> 1.2
+> 1.4 1.1 0.3 1.0 0.5 1.1 1.1 1.7
+> 1.4
+> 1.5 1.4 1.1 1.2 0.5 0.1 1.7 0.6 1.9 1.4 1.9 1.5 2.3 1.5 2.3 1.9 1.9 1.7 1.7 1.5 1.5 1.8 2.1 1.2 1.2 1.2 1.7 1.7 1.7 2.1 1.4 1.4 1.5 1.7 1.5
+> Bold pixel prediction to improve.
+
+Logits ( Z) SCNP Logits ( Z)Logits where the gradients are computed. Location of the values that will be used to compute the gradients. Softmax Figure 3. Logits after applying SCNP and softmax normalization. 
+
+tion is performed in the standard way, by simply minimizing 
+
+L(σ(˜Z), Y), where L is a loss function ( e.g ., Cross Entropy, or Dice loss), and σ is an activation function (sigmoid, soft-max). Optimizing a loss function with the SCNP logits ˜Z pro-duces three key effects. First , SCNP increases the loss, as it deteriorates the logits which, in turn, deteriorates their soft-max/sigmoid probability values. As illustrated in Figure 3, SCNP acts on the center pixel’s logits corresponding to the ground truth class 0, deteriorating them from [2 .3, 1.2, 1.4] 
+
+to [1 .9, 1.7, 1.7] , which also deteriorates the softmax prob-ability values from [0 .57 , 0.19 , 0.23] to [0 .38 , 0.31 , 0.31] .
+
+Second , the logits propagated with SCNP that replaced other logits ( i.e ., the logits corresponding to the poorest pre-dictions) will be penalized as many times as they were prop-agated. Note how, for instance, the logit 1.2 in Figure 3 (Channel 2, yellow) is propagated three times (Channel 2, blue). In consequence, in order to improve pixel predictions at those three pixel locations, the model has to first improve the prediction at the pixel corresponding to the logit that was propagated, and since the loss is computed per pixel, its computation will then involve the logit that was prop-agated three times. The third effect is that the gradients produced by SCNP couple predictions at different neighbor pixels and across classes. 
+
+3.2. Gradients 
+
+The gradients of a loss function w.r.t. the logits can be com-puted as: ∂L 
+
+> ∂z ki
+
+= ∂L  
+
+> ∂ˆyki
+
+· ∂ ˆyki  
+
+> ∂z ki
+
+. Employing the SCNP logits adds the following term to the chain rule: 
+
+∂ ˜zki 
+
+∂z ki 
+
+= X
+
+> j∈Ω( i)
+
+1[zki = ˜ zkj ] ∂L
+
+∂ ˜zkj 
+
+, (2) where 1[·] is 1 if the inner condition is true and 0 other-wise. Equation (2) shows that 1) the poorest misclassifica-tions are penalized as many times as they are propagated by SCNP, and that 2) SCNP intertwines predictions at neigh-boring pixels across classes. Figure 3 illustrates this: com-puting the gradients of the loss w.r.t. the center pixel (yellow logits, left column) involves the values from two neighbor pixels at Channel 1, three neighbor pixels at Channel 2, and two neighbor pixels at Channel 3 (blue softmax probabil-ities, right column). Appendix C revisits the gradients of various loss functions, and it provides an example of the computation of the gradients. SCNP, by propagating the logits’ worst neighbors, in-hibits the propagation of the gradients corresponding to the other logits. In other words, SCNP limits the num-ber of pixel predictions that are directly improved in each iteration by focusing on improving only the worst neigh-bors. To illustrate, consider the logits [3 .1, 0.3, 1.1] in Fig-ure 3 (Channels 1,2,3, respectively); since these three logits are replaced by others after applying SCNP ( [1 .5, 1.5, 2.1] ), the gradients corresponding to the original pixel prediction 
+
+[3 .1, 0.3, 1.1] will not be propagated during training. Opti-mizing the SCNP-penalized logits can be, thus, interpreted as optimizing an upper bound of the loss, which can slow down convergence. We observed that, in practice, this is not an issue, as optimizing the SCNP logits results in a negli-gible delay in convergence that, if needed, can be reduced by optimizing the standard logits and the SCNP-penalized logits jointly, i.e ., L(σ(˜Z), Y) + L(σ(Z), Y). More details can be found in Appendix D. 
+
+3.3. Implementation 
+
+SCNP can be efficiently implemented with Max and Min Pooling by masking out the foreground and background logits for each class separately. This can be achieved by multiplying the background logits of each class with a very large positive number κ when computing Min Pooling, and by multiplying the foreground logits with a very large neg-ative number −κ when computing Max Pooling (see Al-gorithm 1). The logits multiplied by the large positive and negative number will, consequently, not be propagated to the background/foreground class when applying Min/Max Pooling. The use of Pooling introduces a hyper-parameter, window size ( w), that determines the size of the neigh-borhood that will be considered when propagating the log-its. Throughout this paper, we fix the neighborhood size at w = 3 unless explicitly stated otherwise. This setting provides favorable results in practice; nevertheless, the per-formance of SCNP may be further improved by finding the Algorithm 1 SCNP 
+
+Input: logits Z, one hot-encoded ground truth Y. 
+
+> 1:
+
+Given : Kernel size w (default: w = 3 ).  
+
+> 2:
+
+Set : κ = ∞ # Any very large number  
+
+> 3:
+
+V1 ← M inP ool (( Z ⊙ Y) + κ(1 − Y), w ) 
+
+> 4:
+
+V2 ← M axP ool (( Z ⊙ (1 − Y)) − κY, w ) 
+
+> 5:
+
+˜Z ← (V1 ⊙ Y) + ( V2 ⊙ (1 − Y)) 
+
+Output: SCNP logits ˜Z
+
+optimal w for a specific dataset. The other hyper-parameters introduced by the Pooling layers are always fixed: stride is always 1, and the padding is set such that the input and out-put feature maps have the same size. The operations utilized by SCNP ( i.e ., Pooling and matrix algebraic operations) barely demand additional re-sources, increasing running time by only a few millisec-onds per iterations and GPU memory usage by just a few MiBs (see details in Appendix B). Furthermore, SCNP can be conveniently wrapped as a function that is applied after the computation of the logits and before the computation of the loss function (see the code in Appendix A). 
+
+## 4. Experiments 
+
+We conducted three experiments: 1) An extensive bench-mark comparing Cross Entropy Dice loss with SCNP against several loss functions on various datasets and frame-works, 2) a sensitivity analysis on the only hyper-parameter of SCNP, and 3) an ablation study where we used SCNP jointly with several loss functions. We also compared SCNP with binary closing (Appendix E). 
+
+4.1. Benchmark 
+
+We evaluated and compared: 1) CEDice optimization ap-plied to the standard logits (our baseline), 2) Cross Entropy Dice loss applied to the SCNP-penalized logits ( LCEDice ), 3) the combination of these two ( i.e ., LCEDice +CEDice ), and 4) several other topology and non-topology loss func-tions. We chose CEDice as a baseline because it is standard in segmentation tasks where topology accuracy is crucial. 
+
+Datasets and models We employed 13 datasets and three frameworks. nnUNetv2 [19] was used for semantic segmentation on medical datasets with tubular structures (FIVES [21], Axons [1], PulmonaryVA [7]) and non-tubular structures (ATLAS2 [26], ISLES24 [8], CirrMRI600 [20], and MSLesSeg [14]). Detectron2/DeepLabv3+ [6, 53] was used for semantic segmentation on non-medical datasets with tubular structures (TopoMortar [48], DeepRoads [9], Crack500 [55]). InstanSeg [13] was used for instance segmentation on rounded cell datasets (IHC TMA [51], LyNSeC [32], NuInsSeg [30]). All datasets had a back-ground and a foreground class, except PulmonaryVA which had two foreground classes. The final activation function employed in semantic segmentation datasets was softmax while, in instance segmentation datasets, it was sigmoid. More details about the datasets, their size, and the splits can be found in Appendix G. 
+
+Loss functions We optimized seven and five loss func-tions on datasets with tubular and non-tubular structures, re-spectively, as two losses are constraint to tubular structures. We optimized Cross Entropy Dice (CEDice), Focal [27] and Tversky loss [42] since they are standard in image segmen-tation; TopoLoss [17], clDice [44], and Skeleton Recall loss (SkelRecall) [24] are topology loss functions; and Region-Wise loss [47] (RWLoss) is a distance-based loss function that has been shown to improve topology accuracy [28]. For clDice and Tversky loss, we conducted hyper-parameter op-timization on each of the 13 datasets, as their performance is very sensitive to the hyper-parameter choice (Appendix H). We did not use Max Pooling loss [40] since it is too inef-ficient for our large-scale benchmark, as it requires sorting all pixel predictions on each training iteration, and we did not use NeighborLoss [56] since it seems to increase false positives and negatives, as it penalizes locally-inconsistent pixel predictions without considering the ground truth. 
+
+Metrics We measured Dice coefficient [10] and the Betti error [17], which is standard to measure topology accuracy. We report the first Betti error β0e (i.e ., the difference in the number of connected components between the predic-tion and the ground truth) as it is the most relevant measure for the datasets used. On datasets with tubular structures we, additionally, measured clDice [44], which also reflects topology accuracy, and on dataset with rounded structures, we also measured roundness (Re) [36]. We run every ex-periment five times. 
+
+Results We organized the 13 datasets into four groups ac-cording to image type and structure morphology to provide a detailed analysis of the conditions under which SCNP is advantageous: Group ① Medical datasets with tubu-lar structures; Group ② Non-medical datasets with tubu-lar structures; Group ③ Medical datasets with non-tubular structures; Group ④ Medical datasets with rounded struc-tures (cells). Figure 4 shows the average β0e provided by SCNP on the four groups of datasets, and Figure 5 presents qualitative segmentation results. Due to space limitations, Figure 4 includes only the top two loss functions for each dataset, and Figure 5 shows only Tversky loss (the best per-forming competing loss) and two datasets from each group. We included the tables with the mean and the standard de-viation of the Dice coefficient, β0e, clDice, and roundness CEDice        
+
+> clDice, TopoLoss,
+> RWLoss, or Tversky
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 1
+> 2
+> 3
+> 4
+> 5
+> Number of datasets in which
+> each loss was the best
+> 11
+> 3
+> 5
+> Summary
+> CEDice
+> TopoLoss
+> Tversky (  = 0.7)
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 8
+> 10
+> 12
+> 14
+> 0e 10.82
+> 8.09
+> 12.22
+> 7.95
+> 6.94
+> FIVES
+> CEDice
+> TopoLoss
+> Tversky (  = 0.6)
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 7.5
+> 10.0
+> 12.5
+> 15.0
+> 17.5
+> 12.89
+> 14.44
+> 15.44
+> 5.82
+> 6.95
+> PulmonaryVA
+> CEDice
+> RWLoss
+> Focal
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 300
+> 400
+> 500
+> 600
+> 531
+> 408 412
+> 254 279
+> Axons
+> CEDice
+> clDice ( i = 4)
+> Tversky (  = 0.8)
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 20
+> 22
+> 24
+> 26
+> 28
+> 30
+> 25.06
+> 21.4
+> 22.59
+> 20.86
+> 20.3
+> TopoMortar
+> CEDice
+> clDice ( i = 10)
+> Tversky (  = 0.6)
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 9
+> 10
+> 11
+> 12
+> 10.61
+> 9.98
+> 10.47
+> 9.32 9.48
+> Crack500
+> CEDice
+> clDice ( i = 45)
+> Tversky (  = 0.7)
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 6
+> 8
+> 10
+> 12
+> 14
+> 11.77
+> 6.51
+> 9.78
+> 7.24
+> 6.56
+> DeepGlobeRoads
+> CEDice
+> TopoLoss
+> RWLoss
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0e
+> 0.27
+> 0.32
+> 0.43
+> 0.17
+> 0.12
+> CirrMRI600
+> CEDice
+> TopoLoss
+> Tversky (  = 0.8)
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 1.5
+> 2.0
+> 2.5
+> 1.6
+> 1.45
+> 2.37
+> 1.4 1.38
+> ATLAS2
+> CEDice
+> TopoLoss
+> RWLoss
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 4
+> 5
+> 6
+> 3.64 3.77 3.92 3.72
+> 5.27
+> ISLES24
+> CEDice
+> TopoLoss
+> Tversky (  = 0.8)
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 10
+> 15
+> 20
+> 25
+> 9.47 9.4 9.55
+> 12.72
+> 23.05
+> MSLesSeg
+> CEDice
+> Tversky (  = 0.6)
+> RWLoss
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 7
+> 8
+> 9
+> 10
+> 8.18 7.94
+> 8.42
+> 7.95
+> 7.53
+> NuInsSeg
+> CEDice
+> RWLoss
+> Tversky (  = 0.9)
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 2.5
+> 3.0
+> 3.5 3.31
+> 2.33
+> 2.64
+> 2.39
+> 2.81
+> IHC_TMA
+> CEDice
+> Tversky (  = 0.6)
+> Focal
+> CEDice+ CEDice  (ours)
+> CEDice  (ours)
+> 9
+> 10
+> 11
+> 12
+> 10.23
+> 9.47
+> 10.1
+> 9.75 9.91
+> LyNSeC
+
+Figure 4. β0e obtained by Cross Entropy Dice loss after optimizing the standard logits (CEDice), the SCNP-penalized logits ( CEDice ), both (CEDice+ CEDice ), and the top two loss functions across the 13 datasets. Datasets are grouped into four categories ( ① ② ③ ④ ) based on their image type (medical, non-medical) and structures’ morphologies (tubular, non-tubular, rounded). First panel: Number of datasets in which each loss function led the most accurate segmentations topologically. 
+
+of all datasets on Appendix I, and illustrative examples of segmentations of all datasets in Appendix J. 
+
+▷ Group ① Medical datasets with tubular structures 
+
+Our SCNP led the lowest β0e in the three datasets while not deteriorating the Dice or the clDice metric. In most cases, topology and non-topology loss functions (without our SCNP) did not surpass CEDice loss (see Figure 4 and Table I.9 in Appendix I). 
+
+▷ Group ② Non-medical datasets with tubular struc-tures On TopoMortar and Crack500, SCNP achieved the lowest β0e while not deteriorating Dice and clDice. On DeepGlobeRoads, SCNP led to better β0e than most loss functions at the expense of deteriorating Dice and clDice. On this dataset, the only loss that did not deteriorate signifi-cantly the average Dice coefficient and clDice was Tversky loss with an optimal hyper-parameter choice. On Crack500 and DeepGlobeRoads datasets, RWLoss and Focal loss led to empty segmentations (see Figure 4 and Table I.10 in Ap-pendix I). 
+
+▷ Group ③ Medical datasets with non-tubular struc-tures The effectiveness of SCNP varied significantly across datasets. On CirrMRI600, SCNP was clearly ben-eficial, decreasing the β0e by half compared to the baseline and achieving its lowest value. On MSLesSeg, SCNP was detrimental, especially when optimizing LCEDice alone. On ATLAS2, SCNP achieved slightly lower β0e and Dice coefficient, and on ISLES24 no method, including SCNP, achieved better performance than CEDice, with LCEDice 
+
+slightly worsening the segmentations (see Figure 4 and Ta-ble I.11 in Appendix I). 
+
+▷ Group ④ Medical datasets with rounded struc-tures (cells) SCNP achieved the lowest β0e on NuInsSeg and IHC TMA, and it improve the Dice coefficient on IHC TMA. On LyNSeC, SCNP led to the 2 nd best results after Tversky loss with its optimal hyper-parameter. Fur-thermore, SCNP improved roundness on all datasets (see Figure 4 and Table I.12 in Appendix I). 
+
+4.2. Sensitivity analysis on the neighborhood size 
+
+We investigated how SCNP’s optimal neighborhood size (w) depends on tubular thickness. To this end, we con-ducted our experiments on different resized versions of FIVES, ensuring that performance differences were at-tributable to structure thickness and not to the different dataset characteristics. First, we down-sampled FIVES four times, resulting in five datasets with image size of 2048 2
+
+(original), 1536 2, 1024 2, 512 2, and 256 2 pixels and an aver-age median blood vessel thickness of 9.69, 7.23, 4.70, 1.88, and 1.00 pixels respectively. Resizing FIVES several times resulted in a significant breakage of the structures’ ground Figure 5. Segmentations achieved by the baseline Cross Entropy Dice loss optimizing the standard logits (CEDice), the SCNP-penalized logits ( CEDice ), and Tversky loss (the best-performing loss after CEDice) in eight datasets (two from each dataset group). Arrows indicate topological errors. 
+
+↓ w 2048 2 ( 9.69) 1024 2 ( 7.23) 512 2 ( 4.70) 3 6.94 ±1.47 7.12 ±1.80 8.57 ±1.98 
+
+5 5.64 ±1.34 5.96 ±1.51 7.79 ±1.63 
+
+7 4.87 ±1.20 5.45 ±1.61 7.78 ±1.90 
+
+9 4.79 ±1.31 7.14 ±2.86 7.89 ±2.34 
+
+11 7.80 ±1.87 11.02 ±2.55 18.65 ±3.72 
+
+Table 1. Sensitivity analysis on SCNP’s hyperparameter ( w)across three versions of FIVES. Top row: pixel size 2, : median thickness of the blood vessels. 
+
+truth, with an average number of connected components of 4.4, 5.6, 5.7, 15 and 69, respectively. Thus, we conducted our experiments on the three highest resolution datasets. 
+
+Results Table 1 shows the β0e of our experiments (the Dice and clDice scores can be found in Appendix K). Ta-ble 1 highlights two key findings. First, the optimal w value utilized in our benchmark ( w = 3 ) was suboptimal despite achieving the lowest β0e compared to other loss functions (Figure 4, FIVES). Second, the optimal w corresponded ap-proximately to the blood vessel thickness: with a median blood vessel of 9.69, the best w was 9; with a median blood vessel of 7.23, the best was 7; and with a median of 4.70, the best values were 5 and 7. 
+
+4.3. Ablation study 
+
+We investigated the effectiveness and generalizability of SCNP by optimizing all the loss functions used in this study (including Cross Entropy (CE) and Dice loss, sepa-rately) over the SCNP-penalized logits. We conducted the ablation study on FIVES, and, for the loss functions that required hyper-parameter tuning, we utilized the optimal hyper-parameter value that we found during the benchmark. 
+
+Results SCNP improved the performance of all loss func-tions, without exception: β0e decreased in every case, while Dice and clDice did not worsen and, occasionally, improved (see Table 2). 
+
+## 5. Discussion 
+
+We presented SCNP, an efficient method to improve topol-ogy accuracy by penalizing the logits with their worst neighbors, i.e ., logits’ neighbors with the poorest predic-tions. We showed how SCNP gradients allow to incorporate pixel neighbor information during the optimization, and that SCNP can be used with existing architectures, frameworks, and loss functions, requiring only three extra lines of code placed after the computation of the logits and before the loss (Appendix A). We benchmarked SCNP on 13 datasets, categorized by image type (medical, non-medical) and structure morphol-Loss Dice β0e clDice CE 0.92 ±0.0 11.93 ±2.92 0.92 ±0.0 
+
+CE (ours ) 0.92 ±0.0 7.53 ±1.74 0.92 ±0.0 
+
+Dice 0.92 ±0.0 12.03 ±3.4 0.92 ±0.0 
+
+Dice (ours ) 0.92 ±0.0 7.88 ±2.03 0.92 ±0.0 
+
+CEDice 0.92 ±0.0 10.82 ±2.71 0.92 ±0.0 
+
+CEDice+ CEDice (ours ) 0.92 ±0.0 6.94 ±1.47 0.92 ±0.0 
+
+clDice ( i = 24 ) 0.91 ±0.0 36.55 ±10.70 0.91 ±0.01 
+
+clDice (i = 24 ) ( ours ) 0.92 ±0.0 5.44 ±1.91 0.93 ±0.0 
+
+SkelRecall 0.91 ±0.0 12.45 ±4.25 0.91 ±0.0 
+
+SkelRecall (ours ) 0.91 ±0.0 5.07 ±1.91 0.92 ±0.0 
+
+TopoLoss 0.92 ±0.0 8.09 ±2.45 0.92 ±0.0 
+
+T opoLoss (ours ) 0.92 ±0.0 6.36 ±1.55 0.92 ±0.0 
+
+RWLoss 0.92 ±0.0 15.99 ±5.35 0.92 ±0.0 
+
+RW Loss (ours ) 0.92 ±0.0 8.64 ±3.36 0.91 ±0.0 
+
+Tversky ( β = 0 .7) 0.92 ±0.0 12.22 ±3.45 0.92 ±0.0 
+
+T versky (β = 0 .7) ( ours ) 0.92 ±0.0 7.31 ±2.20 0.93 ±0.0 
+
+Focal 0.92 ±0.0 16.08 ±5.97 0.92 ±0.0 
+
+F ocal (ours ) 0.92 ±0.0 7.75 ±1.58 0.92 ±0.0 
+
+Table 2. Ablation comparing several loss functions optimizing the standard logits vs. the SCNP-penalized (ours) logits. 
+
+ogy (tubular, non-tubular, rounded), to determine when SCNP is most beneficial. On medical and non-medical datasets with tubular structures (see ① ② in Figure 4 and Tables I.9 and I.10 in Appendix I), SCNP demonstrated a clear advantage, as it made CEDice loss improve topol-ogy accuracy, surpassing the other loss functions. Only on one of the six datasets with tubular structures (Deep-GlobeRoads) SCNP improved topology accuracy at the ex-pense of slightly deteriorating the Dice coefficient, a trade-off that is arguably desirable given the critical importance of road network connectivity. Although only one of the datasets was multi-class, SCNP is designed to work with an arbitrary number of classes. On medical datasets with rounded structures , SCNP was also very effective, as it improved topology accuracy and, on IHC TMA, it im-proved Dice coefficient as well (see ④ in Figure 4 and Ta-ble I.12 in Appendix I). SCNP also improved the round-ness of the segmentations in all three datasets, which is ad-vantageous in datasets with structures that are known to be rounded, such as cells. We attribute this improvement to SCNP’s incorporation of neighbor information during the optimization, which likely encourages smooth borders and structural coherence. On the medical datasets with non-tubular structures ,SCNP’s effectiveness ranged from highly beneficial to detri-mental (see ③ in Figure 4 and Table I.11 in Appendix I). We investigated two potential factors contributing to this incon-sistency. First, we considered class imbalance, as the fore-ground percentage in ATLAS2 (0.38%), ISLES (0.43%) and MSLesSeg (0.17%) was the lowest across all datasets. We believe this is not the primary cause since Dice loss inherently address class imbalance, and SCNP was very effective in a similarly imbalanced dataset (PulmonaryVA (1.67% foreground)). The second factor that we investi-gated was structure size. The average structure in Cir-rMRI600, ATLAS2, ISLES24, and MSLesSeg was 227859, 13071, 7058, and 447 voxels, respectively, which mirrors the descending order of SCNP’s observed effectiveness. We hypothesize that the structural coherence and smooth bor-ders promoted by SCNP, while generally beneficial, may become disadvantageous when segmenting extremely small structures and, particularly, when the contrast between their boundaries and the background is low. Our sensitivity analysis on the only hyper-parameter of SCNP ( w) indicates that its optimal value on datasets with tubular structures is correlated to structure thickness. This is likely because a too small neighborhood will not cover the areas that can lead to structure breakage, while a too large neighborhood includes far, unrelated pixels. While, based on this observation, the SCNP’s hyper-parameter is intuitive to tune, its default value ( w = 3 ) has been shown generally effective across all the datasets (Section 4.1). Our ablation study confirms that SCNP can make sev-eral loss functions improve topology accuracy, including standard losses (CE, Dice [31], Tversky [42], Focal loss [27]) and topology losses (clDice [44], SkelRecall [24], and TopoLoss [17]) (see Section 4.3). This versatility is one of the main advantages of SCNP compared to related work, including Max Pooling loss [40] and NeighborLoss [56], as it permits the utilization of the loss function that is most suitable for a particular dataset/task ( e.g . Dice loss in class-imbalanced datasets) while simultaneously improving topology accuracy. 
+
+## 6. Conclusion 
+
+Penalizing by the worst performing pixel in a neighbor-hood, as proposed in our SCNP method, is an efficient ap-proach for enhancing topology accuracy that can be read-ily used in combination with existing deep learning models, loss functions, and training pipelines. Our exhaustive com-parisons revealed that SCNP is effective in most datasets where topology accuracy is important. We showed that the default value of SCNP’s only hyper-parameter is effective, it is intuitive to tune, and that the performance of eight loss functions improved when optimizing the SCNP-penalized logits. 
+
+## Acknowledgements 
+
+We thank Thanos Delatolas for conducting some ex-ploratory experiments during the early stage of this project. This work was supported by NordForsk and a research grant (VIL50087) from VILLUM FONDEN. References 
+
+[1] Ali Abdollahzadeh, Ilya Belevich, Eija Jokitalo, Alejandra Sierra, and Jussi Tohka. Deepacson automated segmentation of white matter in 3d electron microscopy. Communications biology , 4(1):179, 2021. 5 [2] Cesar Acebes, Abdel Hakim Moustafa, Oscar Camara, and Adrian Galdran. The centerline-cross entropy loss for vessel-like structure segmentation: Better topology consistency without sacrificing accuracy. In International Conference on Medical Image Computing and Computer-Assisted Interven-tion , pages 710–720. Springer, 2024. 1, 2 [3] M Jorge Cardoso, Wenqi Li, Richard Brown, Nic Ma, Eric Kerfoot, Yiheng Wang, Benjamin Murrey, Andriy Myro-nenko, Can Zhao, Dong Yang, et al. Monai: An open-source framework for deep learning in healthcare. arXiv preprint arXiv:2211.02701 , 2022. 8 [4] Sophie Carneiro-Esteves, Antoine Vacavant, and Odyss´ ee Merveille. Restoring connectivity in vascular segmentations using a learned post-processing model. In International Workshop on Topology-and Graph-Informed Imaging Infor-matics , pages 55–65. Springer, 2024. 1 [5] Liang-Chieh Chen, George Papandreou, Iasonas Kokkinos, Kevin Murphy, and Alan L Yuille. Deeplab: Semantic image segmentation with deep convolutional nets, atrous convolu-tion, and fully connected crfs. IEEE transactions on pattern analysis and machine intelligence , 40(4):834–848, 2017. 3 [6] Liang-Chieh Chen, Yukun Zhu, George Papandreou, Florian Schroff, and Hartwig Adam. Encoder-decoder with atrous separable convolution for semantic image segmentation. In 
+
+Proceedings of the European conference on computer vision (ECCV) , pages 801–818, 2018. 5 [7] Hongyu Cheng, Limin Zheng, Zeyu Yan, Haoran Zhang, Bo Meng, and Xiaowei Xu. Fusion of machine learning and deep neural networks for pulmonary arteries and veins segmentation in lung cancer surgery planning. In Interna-tional Conference on Pattern Recognition , pages 422–438. Springer, 2024. 5 [8] Ezequiel de la Rosa, Ruisheng Su, Mauricio Reyes, Roland Wiest, Evamaria O Riedel, Florian Kofler, Kaiyuan Yang, Hakim Baazaoui, David Robben, Susanne Wegener, et al. Isles’24: Improving final infarct prediction in ischemic stroke using multimodal imaging and clinical data. arXiv preprint arXiv:2408.10966 , 2024. 5 [9] Ilke Demir, Krzysztof Koperski, David Lindenbaum, Guan Pang, Jing Huang, Saikat Basu, Forest Hughes, Devis Tuia, and Ramesh Raskar. Deepglobe 2018: A challenge to parse the earth through satellite images. In Proceedings of the IEEE conference on computer vision and pattern recognition workshops , pages 172–181, 2018. 5 [10] Lee R Dice. Measures of the amount of ecologic association between species. Ecology , 26(3):297–302, 1945. 5 [11] Edelsbrunner, Letscher, and Zomorodian. Topological per-sistence and simplification. Discrete & computational ge-ometry , 28(4):511–533, 2002. 1, 2 [12] Guanghui Fu, Rosana El Jurdi, Lydia Chougar, Didier Dor-mont, Romain Valabregue, St´ ephane Leh´ ericy, Olivier Col-liot, and ICEBERG Study Group. Projected pooling loss for red nucleus segmentation with soft topology constraints. 
+
+Journal of Medical Imaging , 11(4):044002–044002, 2024. 3 [13] Thibaut Goldsborough, Ben Philps, Alan O’Callaghan, Fiona Inglis, Leo Leplat, Andrew Filby, Hakan Bilen, and Peter Bankhead. Instanseg: an embedding-based in-stance segmentation algorithm optimized for accurate, ef-ficient and portable cell segmentation. arXiv preprint arXiv:2408.15954 , 2024. 5 [14] Francesco Guarnera, Alessia Rondinella, Elena Crispino, Giulia Russo, Clara Di Lorenzo, Davide Maimone, Francesco Pappalardo, and Sebastiano Battiato. Mslesseg: baseline and benchmarking of a new multiple sclerosis le-sion segmentation dataset. Scientific Data , 12(1):920, 2025. 5[15] Jia Hu, Jianhua Liu, and Shaoli Liu. Topopis: Topology-constrained pipe instance segmentation via adaptive curva-ture convolution. Engineering Applications of Artificial In-telligence , 139:109547, 2025. 1 [16] Xiaoling Hu. Structure-aware image segmentation with ho-motopy warping. Advances in Neural Information Process-ing Systems , 35:24046–24059, 2022. 1 [17] Xiaoling Hu, Fuxin Li, Dimitris Samaras, and Chao Chen. Topology-preserving deep image segmentation. Advances in neural information processing systems , 32, 2019. 1, 2, 5, 8 [18] Jiaxing Huang, Yanfeng Zhou, Yaoru Luo, Guole Liu, Heng Guo, and Ge Yang. Representing topological self-similarity using fractal feature maps for accurate segmentation of tubu-lar structures. In European Conference on Computer Vision ,pages 143–160. Springer, 2024. 1 [19] Fabian Isensee, Paul F Jaeger, Simon AA Kohl, Jens Pe-tersen, and Klaus H Maier-Hein. nnu-net: a self-configuring method for deep learning-based biomedical image segmen-tation. Nature methods , 18(2):203–211, 2021. 5 [20] Debesh Jha, Onkar Kishor Susladkar, Vandan Gorade, Elif Keles, Matthew Antalek, Deniz Seyithanoglu, Timurhan Ce-beci, Halil Ertugrul Aktas, Gulbiz Dagoglu Kartal, Sabahat-tin Kaymakoglu, et al. Large scale mri collection and seg-mentation of cirrhotic liver. Scientific Data , 12(1):896, 2025. 5[21] Kai Jin, Xingru Huang, Jingxing Zhou, Yunxiang Li, Yan Yan, Yibao Sun, Qianni Zhang, Yaqi Wang, and Juan Ye. Fives: A fundus image dataset for artificial intelligence based vessel segmentation. Scientific data , 9(1):475, 2022. 5 [22] Hoel Kervadec, Jihene Bouchtiba, Christian Desrosiers, Eric Granger, Jose Dolz, and Ismail Ben Ayed. Boundary loss for highly unbalanced segmentation. In International confer-ence on medical imaging with deep learning , pages 285–296. PMLR, 2019. 2, 3 [23] Diederik P Kingma. Adam: A method for stochastic opti-mization. arXiv preprint arXiv:1412.6980 , 2014. 8 [24] Yannick Kirchhoff, Maximilian R Rokuss, Saikat Roy, Balint Kovacs, Constantin Ulrich, Tassilo Wald, Maximil-ian Zenk, Philipp Vollmuth, Jens Kleesiek, Fabian Isensee, et al. Skeleton recall loss for connectivity conserving and resource efficient segmentation of thin tubular structures. In 
+
+European Conference on Computer Vision , pages 218–234. Springer, 2024. 1, 3, 5, 8 [25] John Lafferty, Andrew McCallum, and Fernando CN Pereira. Conditional random fields: Probabilistic models for seg-menting and labeling sequence data. 2001. 3 [26] Sook-Lei Liew, Bethany P Lo, Miranda R Donnelly, Artemis Zavaliangos-Petropulu, Jessica N Jeong, Giuseppe Barisano, Alexandre Hutton, Julia P Simon, Julia M Juliano, Anisha Suri, et al. A large, curated, open-source stroke neuroimag-ing dataset to improve lesion segmentation algorithms. Sci-entific data , 9(1):320, 2022. 5 [27] Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Doll´ ar. Focal loss for dense object detection. In Pro-ceedings of the IEEE international conference on computer vision , pages 2980–2988, 2017. 2, 5, 8 [28] Chuni Liu, Boyuan Ma, Xiaojuan Ban, Yujie Xie, Hao Wang, Weihua Xue, Jingchao Ma, and Ke Xu. Enhancing boundary segmentation for topological accuracy with skeleton-based methods. arXiv preprint arXiv:2404.18539 , 2024. 3, 5 [29] Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101 , 2017. 8 [30] Amirreza Mahbod, Christine Polak, Katharina Feldmann, Rumsha Khan, Katharina Gelles, Georg Dorffner, Ramona Woitek, Sepideh Hatamikia, and Isabella Ellinger. Nuinsseg: a fully annotated dataset for nuclei instance segmentation in h&e-stained histological images. Scientific Data , 11(1):295, 2024. 5 [31] Fausto Milletari, Nassir Navab, and Seyed-Ahmad Ahmadi. V-net: Fully convolutional neural networks for volumetric medical image segmentation. In 2016 fourth international conference on 3D vision (3DV) , pages 565–571. Ieee, 2016. 2, 8 [32] Hussein Naji, Lucas Sancere, Adrian Simon, Reinhard B¨ uttner, Marie-Lisa Eich, Philipp Lohneis, and Katarzyna Bo˙ zek. Holy-net: Segmentation of histological images of diffuse large b-cell lymphoma. Computers in Biology and Medicine , 170:107978, 2024. 5 [33] Doruk Oner, Mateusz Kozi´ nski, Leonardo Citraro, Nathan C Dadap, Alexandra G Konings, and Pascal Fua. Promoting connectivity of network-like structures by enforcing region separation. IEEE Transactions on Pattern Analysis and Ma-chine Intelligence , 44(9):5401–5413, 2021. 1 [34] Doruk Oner, Ad´ elie Garin, Mateusz Kozi´ nski, Kathryn Hess, and Pascal Fua. Persistent homology with improved locality information for more effective delineation. IEEE Transac-tions on Pattern Analysis and Machine Intelligence , 45(8): 10588–10595, 2023. 2 [35] Bryan G Pantoja-Rosero, D Oner, Mateusz Kozinski, Rad-hakrishna Achanta, Pascal Fua, Fernando P´ erez-Cruz, and Katrin Beyer. Topo-loss for continuity-preserving crack de-tection using deep learning. Construction and Building Ma-terials , 344:128264, 2022. 1 [36] Pawel Tomasz Pieta, Peter Winkel Rasmussen, An-ders Bjorholm Dahl, and Anders Nymark Christensen. Fast sphericity and roundness approximation in 2d and 3d using local thickness. In Proceedings of the Computer Vision and Pattern Recognition Conference , pages 4667–4677, 2025. 5 [37] Yaolei Qi, Yuting He, Xiaoming Qi, Yuan Zhang, and Guanyu Yang. Dynamic snake convolution based on topo-logical geometric constraints for tubular structure segmenta-tion. In Proceedings of the IEEE/CVF international confer-ence on computer vision , pages 6070–6079, 2023. 1 [38] Mehdi Rabiee, Sergio Greco, Reza Shahbazian, and Irina Trubitsyna. A total variation regularized framework for epilepsy-related mri image segmentation. arXiv preprint arXiv:2510.06276 , 2025. 3 [39] Olaf Ronneberger, Philipp Fischer, and Thomas Brox. U-net: Convolutional networks for biomedical image segmen-tation. In International Conference on Medical image com-puting and computer-assisted intervention , pages 234–241. Springer, 2015. 2 [40] Samuel Rota Bulo, Gerhard Neuhold, and Peter Kontschieder. Loss max-pooling for semantic image segmentation. In Proceedings of the IEEE conference on computer vision and pattern recognition , pages 2126–2135, 2017. 3, 5, 8 [41] Leonid I Rudin, Stanley Osher, and Emad Fatemi. Nonlinear total variation based noise removal algorithms. Physica D: nonlinear phenomena , 60(1-4):259–268, 1992. 3 [42] Seyed Sadegh Mohseni Salehi, Deniz Erdogmus, and Ali Gholipour. Tversky loss function for image segmentation using 3d fully convolutional deep networks. In International workshop on machine learning in medical imaging , pages 379–387. Springer, 2017. 2, 5, 8 [43] Pengcheng Shi, Jiesi Hu, Yanwu Yang, Zilve Gao, Wei Liu, and Ting Ma. Centerline boundary dice loss for vascular segmentation. In International Conference on Medical Im-age Computing and Computer-Assisted Intervention , pages 46–56. Springer, 2024. 1, 2, 3 [44] Suprosanna Shit, Johannes C Paetzold, Anjany Sekuboyina, Ivan Ezhov, Alexander Unger, Andrey Zhylka, Josien PW Pluim, Ulrich Bauer, and Bjoern H Menze. cldice-a novel topology-preserving loss function for tubular structure seg-mentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 16560– 16569, 2021. 1, 2, 5, 8 [45] Dongning Song, Weijian Huang, Jiarun Liu, Md Jahidul Is-lam, Hao Yang, Shuqiang Wang, Hairong Zheng, and Shan-shan Wang. Optimized vessel segmentation: A structure-agnostic approach with small vessel enhancement and mor-phological correction. IEEE Transactions on Image Process-ing , 2025. 1 [46] Nico Stucki, Johannes C Paetzold, Suprosanna Shit, Bjo-ern Menze, and Ulrich Bauer. Topologically faithful im-age segmentation via induced matching of persistence bar-codes. In International Conference on Machine Learning ,pages 32698–32727. PMLR, 2023. 1, 2 [47] Juan Miguel Valverde and Jussi Tohka. Region-wise loss for biomedical image segmentation. Pattern Recognition , 136: 109208, 2023. 2, 3, 5, 8 [48] Juan Miguel Valverde, Motoya Koga, Nijihiko Otsuka, and Anders Bjorholm Dahl. Topomortar: A dataset to evaluate image segmentation methods focused on topology accuracy. 
+
+arXiv preprint arXiv:2503.03365 , 2025. 2, 3, 5 [49] Juan Miguel Valverde, Maja Østergaard, Adrian Rodriguez-Palomo, Peter Alling Strange Vibe, Nina Kølln Wittig, Henrik Birkedal, and Anders Bjorholm Dahl. Disconnect to connect: A data augmentation method for improving topology accuracy in image segmentation. arXiv preprint arXiv:2503.05541 , 2025. 1 [50] Mario Viti, Hugues Talbot, Bassam Abdallah, Etienne Perot, and Nicolas Gogin. Coronary artery centerline tracking with the morphological skeleton loss. In 2022 IEEE International Conference on Image Processing (ICIP) , pages 2741–2745. IEEE, 2022. 2 [51] Ranran Wang, Yusong Qiu, Xinyu Hao, Shan Jin, Junxiu Gao, Heng Qi, Qi Xu, Yong Zhang, and Hongming Xu. Si-multaneously segmenting and classifying cell nuclei by us-ing multi-task learning in multiplex immunohistochemical tissue microarray sections. Biomedical Signal Processing and Control , 93:106143, 2024. 5 [52] Boxi Wu, Shuai Zhao, Wenqing Chu, Zheng Yang, and Deng Cai. Improving semantic segmentation via dilated affinity. 
+
+arXiv preprint arXiv:1907.07011 , 2019. 3 [53] Yuxin Wu, Alexander Kirillov, Francisco Massa, Wan-Yen Lo, and Ross Girshick. Detectron2. https://github.c om/facebookresearch/detectron2 , 2019. 5 [54] Meilong Xu, Xiaoling Hu, Saumya Gupta, Shahira Abousamra, and Chao Chen. Semi-supervised segmentation of histopathology images with noise-aware topological con-sistency. In European Conference on Computer Vision , pages 271–289. Springer, 2024. 2 [55] Fan Yang, Lei Zhang, Sijia Yu, Danil Prokhorov, Xue Mei, and Haibin Ling. Feature pyramid and hierarchical boosting network for pavement crack detection. IEEE Transactions on Intelligent Transportation Systems , 21(4):1525–1535, 2019. 5[56] Wei Yuan and Wenbo Xu. Neighborloss: a loss function considering spatial correlation for semantic segmentation of remote sensing image. IEEE Access , 9:75641–75649, 2021. 3, 5, 8 [57] Guoqing Zhang, Caixia Dong, and Yang Li. Topology-preserving hard pixel mining for tubular structure segmen-tation. In BMVC , pages 846–853, 2023. 1, 3 [58] Minghui Zhang, Yaoyu Liu, Junyang Wu, Xin You, Hanxiao Zhang, Junjun He, and Yun Gu. Toposculpt: Betti-steered topological sculpting of 3d fine-grained tubular shapes. 
+
+arXiv preprint arXiv:2509.03938 , 2025. 2 [59] Ziwei Zhao, Zhixing Zhang, Yuhang Liu, Zhao Zhang, Hao-jun Yu, Dong Wang, and Liwei Wang. Deformcl: Learning deformable centerline representation for vessel extraction in 3d medical image. In Proceedings of the Computer Vision and Pattern Recognition Conference , pages 30896–30905, 2025. 1 [60] Shuai Zheng, Sadeep Jayasumana, Bernardino Romera-Paredes, Vibhav Vineet, Zhizhong Su, Dalong Du, Chang Huang, and Philip HS Torr. Conditional random fields as recurrent neural networks. In Proceedings of the IEEE inter-national conference on computer vision , pages 1529–1537, 2015. 3 [61] Feixiang Zhou, Zhuangzhi Gao, He Zhao, Jianyang Xie, Yanda Meng, Yitian Zhao, Gregory YH Lip, and Yalin Zheng. Glcp: Global-to-local connectivity preservation for tubular structure segmentation. In International Conference on Medical Image Computing and Computer-Assisted Inter-vention , pages 237–247. Springer, 2025. 1 Towards High-Quality Image Segmentation: Improving Topology Accuracy by Penalizing Neighbor Pixels 
+
+# Supplementary Material 
+
+## A. Implementation (code) 
+
+The three-lines implementation of SCNP that we employed in this study. Note that Y is the one-hot encoded ground truth, stride is always 1, and the padding is determined by the kernel size. Also note that SCNP only needs to be ap-plied during training.                              
+
+> 1logits =model(X)
+> 2# SCNP Begin
+> 3t1 =-torch.nn.functional.max_pool2d(-(logits*Y +9999*(1-Y)), kernel_size=3, stride=1, padding=1)
+> 4t2 =torch.nn.functional.max_pool2d((logits*(1-Y) -9999*Y), kernel_size=3, stride=1, padding =1)
+> 5scnp_logits =t1*Y +t2*(1-Y)
+> 6# SCNP End
+> 7loss =CEDiceLoss(softmax(scnp_logits), Y)
+
+Listing 1. SCNP implementation. 
+
+## B. Computational resources required by loss functions and SCNP 
+
+Tables B.1 and B.2 show the running time of one epoch and the GPU memory required by each loss function and our SCNP. These benchmarks were run on a cluster node entirely reserved for computing the measurements, consist-ing of 2x Intel(R) Xeon(R) Gold 6326 @ 2.90GHz and 1x NVIDIA A10 with 24GB. For SCNP, we computed the difference in resources when optimizing LCEDice and 
+
+LCEDice .We benchmarked all methods on FIVES (2D) and Pul-monaryVA (3D). The size of the tensors sent to the model were 2 × 2 × 1280 × 1024 and 2 × 3 × 160 × 128 × 112 
+
+on FIVES and PulmonaryVA, respectively. An epoch con-sisted on 300 training iterations; on FIVES that amounted to 2100 forward passes, whereas on PulmonaryVA it amounted to 1200 forward passes. This is due to the use of Deep supervision and different models that were auto-matically configured by nnUNetv2. 
+
+## C. Gradients 
+
+The derivative of a loss function w.r.t. the logits can be ob-tained via the chain rule 
+
+∂L
+
+∂z ki 
+
+= ∂L
+
+∂ ˆyki 
+
+· ∂ ˆyki 
+
+∂z ki 
+
+, (1) where the first term is the derivative of the loss w.r.t. the sig-moid/softmax normalized predictions, and the second term Loss Epoch time (sec.) GPU (MiB) CEDice 54.85 5350 clDice ( i = 24 ) 181.78 19340 SkelRecall 115.59 5334 TopoLoss 1505 5334 RWLoss 56.59 5778 Tversky ( β = 0 .7) 54.76 5326 Focal 55.26 5678 Extra resources required by: SCNP +1.47 +340 
+
+Table B.1. Resources required on FIVES (2D nnUNetv2). 
+
+Loss Iteration time (sec.) GPU (MiB) CEDice 72.79 6644 clDice ( i = 16 ) 199.10 38672 SkelRecall 157.17 7784 TopoLoss 12960 6632 RWLoss 79.42 6864 Tversky ( β = 0 .6) 73.02 6644 Focal 70.65 6778 Extra resources required by: SCNP +0.66 +454 
+
+Table B.2. Resources required on PulmonaryVA (3D nnUNetv2). 
+
+is the derivative of the normalized predictions w.r.t. the un-normalized predictions (the logits Z). Softmax normal-ization couples the gradients at a particular pixel location across all classes 
+
+∂ ˆyki 
+
+∂z ki 
+
+= ˆ yki (δck,i − ˆyci ), (2) where δck,i is the Kronecker delta, which is 1 if k = c at pixel i and 0 otherwise. This is because each individual value will depend on the logits at that pixel location across all classes. Sigmoid normalization, in contrast, does not have this coupling effect, as sigmoid is applied individually and independently to each logit: 
+
+∂ ˆyki 
+
+∂z ki 
+
+= ˆ yki (1 − ˆyki ). (3) The derivative of Cross entropy loss is 
+
+∂LCE 
+
+∂ ˆyki 
+
+= − yki 
+
+ˆyki 
+
+, (4) where we can observe that the gradient at a pixel location depends on the values of the prediction and the ground truth at that pixel. The derivative of Focal loss is 
+
+∂LF ocal 
+
+∂ ˆyki 
+
+= αy ki 
+
+
+
+γ(1 − ˆyki )γ−1 log(ˆ yki ) − (1 − ˆyki )γ
+
+ˆyki 
+
+
+
+,
+
+(5) where α weighs the overall contribution of Focal loss, and 
+
+γ controls the penalization over uncertain predictions. As a loss function modified from Cross entropy, the gradients provided by Focal loss at a particular pixel also depend on the pixel and the ground truth itself, plus on the two other hyper-parameters ( α, γ ). The derivative of Dice loss is 
+
+∂LDice 
+
+∂ ˆyki 
+
+= − 2
+
+CB 2
+
+> k
+
+(yki Bk − Ak), (6) where C is the number of classes, and Bk and Ak are the union and intersection, respectively, between predictions and ground truth of class k. In Equation (6), we can ob-serve that the gradients from Dice loss (similarly to other metric-based loss functions such as Tversky loss [42]) do not depend on the pixel prediction but on the ground truth at the pixel itself and on global statistics involving the num-ber of true/false positives and true/false negatives. Note how optimizing jointly Cross entropy and Dice loss applied to softmax probability values, which is the most common approach in domains such as in medical image segmentation, couples 1) pixel predictions across all classes (i.e ., ˆyci ∀c ∈ { 1, . . . , C }), 2) their ground truth ( yki ), and 3) global statistics ( A, B in Eq. (6)). Optimizing a loss func-tion with the SCNP logits will, in addition, couple predic-tions from neighboring pixels across all classes by adding the following term to the chain rule: 
+
+∂ ˜zki 
+
+∂z ki 
+
+= X
+
+> j∈Ω( i)
+
+1[zki = ˜ zkj ] ∂L
+
+∂ ˜zkj 
+
+, (7) where 1[·] is 1 if the inner condition is true and 0 otherwise. 
+
+C.1. Example 
+
+Let us compute the gradients at the pixel corresponding to the yellow logits (Figure 3, Paper). With ∂LCE   
+
+> ∂˜zki
+
+= ˆ yki −yki ,the gradients at ki are: 
+
+∇zki LCE = [( .50 − 1) + ( .56 − 1) ,
+
+(.23 − 0) + ( .21 − 0) + ( .19 − 0) ,
+
+(.20 − 0) + ( .24 − 0)] = [ − .94 , . 63 , . 44] 
+
+(8) 
+
+## D. SCNP’s negligible delay in convergence 
+
+Since SCNP switches the focus of the optimization from improving all pixels to improving the worst neighbors, we investigated whether and to what extent SCNP delays con-vergence. Figure D.1 shows, in two loss functions (Cross Entropy and Dice loss), 1) that the delay in convergence due to optimizing the SCNP logits alone is negligible, and 2) that such delay can be further reduced by optimizing the SCNP logits jointly with the standard logits. 0 500 1000       
+
+> Epoch
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Validation Dice
+> CE
+> CE
+> CE+CE
+> 0500 1000
+> Epoch
+> 0.4
+> 0.6
+> 0.8
+> Dice
+> Dice
+> Dice+Dice
+> 110 20
+> 0.0
+> 0.5
+> 110 20
+> 0.50
+> 0.75
+
+Figure D.1. Left: Convergence plot when optimizing Cross en-tropy over the standard logits, the SCNP logits, and both. Right: Same scenario with Dice loss. The small plots inside the two pan-els are a zoomed in on the first 20 epochs. 
+
+## E. SCNP vs. Binary closing 
+
+We investigated the effectiveness of binary closing (•) by applying it to CEDice segmentations on four datasets (one per group). We used kernels of size 3, 5, 7 (2D & 3D), and we applied binary closing until convergence. Below, we re-port the best β0e (i.e. accuracy in the number of structures), which indicates topology accuracy.                 
+
+> Dataset CEDice •(CEDice) SCNP (CEDice )FIVES 10.82 ±2.71 8.79 ±2.47 6.94 ±1.47
+> DeepGlobeRoads 11.77 ±3.17 9.92 ±2.83 6.56 ±2.25
+> CirrMRI600 0.27 ±0.26 0.19 ±0.13 0.12 ±0.05
+> NuInsSeg 8.18 ±2.39 8.17 ±2.40 7.53 ±2.20
+
+Table E.3. Average β0e in four datasets when optimizing CEDice (second column) and after applying binary closing (third column), and when optimizing CEDice with the SCNP logits (fourth col-umn). •: Binary closing. 
+
+Although binary closing improved β0e, SCNP remained su-perior. Furthermore, note that binary closing is a hurdle or ineffective in instance segmentation, real-time applica-tions, tubular structures that are very close, and it requires a ground truth to find the optimal kernel size and number of iterations. 
+
+## F. Comparison with clCE 
+
+We run extra experiments with [2]’s loss on FIVES, as FIVES was also used in [2]. clCE loss achieved: Dice 0.93 ±0.00 , β0e 10.62 ±3.05 , clDice 0.92 ±0.00 , with our SCNP re-maining more effective (same Dice, clDice, β0e: 6.94 ±1.47 ). Figure F.2 shows a visual comparison in two representative images. 
+
+## G. Datasets description 
+
+Tables G.4 to G.7 list the details of the datasets used in this study, including an image/slice of each dataset and their size and split. Figure F.2. Visual comparison between clCE and CEDice . Red circle: topological errors. 
+
+> FIVES
+
+• Blood vessels in fundus retina images • Semantic segmentation • R,G,B • 2048 × 2048 pixels Splits: 480-120-200 (train, validation, test) PulmonaryVA 
+
+• Pulmonary arteries and veins in chest CT scans • Semantic segmentation • CT • 184 × 235 × 262.5 voxels (median) Dataset size: 106 (five-fold cross validation) Axons 
+
+• Axons in mouse brain • Semantic segmentation • Electron-microscopy • 1062.5 × 1067 × 285 voxels (median) Dataset size: 10 (five-fold cross validation) Sham HM 25 contra—ipsi, Sham HM 49 contra—ipsi, TBI HM 24 contra—ipsi, TBI HM 28 contra—ipsi, TBI HM 2 contra—ipsi  
+
+> Table G.4. Medical datasets with tubular structures (nnUNetv2 framework, Group ①)TopoMortar
+
+• Mortar in red brick wall images • Semantic segmentation • R,G,B • 512 × 512 pixels Splits: 50-20-350 (train, validation, test) Crack500 
+
+• Cracks in concrete images • Semantic segmentation • R,G,B • 640 × 896 Pixels (me-dian) Splits: 250-50-200 (train, validation, test) DeepGlobeRoads 
+
+• Roads in satellite images • Semantic segmentation • R,G,B • 1024 × 1024 pixels (me-dian) Splits: 4357-623-1246 (train, validation, test)  
+
+> Table G.5. Non-medical datasets with tubular structures (Detectron2+DeepLabv3+ framework, Group ②)CirrMRI600
+
+• Cirrhotic liver in MRI • Semantic segmentation • T2w • 320 × 260 × 80 voxels (median) Splits: 198-50-31 (train, validation, test) ATLAS2 
+
+• Lesion in brain MRI • Semantic segmentation • T1w • 197 × 233 × 189 voxels (median) Dataset size: 655 (five-fold cross validation) ISLES24 
+
+• Ischemic lesion in brain MRI • Semantic segmentation • ADC, DWI • 512 × 581 × 69 voxels (median) Dataset size: 149 (five-fold cross validation) MSLesSeg 
+
+• Multiple sclerosis lesion in brain MRI • Semantic segmentation • T1w, T2w, FLAIR • 182 × 218 × 182 voxels (median) Splits: 74-19-22 (train, validation, test)  
+
+> Table G.6. Medical datasets with non-tubular structures (nnUNetv2 framework, Group ③)NuInsSeg
+
+• Cell nuclei in H&E-stained histological images • Instance segmentation • R,G,B • 512 × 512 pixels (median) Splits: 532-66-67 (train, validation, test) IHC TMA 
+
+• Cell nuclei in immunohis-tochemical tissue microar-ray images • Instance segmentation • R,G,B • 256 × 256 pixels (median) Splits: 212-27-27 (train, validation, test) LyNSeC 
+
+• Lymphoma nuclei in H&E-stained histological images • Instance segmentation • R,G,B • 512 × 512 pixels (median) Splits: 559-70-70 (train, validation, test)  
+
+> Table G.7. Medical (cells) datasets with rounded structures (InstanSeg framework, Group ④)
+
+## H. Optimization 
+
+We left the frameworks’ optimization strategy as it was by default. 
+
+nnUNetv2 employs SGD with Nesterov momentum (0.99), a weight decay of 3e-5, initial learning rate of 0.01, and the following learning rate scheduler: ηit =
+
+η0( 1−it iterations )0.9. Models were optimized for 1000 epochs. 
+
+Detectron2 employs AdamW [29] with an initial learn-ing rate of 0.001, β1 = 0 .9, β 2 = 0 .999 , a weight decay of 0.1, and cosine annealing as learning rate scheduler. Models were optimized for 12000 iterations. 
+
+InstanSeg employs Adam [23] with an initial learning rate of 0.001. Models were optimized for 500, 150 and 500 epochs in NuInsSeg, IHC TMA, and LyNSeC, respectively. 
+
+H.1. Loss functions and their hyper-parameters 
+
+Cross Entropy Dice loss (CEDice) We summed Cross Entropy and Dice loss: LCEDice = LCE + LDice .
+
+clDice loss We employed the official code provided by Shit et al. [44] and, as in the original study, we combined clDice with Dice loss. Since clDice’s effectiveness depends on the suitability of the hyper-parameter “number of itera-tions” ( i) of its soft-skeletonization method, we conducted hyper-parameter optimization. For each dataset, we ex-plored five different values that were selected based on the thickness of the tubular structures while limiting the GPU memory usage to 80GB. The values that we explored in each dataset (and the selected hyper-parameter) were: • FIVES: 8, 16, 24 , 32, 40. • PulmonaryVA: 4, 8, 12, 16 , 18. • Axons: 9, 18, 27, 36, 46 .• TopoMortar: 4, 8, 12, 16, 18. • Crack500: 10 , 20, 30, 40, 51. • DeepGlobeRoads: 15, 30, 45 , 60, 72. 
+
+Skeleton Recall (SkelRecall) We employed the official code provided by Kirchhoff et al. [24] and, as in the original study, we combined SkelRecall with Cross Entropy loss. 
+
+TopoLoss We employed the official code provided by Hu et al. [17]. As suggested in the original work, we first op-timized Cross Entropy loss and, at the end of the optimiza-tion, we combined it with TopoLoss. Since TopoLoss com-putes persistence homology, the iteration time increased dramatically, especially for the 3D datasets. Therefore, we set the number of iterations that we optimized TopoLoss such that the total training time did not exceed 24 hours. Table H.8 summarizes this. 
+
+RegionWise (RWLoss) We employed the official code provided by Valverde and Tohka [47]. Dataset Eps. w/ TopoLoss % of train time FIVES 38 (1000) 44.20% PulmonaryVA 3 (1000) 34.30% Axons 5 (1000) 51.88% TopoMortar 3600 (12000) 87.86% Crack500 3600 (12000) 62.65% DeepGlobeRoads 3600 (12000) 41.50% CirrMRI600 5 (1000) 39.11% ATLAS2 12 (1000) 37.16% ISLES24 12 (1000) 63.35% MSLesSeg 5 (1000) 36.81% NuInsSeg 150 (500) 36.80% IHC TMA 15 (150) 34.41% LyNSeC 150 (500) 53.72% 
+
+> Table H.8. Second column: Epochs optimizing TopoLoss and to-tal epochs. Third column: Percentage of training time optimizing TopoLoss relative to the total training time (average across the five runs).
+
+Focal loss We employed MONAI’s implementation [3] of Focal loss [27], using its default hyper-parameters. 
+
+Tversky loss We employed MONAI’s implementation [3] of Tversky loss [42], and we optimized its hyper-parameters 
+
+α, β which control the penalty for false positives and nega-tives. 
+
+## I. Performance metrics 
+
+Tables I.9 to I.12 show the results obtained by CEDice (our baseline), CEDice optimizing the SCNP-penalized log-its, their combination, and several loss function, on the 13 datasets used in this study. Furthermore, we assess the sta-tistical significance of SCNP-derived performance metrics compared to the baseline CEDice with a permutation t-test based on 10,000 random permutations (p < 0.05). For the datasets with a pre-defined train-test split (Ap-pendix G), we report the mean and standard deviation on the same test-set images across five runs; for the remaining datasets, we report the mean and standard deviation across the five-fold cross validation runs. In consequence, the stan-dard deviation in the first group of datasets indicates algo-rithmic variance while in the second group it indicates intra-dataset variance. Appendix J presents a qualitative compar-ison of segmentations. Loss Dice β0e clDice FIVES CEDice 0.92 ±0.0 10.82 ±2.71 0.92 ±0.0 
+
+clDice ( i = 24 ) 0.91 ±0.0 36.55 ±10.70 0.91 ±0.01 
+
+SkelRecall 0.91 ±0.0 12.45 ±4.25 0.91 ±0.0 
+
+TopoLoss 0.92 ±0.0 8.09 ±2.45 0.92 ±0.0 
+
+RWLoss 0.92 ±0.0 15.99 ±5.35 0.92 ±0.0 
+
+Tversky ( β = 0 .7) 0.92 ±0.0 12.22 ±3.45 0.92 ±0.0 
+
+Focal 0.92 ±0.0 16.08 ±5.97 0.92 ±0.0 
+
+CEDice+ CEDice 0.93 ±0.0 7.95 ±1.82 0.92 ±0.0 
+
+CEDice 0.92 ±0.0 6.94 ±1.47 0.92 ±0.0 
+
+> PulmonaryVA
+
+CEDice 0.84 ±0.04 12.89 ±12.92 0.88 ±0.04 
+
+clDice ( i = 16 ) 0.84 ±0.04 15.98 ±8.73 0.89 ±0.04 
+
+SkelRecall 0.83 ±0.05 39.45 ±20.42 0.84 ±0.06 
+
+TopoLoss 0.84 ±0.05 14.44 ±10.67 0.88 ±0.04 
+
+RWLoss 0.84 ±0.05 18.02 ±13.83 0.87 ±0.04 
+
+Tversky ( β = 0 .6) 0.84 ±0.05 15.44 ±14.87 0.88 ±0.04 
+
+Focal 0.84 ±0.05 21.29 ±13.4 0.87 ±0.04 
+
+CEDice+ CEDice 0.84 ±0.05 5.82 ±5.02 0.87 ±0.06 
+
+CEDice 0.83 ±0.05 6.95 ±4.18 0.84 ±0.07 
+
+> Axons
+
+CEDice 0.90 ±0.04 531 ±534 0.85 ±0.05 
+
+clDice ( i = 46 ) 0.89 ±0.04 1925 ±1701 0.86 ±0.04 
+
+SkelRecall 0.89 ±0.04 1578 ±900 0.85 ±0.05 
+
+TopoLoss 0.90 ±0.04 539 ±490 0.85 ±0.05 
+
+RWLoss 0.90 ±0.04 408 ±412 0.85 ±0.05 
+
+Tversky ( β = 0 .6) 0.90 ±0.04 530 ±623 0.85 ±0.05 
+
+Focal 0.90 ±0.04 412 ±400 0.85 ±0.05 
+
+CEDice+ CEDice 0.90 ±0.04 254 ±203 0.87 ±0.05 
+
+CEDice 0.90 ±0.04 279 ±207 0.88 ±0.05 
+
+Table I.9. Group ① Medical datasets with tubular structures (nnUNetv2). CEDice : CEDice applied to SCNP. Bold (Dice): Highest and significantly significant. Bold ( β0e, clDice): Best scores with Dice equal or better and statistically significant. 
+
+Loss Dice β0e clDice TopoMortar CEDice 0.67 ±0.03 25.06 ±9.26 0.75 ±0.03 
+
+clDice ( i = 4 ) 0.68 ±0.02 21.40 ±5.86 0.75 ±0.02 
+
+SkelRecall 0.68 ±0.02 23.64 ±7.30 0.76 ±0.02 
+
+TopoLoss 0.67 ±0.02 27.22 ±7.64 0.74 ±0.02 
+
+RWLoss 0.54 ±0.30 19.40 ±13.80 0.76 ±0.03 
+
+Tversky ( β = 0 .8) 0.68 ±0.02 22.59 ±6.46 0.75 ±0.02 
+
+Focal 0.67 ±0.02 29.75 ±10.17 0.74 ±0.02 
+
+CEDice+ CEDice 0.68 ±0.02 20.86 ±6.78 0.76 ±0.02 
+
+CEDice 0.68 ±0.02 20.30 ±6.45 0.75 ±0.02 
+
+> Crack500
+
+CEDice 0.68 ±0.03 10.61 ±3.44 0.76 ±0.03 
+
+clDice ( i = 10 ) 0.65 ±0.09 9.98 ±2.96 0.80 ±0.04 
+
+SkelRecall 0.65 ±0.02 11.78 ±3.22 0.77 ±0.02 
+
+TopoLoss 0.54 ±0.04 13.34 ±3.24 0.58 ±0.04 
+
+RWLoss — — —Tversky ( β = 0 .6) 0.69 ±0.02 10.47 ±3.67 0.77 ±0.03 
+
+Focal — — —CEDice+ CEDice 0.68 ±0.03 9.32 ±2.71 0.76 ±0.03 
+
+CEDice 0.66 ±0.03 9.48 ±2.36 0.73 ±0.03 
+
+> DeepGlobeRoads
+
+CEDice 0.75 ±0.02 11.77 ±3.17 0.82 ±0.02 
+
+clDice ( i = 45 ) 0.72 ±0.03 6.51 ±2.41 0.82 ±0.03 
+
+SkelRecall 0.71 ±0.02 15.26 ±4.12 0.79 ±0.02 
+
+TopoLoss 0.22 ±0.05 27.79 ±6.04 0.33 ±0.06 
+
+RWLoss — — —Tversky ( β = 0 .7) 0.74 ±0.02 9.78 ±2.90 0.82 ±0.02 
+
+Focal — — —CEDice+ CEDice 0.72 ±0.03 7.24 ±2.63 0.80 ±0.03 
+
+CEDice 0.70 ±0.03 6.56 ±2.25 0.78 ±0.03 
+
+Table I.10. Group ② Non-medical datasets with tubular structures (Detectron2+DeepLabv3+). 
+
+Loss Dice β0e
+
+> CirrMRI600
+
+CEDice 0.97 ±0.01 0.27 ±0.26 
+
+TopoLoss 0.97 ±0.01 0.32 ±0.28 
+
+RWLoss 0.96 ±0.01 0.43 ±0.31 
+
+Tversky ( β = 0 .7) 0.95 ±0.0 1.39 ±1.49 
+
+Focal 0.97 ±0.01 0.51 ±0.30 
+
+CEDice+ CEDice 0.97 ±0.01 0.17 ±0.09 
+
+CEDice 0.97 ±0.01 0.12 ±0.05 
+
+> ATLAS2
+
+CEDice 0.63 ±0.28 1.60 ±2.5 
+
+TopoLoss 0.61 ±0.30 1.45 ±2.42 
+
+RWLoss 0.56 ±0.33 1.44 ±2.47 
+
+Tversky ( β = 0 .8) 0.61 ±0.26 2.37 ±3.15 
+
+Focal 0.59 ±0.32 1.39 ±2.51 
+
+CEDice+ CEDice 0.62 ±0.27 1.40 ±2.49 
+
+CEDice 0.61 ±0.28 1.38 ±2.57 
+
+> ISLES24
+
+CEDice 0.77 ±0.20 3.64 ±4.39 
+
+TopoLoss 0.77 ±0.20 3.77 ±5.06 
+
+RWLoss 0.77 ±0.20 3.92 ±5.03 
+
+Tversky ( β = 0 .7) 0.77 ±0.19 4.61 ±7.65 
+
+Focal 0.76 ±0.21 4.32 ±6.30 
+
+CEDice+ CEDice 0.77 ±0.19 3.72 ±5.40 
+
+CEDice 0.76 ±0.20 5.27 ±7.85 
+
+> MSLesSeg
+
+CEDice 0.71 ±0.01 9.47 ±1.81 
+
+TopoLoss 0.71 ±0.01 9.40 ±1.84 
+
+RWLoss 0.70 ±0.01 10.22 ±1.64 
+
+Tversky ( β = 0 .8) 0.71 ±0.01 9.55 ±2.14 
+
+Focal 0.69 ±0.02 10.06 ±2.27 
+
+CEDice+ CEDice 0.70 ±0.01 12.72 ±1.54 
+
+CEDice 0.67 ±0.01 23.05 ±1.22 
+
+Table I.11. Group ③ Medical datasets with non-tubular structures (nnUNetv2). 
+
+Loss Dice β0e (Re)
+
+> NuInsSeg
+
+CEDice 0.76 ±0.04 8.18 ±2.39 0.91 ±0.01 
+
+TopoLoss 0.28 ±0.01 13.35 ±9.23 0.76 ±0.04 
+
+RWLoss 0.72 ±0.04 8.42 ±3.04 0.90 ±0.01 
+
+Tversky ( β = 0 .6) 0.77 ±0.03 7.94 ±2.91 0.90 ±0.01 
+
+Focal 0.71 ±0.03 9.25 ±2.05 0.89 ±0.01 
+
+CEDice+ CEDice 0.76 ±0.04 7.95 ±2.21 0.91 ±0.01 
+
+CEDice 0.76 ±0.03 7.53 ±2.20 0.92 ±0.01 
+
+> IHC TMA
+
+CEDice 0.79 ±0.04 3.31 ±1.58 0.88 ±0.01 
+
+TopoLoss 0.36 ±0.0 7.49 ±3.36 0.78 ±0.03 
+
+RWLoss 0.78 ±0.05 2.33 ±1.36 0.87 ±0.01 
+
+Tversky ( β = 0 .9) 0.81 ±0.04 2.64 ±1.32 0.88 ±0.01 
+
+Focal 0.77 ±0.04 2.33 ±1.22 0.87 ±0.01 
+
+CEDice+ CEDice 0.82 ±0.04 2.39 ±1.24 0.89 ±0.01 
+
+CEDice 0.81 ±0.04 2.81 ±2.04 0.90 ±0.01 
+
+> LyNSeC
+
+CEDice 0.88 ±0.0 10.23 ±3.94 0.91 ±0.0 
+
+TopoLoss 0.47 ±0.0 34.44 ±19.91 0.73 ±0.05 
+
+RWLoss 0.84 ±0.01 10.56 ±5.04 0.91 ±0.0 
+
+Tversky ( β = 0 .6) 0.88 ±0.0 9.47 ±3.53 0.91 ±0.0 
+
+Focal 0.86 ±0.01 10.10 ±3.92 0.90 ±0.0 
+
+CEDice+ CEDice 0.88 ±0.0 9.75 ±3.42 0.92 ±0.0 
+
+CEDice 0.88 ±0.0 9.91 ±3.33 0.92 ±0.0 
+
+Table I.12. Group ④ Medical datasets with rounded structures. J. Segmentation examples 
+
+Figures J.3 to J.6 illustrates the segmentations provided by our SCNP and other loss functions. For each group we show the segmentations obtained by optimizing CEDice loss and the top three loss functions. 
+
+## K. Sensitivity analysis: extra metrics 
+
+Table K.13 and Table K.14 show the Dice and clDice met-rics of the sensitivity analysis. 
+
+↓ w 9.69 7.23 4.70 3 0.92 ±0.0 0.92 ±0.0 0.92 ±0.0 
+
+5 0.92 ±0.0 0.92 ±0.0 0.92 ±0.0 
+
+7 0.92 ±0.0 0.91 ±0.0 0.91 ±0.0 
+
+9 0.9 ±0.0 0.89 ±0.0 0.9 ±0.0 
+
+11 0.92 ±0.0 0.91 ±0.0 0.92 ±0.0 
+
+Table K.13. Dice coefficients of the sensitivity analysis on SCNP’s hyper-parameter w.
+
+↓ w 9.69 7.23 4.70 3 0.92 ±0.0 0.92 ±0.0 0.92 ±0.0 
+
+5 0.91 ±0.0 0.91 ±0.0 0.92 ±0.0 
+
+7 0.9 ±0.0 0.89 ±0.0 0.9 ±0.0 
+
+9 0.88 ±0.0 0.87 ±0.0 0.88 ±0.0 
+
+11 0.91 ±0.0 0.91 ±0.0 0.92 ±0.0 
+
+Table K.14. clDice metric of the sensitivity analysis on SCNP’s hyper-parameter w.FIVES PulmonaryVA Axons 
+
+Image Annotation CEDice CEDice+ CEDice CEDice Tversky TopoLoss RWLoss Figure J.3. Results on medical datasets with tubular structures (Group ①). TopoMortar Crack500 DeepGlobeRoads 
+
+Image Annotation CEDice CEDice+ CEDice CEDice clDice Tversky SkelRecall 
+
+Figure J.4. Results on non-medical datasets with tubular structures (Group ②). CirrMRI600 ATLAS2 ISLES24 MSLesSeg 
+
+Image Annotation CEDice CEDice+ CEDice CEDice TopoLoss RWLoss Focal Figure J.5. Results on medical datasets with non-tubular structures (Group ③). NuInsSeg IHC_TMA LyNSeC 
+
+Image Annotation CEDice CEDice+ CEDice CEDice Tversky RWLoss Focal 
+
+Figure J.6. Results on medical datasets with rounded structures (Group ④).

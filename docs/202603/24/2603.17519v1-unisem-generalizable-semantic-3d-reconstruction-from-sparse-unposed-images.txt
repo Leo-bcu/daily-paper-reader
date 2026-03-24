@@ -1,0 +1,492 @@
+Title: UniSem: Generalizable Semantic 3D Reconstruction from Sparse Unposed Images
+
+URL Source: https://arxiv.org/pdf/2603.17519v1
+
+Published Time: Thu, 19 Mar 2026 01:05:37 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# UniSem: Generalizable Semantic 3D Reconstruction from Sparse Unposed Images 
+
+Guibiao Liao, Qian Ren, Kaimin Liao, Hua Wang, Zhi Chen, Luchao Wang, and Yaohua Tang 
+
+Moore Threads AI 
+
+Abstract. Semantic-aware 3D reconstruction from sparse, unposed im-ages remains challenging for feed-forward 3D Gaussian Splatting (3DGS). Existing methods often predict an over-complete set of Gaussian prim-itives under sparse-view supervision, leading to unstable geometry and inferior depth quality. Meanwhile, they rely solely on 2D segmenter fea-tures for semantic lifting, which provides weak 3D-level and limited gen-eralizable supervision, resulting in incomplete 3D semantics in novel scenes. To address these issues, we propose UniSem, a unified frame-work that jointly improves depth accuracy and semantic generalization via two key components. First, Error-aware Gaussian Dropout (EGD) performs error-guided capacity control by suppressing redundancy-prone Gaussians using rendering error cues, producing meaningful, geometri-cally stable Gaussian representations for improved depth estimation. Sec-ond, we introduce a Mix-training Curriculum (MTC) that progressively blends 2D segmenter-lifted semantics with the model’s own emergent 3D semantic priors, implemented with object-level prototype alignment to enhance semantic coherence and completeness. Extensive experiments on ScanNet and Replica show that UniSem achieves superior performance in depth prediction and open-vocabulary 3D segmentation across varying numbers of input views. Notably, with 16-view inputs, UniSem reduces depth Rel by 15.2% and improves open-vocabulary segmentation mAcc by 3.7% over strong baselines. 
+
+Keywords: Semantic 3D Reconstruction · Feed Forward · 3D Gaussian 
+
+## 1 Introduction 
+
+Jointly reconstructing and understanding 3D scenes from 2D multi-view images (i.e ., semantic-aware 3D reconstruction) is a long-standing challenge in com-puter vision. Recent advances in radiance fields, most notably Neural Radiance Fields (NeRFs) [23] and 3D Gaussian Splatting (3DGS) [14], have substantially improved semantic-aware 3D reconstruction. A prominent line of work distills 2D vision-language foundation model features ( e.g ., CLIP [6, 29]) into radiance fields, enabling open-vocabulary 3D understanding [15, 20, 28, 34, 51]. However, these methods typically rely on multi-stage preprocessing ( e.g ., SfM-based pose 
+
+> arXiv:2603.17519v1 [cs.CV] 18 Mar 2026
+
+2 G. Liao et al. (d) Segmentation      
+
+> Uni3R Ours Unposed Images
+> AbsRel( ↓)
+> 4.85
+> 3.84
+> Uni3R Ours Ground Truth
+> (c) Depth
+> (b) 2D LSeg
+> (a) RGB Images
+> mAcc( ↑)
+> 0.832
+> 0.795
+> 3D Gaussians
+
+UniSem 
+
+Fig. 1: UniSem, a feedforward Gaussian model for 3D semantic-aware reconstruction, predicts a unified 3D Gaussian scene representation from unposed images in a single forward pass, enabling novel view synthesis, depth estimation, and open-vocabulary segmentation. Prior work Uni3R [37] predicts pixel-aligned Gaussians and relies solely on 2D LSeg features [18] for semantic lifting, resulting in noisy depth and limited semantic generalization (golden dashed box) . In contrast, UniSem suppresses redundant Gaussians and complements 2D lifting with emergent 3D semantic cues, yielding more accurate depth and more coherent, complete 3D semantics. 
+
+estimation [32, 39]) and per-scene optimization, which restricts scalability and the ability to understand novel scenes. Recent efforts [12, 13, 35] have shifted toward generalizable feed-forward re-construction, enabling single-pass inference without scene-specific optimization and improving cross-scene view synthesis. Early methods [2, 5, 21, 43] predict pixel-aligned Gaussians from known posed images. Recent works [40, 41, 49, 50] relax the pose requirement, enabling generalizable reconstruction under unposed settings. More recently, LSM [9] and Uni3R [37] incorporate 2D segmenter guid-ance to advance semantic 3D reconstruction from sparse, unposed images. Despite these advances, existing generalizable semantic 3DGS methods still face two challenges that undermine a geometrically stable and semantically co-herent 3D representation: (1) Over-complete pixel-granular Gaussians in-troduce depth noise. A common feed-forward 3DGS pipeline predicts pixel-aligned Gaussians ( i.e ., one Gaussian per pixel), yielding an over-complete prim-itive set under sparse inputs. Redundant primitives compete to explain the same photometric evidence, causing gradient interference and resulting in noisy depth estimates (Fig. 1(c)). (2) 2D-only lifting limits semantic generalization. 
+
+Purely lifting view-local 2D segmenter features provides weak 3D-consistent su-pervision and is bounded by the generalization ceiling of the 2D teacher, limiting the coherence and completeness of 3D semantics in novel scenes (Fig. 1(d)). To address these issues, we propose UniSem , a unified framework that incor-porates Error-aware Gaussian Dropout (EGD) and Mix-training Cur-riculum (MTC) to jointly enhance depth quality and semantic accuracy. First, in reliably reconstructed (low-error) regions, excessively accumulated Gaussians tend to be redundant. They contribute marginally to rendering fi-delity and sometimes introduce noisy gradients that harm depth estimation. To mitigate this, EGD assigns each Gaussian an error-aware dropout probability during training, suppressing gradient noise from redundancy-prone primitives. UniSem 3
+
+This simple yet effective regularization encourages a more compact and stable Gaussian distribution, yielding improved depth accuracy (Fig. 1 (c)). Second, as a feed-forward 3D model gradually acquires cross-scene knowledge, it develops emergent 3D semantic cues that can be more coherent and gener-alizable than raw 2D-lifted features. Motivated by this, MTC injects such 3D and generalizable cues into the supervision loop: training starts with purely 2D-lifted semantics, after which model-predicted transferable semantics are blended to progressively guide learning. This yields more coherent and complete 3D se-mantics across diverse unseen scenes (Fig. 1 (d)). Together, EGD improves geometric stability, and MTC enhances seman-tic generalization, jointly refining Gaussian representations for more accurate semantic-aware 3D reconstruction. Our contributions are summarized as follows: 
+
+– We propose UniSem, an effective generalizable semantic 3D reconstruction model that improves depth quality and semantic accuracy. 
+
+– We introduce Error-aware Gaussian Dropout (EGD), a lightweight yet effec-tive capacity control mechanism that suppresses redundancy-induced Gaus-sians and boosts depth prediction. 
+
+– We present Mix-training Curriculum (MTC) to integrate emergent 3D se-mantic priors, improving semantic coherence and cross-scene generalization. 
+
+– UniSem achieves superior performance on depth prediction and open-vocabulary 3D segmentation across diverse scenes and view input settings, showing strong generalization and scalability. 
+
+## 2 Related Work 
+
+Per-Scene Optimization-based 3D Reconstruction. Radiance-field repre-sentations have rapidly advanced 3D reconstruction and novel-view synthesis in recent years. Neural Radiance Fields (NeRFs) [10,23] implicitly model scenes via coordinate-based MLPs and achieve photo-realistic rendering, while 3D Gaus-sian Splatting (3DGS) [14,45] represents scenes with explicit Gaussian primitives and enables efficient rasterization with high fidelity. Despite their success, most NeRF/3DGS pipelines [1, 11, 22, 24, 54], rely on multi-stage preprocessing ( e.g ., SfM for camera poses/Gaussian initialization) and require costly per-scene opti-mization. Such workflows limit scalability and hinder cross-scene generalization. 
+
+Generalizable Feed-forward Reconstruction. To eliminate per-scene opti-mization, generalizable feed-forward models have emerged. Early, pixelNeRF [53] and MVSNeRF [3] learn neural priors from large-scale datasets, enabling unseen scene reconstruction. pixelSplat [2], MVSplat [5], and subsequent works [25, 46] directly predict Gaussian primitives for efficient feed-forward rendering. Yet, these methods still depend on pre-computed camera poses. Recently, pose-free methods relax this assumption. DUSt3R [41] and MASt3R [17] infer pixel-aligned 3D point clouds from unposed image pairs, and VGGT [40] jointly predicts structure and poses using stacked Transformer blocks. These advances improve feed-forward geometry and appearance modeling, but most do not explicitly address open-vocabulary segmentation. Instead, our goal is a uni-fied model capable of generalizable view synthesis and semantic reconstruction. 4 G. Liao et al. 
+
+Generalizable Semantic 3D Reconstruction. Vision-language models such as CLIP [6, 29] have inspired efforts to lift 2D open-vocabulary knowledge into radiance fields. LERF [15] distills CLIP features into NeRF, and 3DGS-based extensions [28,51,56] augment Gaussians with semantic embeddings for efficient 3D understanding. However, these methods typically follow per-scene optimiza-tion pipelines, limiting scalability to novel scenes. Recent works target feed-forward semantic reconstruction without per-scene optimization. LSM [9] and GSemSplat [42] use Transformers to encode cross-scene semantic priors, while UniForward [38] decouples appearance/semantics with a dual-branch decoder. SpatialSplat [33] designs a dual-field semantic rep-resentation to learn uncompressed semantics. SIU3R [47] and IGGT [19] further bridge reconstruction and instance-level understanding, but both rely on in-stance annotations. However, most of these methods are restricted to two-view inputs. More recently, Uni3R [37] introduces cross-frame attention over unposed multi-view inputs, enabling more flexible multi-view semantic reconstruction. Despite these advances, over-complete pixel-aligned Gaussians and 2D-only semantic lifting limit depth quality and cross-scene semantic generalization. Our approach addresses them via error-guided Gaussian redundancy suppression and curriculum-weighted mixed semantic supervision. 
+
+## 3 Empirical Observations 
+
+Redundant Gaussians are photometrically negligible yet geometrically harmful. Feed-forward 3DGS pipelines commonly predict pixel-aligned Gaus-sians, which can become over-complete under sparse inputs. To understand the (a)  (b)  (c)  (d)   
+
+> PSNR: 23.51, SSIM :0.800 PSNR: 23.53, SSIM :0.802 PSNR:23.57, SSIM:0.805
+
+Fig. 2: Visual results under different set-tings in feed-forward 3DGS. (a) Ground truth. (b) Baseline: redundant Gaussians persist, leading to noisy depth. (c) Removal of a subset of Gaussians in low-error re-gions (with short re-optimization): appear-ance changes are minimal while depth noise is reduced. (d) After continued training with redundancy suppression, the model yields more stable and accurate depth. 
+
+role of redundancy, we conduct adiagnostic experiment during train-ing by removing a subset of Gaus-sians in reliably reconstructed (low-error) regions according to the per-pixel reconstruction error. As shown in Fig. 2(c), after removing a sub-set of Gaussians in low-error regions and re-optimizing for a short pe-riod (1k iterations), the rendered ap-pearance is preserved, while depth predictions change substantially and become more stable. This suggests that many such primitives have lim-ited photometric impact but can in-troduce gradient interference that harms geometric learning. With con-tinued training under redundancy suppression, the model further yields more stable and accurate depth (Fig. 2(d)). UniSem 5RGB Images  Ground Truth  2D  LSeg  Trained 3D Model 
+
+Fig. 3: Visual segmentation results of dif-ferent models. Method 2 Views 8 Views 16 Views mIoU mAcc mIoU mAcc mIoU mAcc 2D LSeg [18] 0.482 0.793 0.448 0.773 0.464 0.788 Trained 3D Model 0.540 0.818 0.507 0.805 0.500 0.794 
+
+Table 1: Open-vocabulary segmentation: 2D LSeg vs. a feed-forward 3D model trained only with 2D-lifted semantics. 
+
+Takeaway. These results suggest that suppressing redundancy-prone Gaussians, especially in low-error regions, can preserve appearance while improving depth stability, motivating an error-guided mechanism to control effective primitive capacity during training. 
+
+Feed-forward 3D models can develop generalizable 3D semantic cues beyond 2D lifting. Most semantic 3DGS methods typically lift 2D segmenter features into 3D for supervision, which is view-conditioned and is bounded by the cross-scene generalization ceiling of the 2D teacher. Interestingly, we find that a feed-forward 3DGS model trained across scenes can produce semantic predic-tions that are often more coherent and complete than raw 2D segmenter outputs on unseen scenes. As illustrated in Fig. 3, the 2D segmenter fails to recover a complete object region in a novel scene, while the trained 3D model yields a more accurate segmentation. Table 1 further compares open-vocabulary segmentation metrics between the 2D teacher (LSeg) and the trained feed-forward 3D model supervised only by 2D-lifted semantics. Across different input-view settings, the trained 3D model can outperform the 2D teacher, supporting the existence of transferable semantic cues emerging in the 3D model beyond raw 2D predictions. 
+
+Takeaway. These observations motivate leveraging the model’s own emergent 3D semantic cues to complement 2D-lifted supervision, improving semantic co-herence and generalization in novel scenes. 
+
+## 4 Methodology 
+
+Given a sparse set of unposed input images {Iv }Vv=1 , UniSem predicts a 3D Gaussian scene representation in a single forward pass (Sec. 4.1). Motivated by the empirical observations in Sec. 3, UniSem incorporates two key components in generalizable semantic 3DGS. Error-aware Gaussian Dropout (EGD) 
+
+for error-guided capacity control to stabilize geometry (Sec. 4.2), and a Mix-training Curriculum (MTC) that injects emergent 3D semantic priors to support robust generalization to unseen scenes (Sec. 4.3). Finally, the overall training loss of UniSem is described in Sec. 4.4. 
+
+4.1 Feed-Forward Semantic Gaussian Splatting 
+
+As shown in Fig. 4, UniSem utilizes a Vision Transformer (ViT) [8] backbone for feature extraction and Dense Prediction Transformer (DPT) [30] heads for Gaussian parameter prediction. 
+
+Transformer Encoder and Feature Fusion. Input images are divided into patch tokens, and are concatenated with a learnable camera intrinsic token [50]. 6 G. Liao et al. Phase I: 2D  Segmenter -Lifting Phase II: Mix 2D -3D Training       
+
+> Source Views
+> ViT  Encoder
+> ViT  Decoder
+> Gaussian Head
+> Feature Head
+> Point Head
+> Rendered
+> Features
+> 2D LSeg
+> Features
+> Rendered Depth
+> LSeg
+> Model
+> Supervision
+> Differentiable
+> Splatting
+> Error -aware Gaussian Dropout
+> Ground
+> Truth
+> Rendered
+> Images
+> Error Maps
+> Predicted 3D Gaussians Updated 3D Gaussians
+> Target Views
+> Max -error
+> Prompting
+> Segment Anything 2
+> Object Correspondence
+> Mix -training Curriculum
+> View -based Prototype Consistency Geometry -aware Prototype Alignment
+> Multi -view Features
+> Coherence Matching
+> ℒ𝑣
+> 3𝐷 (Eq. (11))
+> 3D Gaussians
+> Consistency Align.
+> ℒ𝑝
+> 3𝐷 (Eq. ( 14))
+> Enhanced
+> Gaussians
+
+Fig. 4: Overview of UniSem. Given a set of unposed input views, a ViT-based en-coder extracts multi-view features, which are fed into the decoder and DPT heads to produce pixel-aligned 3D Gaussian primitives. (a) To stabilize depth estimation, we introduce Error-aware Gaussian Dropout (EGD) , which computes per-pixel re-construction error and suppresses overly dense Gaussians via progressive, error-guided dropout, reducing gradient noise during training. (b) To enhance 3D semantic con-sistency and cross-scene generalization, the proposed Mix-training Curriculum (MTC) transitions from pure 2D segmenter-lifted supervision to mixed 2D-3D se-mantic training. MTC leverages (i) max-error prompting for cross-view object corre-spondence, and (ii) view-to-view and geometry-aware prototype alignment, enforcing more coherent semantic Gaussian representations. 
+
+These tokens are processed by a ViT backbone with a DINOv2 architecture [26] for feature extraction. Then, these features are processed by a cross-view Transformer encoder (similar to VGG-T [40]) that alternates between intra-view self-attention and cross-view attention, effectively fusing multi-view information into a unified latent representation. 
+
+Decoding Gaussian Parameters. Using DPT heads, the fused latent repre-sentation is decoded into a dense set of pixel-aligned 3D Gaussian primitives Gk
+
+with corresponding parameters. Each Gaussian is parameterized by: 
+
+Gk = {μk, s k, r k, α k, c k, f k}, (1) where μk, sk, and rk denote the 3D center, scale vector, and rotation quaternion, respectively. αk ∈ [0 , 1] is the opacity. ck is the spherical harmonics (SH) for color representation, and fk ∈ Rd is the semantic feature vector. More details are provided in the supplementary material. While this feed-forward pipeline provides an initial semantic 3D Gaussian scene, it often suffers from depth noise due to redundant primitives and lim-ited semantic generalization under 2D-only lifting (Sec. 3), motivating the two components described next. 
+
+4.2 Error-aware Gaussian Dropout (EGD) 
+
+We introduce Error-aware Gaussian Dropout (EGD) to perform error-guided ca-pacity control during training, selectively suppressing redundancy-prone primi-tives for enhancing depth quality. UniSem 7
+
+Error-aware Dropout Probability. For each pixel-aligned Gaussian Gk, we compute the reconstruction error at its associated pixel location k:
+
+Ek = ˆIk − Ik 1
+
+, (2) where ˆIk is the rendered pixel obtained via standard α-blending of all Gaussians overlapping pixel k: ˆIk = P 
+
+> i∈N
+
+ciαi
+
+Qi−1
+
+> j=1
+
+(1 − αj ). Then, we normalize the reconstruction error across all pixel-aligned Gaussians: 
+
+˜Ek = Ek − min j Ej
+
+max j Ej − min j Ej + ϵ , (3) with ϵ = 10 −6 for numerical stability. We assign each Gaussian a dropout prob-ability that decreases with its normalized reconstruction error: 
+
+pdrop  
+
+> k
+
+= ηt
+
+
+
+1 − ˜Ek
+
+β
+
+, (4) where β > 1 modulates the focus intensity of low-error regions and ηt controls the overall dropout ratio at training epoch t.
+
+Cosine-cycle Schedule. To avoid unstable dropout early in training and ex-cessive disturbance in later stages, we modulate ηt with a cosine-cycle schedule: 
+
+ηt = ηmin + 12 (ηmax − ηmin )
+
+
+
+1 − cos 
+
+
+
+2π tT
+
+ 
+
+, (5) where t and T denote the current and total training epochs. We set ηmax = 0 .2
+
+and ηmin = 0 .05 in experiments. 
+
+Stochastic Masking. We sample a Bernoulli mask to decide whether Gk par-ticipates in rendering and gradient back-propagation: 
+
+mk = 1
+
+h
+
+ξk > p drop 
+
+> k
+
+i
+
+, ξk ∼ U (0 , 1) , (6) where mk = 1 indicates that Gaussian Gk is retained at this iteration. EGD is applied only during training as a stochastic regularizer that reshapes gradient flow by suppressing redundancy-prone Gaussians. At inference, we ren-der with all predicted Gaussians, since EGD training yields a well-conditioned Gaussian set, thus inference-time pruning has a marginal effect (see supplemen-tary). As shown in Fig. 5, using EGD leads to improved depth accuracy. 
+
+4.3 Mix-training Curriculum (MTC) 
+
+We introduce a Mix-training Curriculum (MTC) that complements 2D-lifted supervision with model-emergent 3D semantic priors for mixed supervision. 
+
+Phase I: 2D Segmenter-Lifted Supervision. Following [9,37], we distill fea-tures from LSeg [18] as the initial semantic supervision. The rendered semantic feature ˆF is computed by α-blending N Gaussians overlapping the pixel: 
+
+ˆF = X
+
+> i∈N
+
+fiαii−1Y
+
+> j=1
+
+(1 − αj ), (7) 8 G. Liao et al. 
+
+where fi denotes the low-dimensional semantic Gaussian embedding for efficient rasterization. We apply a lightweight MLP FM LP to align ˆF to the LSeg feature map ˜F :
+
+L2D sem = Lcos 
+
+ FM LP ( ˆF ), ˜F , (8) where Lcos denotes the cosine similarity loss. While this step lifts 2D semantics into 3D Gaussians, this purely 2D lifting manner inherits inconsistent noise from 2D segmentations and lacks rich generalization priors. 
+
+Phase II: Mixed 2D-3D Supervision To enhance semantic coherence and generalization, we incorporate the model’s own 3D semantic priors into the supervision loop. Concretely, for n sparse source views ( {Isi }ni=1 ) and a tar-get view ( Itar , selected from the intermediate frame among the source views, as in [9, 37]), we construct object-level correspondences and enforce prototype consistency across views and in 3D. 
+
+1) Object Correspondence via Max-error Prompting. We treat the target and source views as a short viewpoint-varying video sequence and use SAM2 [31] to obtain corresponding object masks. Since directly sampling dense prompts is impractical, we propose Max-error Prompting, which selects the pixel xmax 
+
+in the target view exhibiting the highest semantic disagreement as the prompt location. The error map for the target view is computed as: 
+
+Etar (x) = 1 − cos  FMLP ( ˆF tar (x)) , ˜F tar (x). (9) The prompt location for SAM2 is defined as xtar max = arg max j Etar (j). SAM2 then returns a target mask and its corresponding masks in the source views: 
+
+Mtar , {Msi }ni=1 = SAM2 (Itar , {Isi }ni=1 , xtar max ), (10) where Mtar and Msi denote the region masks for target and i-th source views. SAM2 is used solely during training and is not required at inference. 
+
+2) View-to-View Prototype Consistency. Given the matched masks, we impose a view-based prototype consistency constraint to inject 3D semantic priors and suppress 2D noise. Specifically, we align the mean semantic features computed from the target and n source views within the matched object region: 
+
+L3D  
+
+> v
+
+= Lcos 
+
+P 
+
+> j∈Mtar
+
+ˆF tar (j)
+
+|Mtar | , 1
+
+n
+
+> n
+
+X
+
+> i=1
+
+P 
+
+> j∈Msi
+
+ˆF si (j)
+
+|Msi |
+
+!
+
+, (11) This encourages the model to produce view-invariant 3D semantic representa-tions. 
+
+3) Geometry-aware Prototype Alignment. To further enhance the 3D semantic coherence of Gaussian representations, we propose to explicitly enforce feature matching within the 3D domain. For Gaussians within a source-view mask re-gion Ms, we normalize their semantic embeddings {fi}i∈Ms and form a region prototype by averaging: 
+
+p = 1
+
+|Ms|
+
+X
+
+> i∈Ms
+
+fi. (12) UniSem 9
+
+To account for reliability, each Gaussian is weighted by its local geometric den-sity, measured via mean pairwise distance: 
+
+di = 1
+
+|Ms|
+
+X
+
+> j∈Ms
+
+∥μi − μj ∥2. (13) Gaussians located in denser and more structurally stable regions thus receive higher emphasis, yielding a more reliable learning signal. The geometry-aware alignment constraint can be formulated as: 
+
+L3D  
+
+> p
+
+= X
+
+> i∈Ms
+
+wi fi − p 22, wi = d−1
+
+> i
+
+P 
+
+> k∈Ms
+
+d−1
+
+> k
+
+. (14) 
+
+4) Total Mix-training Semantic Loss. The overall semantic loss is defined as: 
+
+Lsem = L2D sem + λm(L3D  
+
+> v
+
++ L3D  
+
+> p
+
+) · 1t≥τ , (15) where λm = 0 .5 and the curriculum switch τ = 90 epochs. By injecting semantics derived from 3D generalizable models, our model effectively strengthens semantic consistency, completeness, and cross-scene generalization. 
+
+4.4 Model Training 
+
+Our model is trained end-to-end by minimizing a composite loss, which enforces fidelity across appearance, semantics, and geometric structure: 
+
+L = Lcolor + λ1Lsem + λ2Lgeo , (16) where λ1, λ 2 are set to 0.02 and 0.005 in all experiments. 
+
+Photometric Loss ( Lcolor ). We use a combination of L1 and the LPIPS per-ceptual loss [55] to ensure the rendered view ˆIv matches the input image Iv :
+
+Lcolor =
+
+> V
+
+X
+
+> v=1
+
+(∥ ˆIv − Iv ∥1 + λLPIPS LLPIPS ( ˆIv , I v )) , (17) where λLPIPS is set to 0.05. 
+
+Semantic Loss ( Lsem ). Instead of purely distilling 2D LSeg features as in [9,37], we leverage the proposed mix-training curriculum (Eq. 15) to enhance semantic coherence and cross-scene generalization. 
+
+Geometric Loss ( Lgeo ). Following [37], we utilize a frozen geometric teacher (VGGT) [40] to guide point maps ˆP v supervision: 
+
+Lgeo =
+
+> V
+
+X
+
+> v=1
+
+LChamfer 
+
+ ˆP v , ˜P v , ˜Cv 
+
+, (18) where LChamfer is the Chamfer-style alignment loss used in [37], computed be-tween the predicted point map ˆP v and the teacher-provided point map ˜P v , and weighted by the teacher’s confidence map ˜Cv .10 G. Liao et al. 
+
+Table 2: Quantitative comparison on 3D tasks using 2-view inputs. We re-port depth estimation quality, open-vocabulary segmentation accuracy, and novel view synthesis. Rel and RMSE values are scaled by 100 for readability. Results of Uni3R are obtained using its official GitHub implementation and released weights. Our approach achieves superior performance across various metrics.                                                                          
+
+> Type Method Recon. Time Depth Estimation Text-Driven Seg. Novel View Synthesis Rel ↓RMSE ↓mIoU ↑mAcc ↑PSNR ↑SSIM ↑LPIPS ↓
+> Per-Scene
+> LSeg [18] N/A N/A N/A 0.4819 0.7927 N/A N/A N/A DFF [16] 1m21s N/A N/A 0.4037 0.6755 19.86 0.6650 0.3629 Feat3DGS [56] 18m21s N/A N/A 0.4223 0.7174 24.49 0.8132 0.2293
+> Feed-Forward
+> LSM [9] 0.108s 4.74 18.90 0.5078 0.7686 24.39 0.8072 0.2506 SpatialSplat [33] 0.071s N/A N/A 0.5587 0.7924 25.46 0.8045 0.2046 Uni3R [37] 0.162s 4.85 15.37 0.5474 0.8198 25.37 0.8671 0.1412 Ours 0.162s 3.84 13.13 0.5677 0.8345 25.58 0.8723 0.1397
+
+## 5 Experiments 
+
+5.1 Experimental Setup Datasets. Following [9, 33, 37], we train our method on a combined dataset of ScanNet [7] and ScanNet++ [52], covering 1,565 indoor scenes. For evaluation, 40 unseen scenes from ScanNet are used to assess the model’s performance on novel view synthesis, depth prediction, and open-vocabulary 3D segmentation. We further test on Replica [36] to assess cross-dataset generalization. 
+
+Implementation Details. We use DINOv2 [26] as the image encoder with a patch size of 16, and a 24-layer cross-view Transformer. The encoder and decoder are initialized from the pretrained VGGT weights [40], while other parameters are randomly initialized. All methods are evaluated at 256 ×256 resolution for fair comparison. The framework supports up to N = 16 input views per scene. Training runs for 100 epochs on 8 A100 GPUs, taking ∼20 hours for the 2-view setting with batch size 32. SAM2 is used online during training, adding ∼4 hours. We also evaluate generalization under 8-view and 16-view inputs. 
+
+Evaluation Metrics. We evaluate novel view synthesis using PSNR, SSIM [44], and LPIPS [55]. Segmentation performance is assessed using the mean Intersection-over-Union (mIoU) and mean pixel accuracy (mAcc). For depth prediction, we report standard metrics: Absolute Relative Error (Rel) and Root Mean Square Error (RMSE). 
+
+Baselines. We compare our approach with state-of-the-art (SOTA) methods for generalizable semantic 3D reconstruction: LSM [9], SpatialSplat [33], and Uni3R [37]. In addition, we incorporate the following baselines: 1) Per-scene optimization methods for semantic 3D reconstruction, including DFF [16] and Feat3DGS [56]; and 2) the 2D open-vocabulary segmenter LSeg [18], which is used for feature lifting in all compared semantic-aware methods. 
+
+5.2 Comparison with State-of-the-art Methods Results of Depth Estimation. In Table 2, UniSem achieves a significant 19.0% reduction in Rel (from 4.74 to 3.84, scaled by 100) over prior methods. UniSem 11 
+
+Table 3: Quantitative comparison on 3D tasks with 8-view and 16-view inputs . Our approach achieves superior performance .                         
+
+> Method 8 View Inputs 16 View Inputs Rel RMSE mIoU mAcc PSNR SSIM LPIPS Rel RMSE mIoU mAcc PSNR SSIM LPIPS Uni3R [37] 4.46 15.04 0.521 0.807 24.122 0.830 0.251 4.81 14.57 0.522 0.795 23.070 0.807 0.299 Ours 3.73 12.94 0.533 0.821 24.520 0.843 0.162 4.08 13.41 0.552 0.832 23.668 0.823 0.184 Ours Ground Truth Uni3R LSM
+
+Fig. 5: Depth estimation results on novel views. Ground Truth  Ours  Uni3R  LSM 
+
+Fig. 6: Qualitative comparison of cross-dataset generalization, includ-ing depth estimation (1 st row) and open-vocabulary segmentation (2 nd row). Please zoom in for better visualization. 
+
+Fig. 5 shows that UniSem reconstructs more detailed and structurally coherent geometry across diverse and challenging scenes. These results exhibit its ability to learn effective Gaussian representations, enabling superior depth quality. 
+
+Results of Open-Vocabulary 3D Segmentation. Following LSM and Uni3R, we remap the semantic categories in ScanNet into eight common classes: Wall, Floor, Ceiling, Chair, Table, Bed, Sofa, and Others. As shown in Table 2, UniSem surpasses all baselines, even outperforming LSeg, which provides semantic fea-ture supervision. This indicates that our model learns stronger 3D-consistent semantics than what 2D distillation alone provides. Fig. 7 further confirms that UniSem yields more complete and coherent segmentation. This stems from the Mix-training Curriculum, which injects 3D semantic priors and suppresses noisy 2D inconsistencies, thus enabling more accurate object segmentation and im-proved cross-scene generalization. 
+
+Results of Novel View Synthesis. In Table 2, per-scene optimization meth-ods ( e.g ., Feat3DGS) require known poses and lengthy tuning, yet yield only comparable fidelity. In contrast, UniSem performs pose-free reconstruction in under one second while attains competitive or better rendering quality. More-over, compared with a strong feed-forward method specialized for view synthesis (AnySplat), UniSem matches PSNR/SSIM and improves LPIPS (Table 4). 
+
+Scalability to Different View Inputs. Unlike LSM and SpatialSplat, which are restricted to 2-view inputs, UniSem supports multi-view input, such as 8-view and 16-view settings as in Uni3R. Table 3 shows that UniSem consistently outperforms Uni3R across all view configurations. With 16 views, Rel decreases by 15.2%, while mAcc rises by 3.7%. These results highlight the robustness of EGD and MTC in handling multi-view inputs and wide baselines, achieving high-fidelity and semantically coherent 3D reconstructions. 12 G. Liao et al. RGB Images  Ground Truth  Ours  Uni3R  LSM  LSeg 
+
+Fig. 7: Open-vocabulary segmentation comparison on novel views. Our ap-proach yields more accurate and complete results. 
+
+Table 4: Novel view synthe-sis comparison under 2-view inputs.             
+
+> Setting PSNR ↑SSIM ↑LPIPS ↓
+> AnySplat [12] 25.559 0.8707 0.241 Ours 25.579 0.8723 0.140
+
+Table 5: Comparison on Replica with 2-view inputs. Our approach achieves superior cross-dataset results.                                    
+
+> Method Rel ↓RMSE ↓mIoU ↑mAcc ↑PSNR ↑SSIM ↑LPIPS ↓
+> LSM [9] 13.71 32.56 0.3596 0.7054 13.219 0.585 0.346 Uni3R [37] 7.16 20.20 0.4252 0.7616 23.888 0.829 0.115 Ours 6.52 18.38 0.4784 0.7966 24.448 0.849 0.111
+
+Cross-Dataset Generalization. We evaluate UniSem on the Replica without any fine-tuning. In Table 5, UniSem significantly outperforms prior methods in depth estimation, semantic segmentation, and novel view synthesis. Fig. 6 also highlights improved depth and more accurate semantics. These confirm the strong cross-domain generalization capability enabled by our EGD and MTC. 
+
+5.3 Ablation Studies Effectiveness of EGD. In Table 6, removing Error-aware Gaussian Dropout (EGD) consistently degrades all metrics, with the largest drop in depth, indi-cating that EGD regularizes and stabilizes Gaussian optimization. Replacing error-aware selection with naive random dropout ( w/o Error-aware ) harms ren-dering quality, since error-agnostic removal may discard critical Gaussians and disrupt rendering. Using a fixed rather than a cosine-cycled dropout ratio ( w/o Cosine-cycle ) degrades performance, confirming the scheduling strategy’s role in stable optimization. UniSem 13 
+
+Table 6: Main ablation study under 2-view input setting.                                           
+
+> Setting Rel RMSE mIoU mAcc PSNR SSIM Ours (Full) 3.84 13.13 0.568 0.835 25.58 0.872
+> w/o EGD 4.47 14.30 0.557 0.831 25.29 0.869 w/o Error-aware 3.94 13.31 0.561 0.832 25.35 0.870 w/o Cosine-cycle 3.95 13.26 0.555 0.830 25.36 0.868 w/o MTC 4.09 13.68 0.555 0.819 25.36 0.869 w/o L3D
+> p3.92 13.29 0.563 0.834 25.46 0.870 w/o Geo-aware 3.87 13.26 0.565 0.835 25.54 0.871
+
+Table 7: Comparison with dropout-based strategies in 3DGS (DropGaus-sian [27], DropoutGS [48], and CAGS [4]).                           
+
+> Setting Rel RMSE mIoU mAcc PSNR SSIM Ours 3.84 13.13 0.568 0.835 25.58 0.872
+> w [27] 12.30 33.50 0.494 0.801 18.68 0.734 w [48] 10.07 31.35 0.319 0.674 19.87 0.722 w [4] 4.21 13.99 0.557 0.819 25.21 0.865 Ground Truth Baseline +EGD +EGD+MTC (Full)
+
+Fig. 8: Visual ablation of key com-ponents. EGD reduces depth noise, and MTC improves segmentation accuracy. CAGS Ours  DropoutGS  DropGaussian Ground Truth 
+
+Fig. 9: Visual comparison of our EGD 
+
+with different settings. 
+
+Effectiveness of MTC. Table 6 shows that Mix-training Curriculum (MTC) boosts segmentation, confirming its benefit for 3D semantic generalization. Be-yond semantics, its correspondence alignment also benefits depth and appearance rendering under sparse views. Both the 3D correspondence loss ( w/o L3D  
+
+> p
+
+) and its geometry-aware weighting ( w/o Geo-aware ) contribute to consistent improve-ments, validating their roles in reliable feature alignment. Fig. 8 further show reduced depth noise with EGD and more coherent segmentation with MTC. 
+
+Variants of EGD. Table 7 compares EGD with related dropout-based strate-gies in 3DGS. DropGaussian [27] indiscriminately zeros out opacities, causing depth and rendering instability. DropoutGS [48] enforces invariance between full-field and Gaussian-dropped renderings, assuming that removing redundant Gaussians should not alter the representation. Yet, this overly strict constraint destabilizes optimization and hurts accuracy. CAGS [4] uses fixed-ratio random dropout. However, its purely random removal and the lack of a ratio regulation mechanism introduce noisy, unstable gradients, which perturb the radiance field and harm geometry and rendering. In contrast, EGD performs selective, error-aware suppression with a cosine-cycle schedule, gradually regularizing redundant Gaussians while retaining critical ones. This yields more stable feed-forward Gaussian optimization and consistently better results (9). 
+
+Ablation on VGGT Geometry Loss. Table 8 shows that under w/o Geo , our 
+
+Table 8: EGD beyond VGGT ge-ometric supervision. Even under w/o Geo , our method remains superior.               
+
+> Method Rel RMSE mIoU mAcc PSNR SSIM Uni3R w/o Geo 7.73 22.21 0.543 0.820 23.47 0.798 Ours w/o Geo 5.89 18.73 0.552 0.834 25.51 0.868
+
+method still surpasses Uni3R on depth and rendering. This suggests that the improvement is not solely attributable to VGGT geometric supervision, and EGD provides effective regularization that stabilizes Gaussian optimization. 14 G. Liao et al. 
+
+Table 9: Ablation results of EGD with different settings.                
+
+> Method Rel RMSE mIoU mAcc PSNR LPIPS Cosine-cycle 3.84 13.13 0.568 0.835 25.58 0.1397
+> Fix Schedule 3.95 13.26 0.555 0.830 25.36 0.1455 Step Schedule 3.89 13.24 0.565 0.834 25.50 0.1417
+
+Table 10: Ablation results of MTC with different settings.                   
+
+> Method Rel RMSE mIoU mAcc PSNR SSIM Ours 3.84 13.13 0.568 0.835 25.58 0.872
+> Random Prompt. 3.85 13.13 0.561 0.830 25.56 0.872
+> τ= 80 3.84 13.22 0.569 0.835 25.59 0.873
+
+Effect of the Cosine-cycle Schedule in EGD. Table 9 compares cosine-cycle with fixed and step schedules. A fixed ratio (always ηmax ) is overly ag-gressive early on, destabilizing Gaussian optimization and degrading seman-tics/rendering, while a step schedule ( ηmin → ηmax ) improves early stability but becomes too strong later, slightly hurting perceptual quality (LPIPS). Cosine-cycle provides a balanced progression: mild dropout at the beginning/end for stable geometry and detail preservation, and stronger dropout mid-training for redundancy reduction, yielding superior overall results. 
+
+Variants of MTC. In Table 10, replacing max-error prompting with random points reduces mIoU/mAcc, since random prompts may fall on semantically uninformative regions and provide weaker correction on challenging areas. Max-error prompting instead targets high-uncertainty locations, improving cross-view correspondence and semantic propagation. Earlier activation (e.g., τ = 80 rather than τ = 90 ) achieves comparable accuracy but increases overhead for correspon-dence construction (via SAM2), so we set τ = 90 for an efficient trade-off. 
+
+5.4 Limitation Analysis 
+
+UniSem is trained and evaluated primarily on indoor benchmarks, which are smaller and less diverse than datasets used by large-scale models (e.g., MASt3R [17], VGGT [40]). Thus, our current claims focus on indoor generalization under sparse, unposed inputs, and transfer to in-the-wild domains (outdoor, extreme lighting, dynamic scenes) will be explored in the future. Moreover, while SAM2-based region masks effectively provide cross-view correspondence, they may in-troduce segmentation artifacts in highly cluttered scenes. We hope to address this in the future by exploring mask-free semantic priors. 
+
+## 6 Conclusion 
+
+This paper presents UniSem, a feed-forward framework that addresses the chal-lenges of generalizable semantic-aware 3D reconstruction. By coupling Error-aware Gaussian Dropout (EGD), which suppresses redundancy-induced gradi-ent interference, with the Mix-training Curriculum (MTC), which incorporates emergent 3D semantic cues via prototype-based alignment, UniSem jointly ad-vances depth estimation and open-vocabulary 3D semantics. Experiments across varying numbers of input views and multiple benchmarks demonstrate consistent improvements in depth prediction, open-vocabulary 3D segmentation, novel-view synthesis, and strong cross-scene generalization. UniSem 15 
+
+## References 
+
+1. Barron, J.T., Mildenhall, B., Verbin, D., Srinivasan, P.P., Hedman, P.: Zip-nerf: Anti-aliased grid-based neural radiance fields. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 19697–19705 (2023) 2. Charatan, D., Li, S.L., Tagliasacchi, A., Sitzmann, V.: pixelsplat: 3d gaussian splats from image pairs for scalable generalizable 3d reconstruction. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 19457– 19467 (2024) 3. Chen, A., Xu, Z., Zhao, F., Zhang, X., Xiang, F., Yu, J., Su, H.: Mvsnerf: Fast generalizable radiance field reconstruction from multi-view stereo. In: Proceedings of the IEEE/CVF international conference on computer vision. pp. 14124–14133 (2021) 4. Chen, K., Zhong, Y., Li, Z., Lin, J., Chen, Y., Qin, M., Wang, H.: Quantifying and alleviating co-adaptation in sparse-view 3d gaussian splatting. Advances in neural information processing systems (2025) 5. Chen, Y., Xu, H., Zheng, C., Zhuang, B., Pollefeys, M., Geiger, A., Cham, T.J., Cai, J.: Mvsplat: Efficient 3d gaussian splatting from sparse multi-view images. In: Proceedings of the European Conference on Computer Vision. pp. 370–386. Springer (2024) 6. Cherti, M., Beaumont, R., Wightman, R., Wortsman, M., Ilharco, G., Gordon, C., Schuhmann, C., Schmidt, L., Jitsev, J.: Reproducible scaling laws for contrastive language-image learning. In: Proceedings of the IEEE/CVF Conference on Com-puter Vision and Pattern Recognition. pp. 2818–2829 (2023) 7. Dai, A., Chang, A.X., Savva, M., Halber, M., Funkhouser, T., Nießner, M.: Scannet: Richly-annotated 3d reconstructions of indoor scenes. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 5828–5839 (2017) 8. Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., Dehghani, M., Minderer, M., Heigold, G., Gelly, S.: An image is worth 16x16 words: Transformers for image recognition at scale. In: International Conference on Learning Representations (2021) 9. Fan, Z., Zhang, J., Cong, W., Wang, P., Li, R., Wen, K., Zhou, S., Kadambi, A., Wang, Z., Xu, D., et al.: Large spatial model: End-to-end unposed images to semantic 3d. Advances in neural information processing systems pp. 40212–40229 (2024) 10. Gao, K., Gao, Y., He, H., Lu, D., Xu, L., Li, J.: Nerf: Neural radiance field in 3d vision, a comprehensive review. arXiv preprint arXiv:2210.00379 (2022) 11. Huang, B., Yu, Z., Chen, A., Geiger, A., Gao, S.: 2d gaussian splatting for geo-metrically accurate radiance fields. In: ACM SIGGRAPH 2024 Conference Papers. pp. 1–11 (2024) 12. Jiang, L., Mao, Y., Xu, L., Lu, T., Ren, K., Jin, Y., Xu, X., Yu, M., Pang, J., Zhao, F., et al.: Anysplat: Feed-forward 3d gaussian splatting from unconstrained views. arXiv preprint arXiv:2505.23716 (2025) 13. Jin, H., Jiang, H., Tan, H., Zhang, K., Bi, S., Zhang, T., Luan, F., Snavely, N., Xu, Z.: Lvsm: A large view synthesis model with minimal 3d inductive bias. arXiv preprint arXiv:2410.17242 (2024) 14. Kerbl, B., Kopanas, G., Leimkühler, T., Drettakis, G.: 3d gaussian splatting for real-time radiance field rendering. ACM Transactions on Graphics 42 (4) (2023) 15. Kerr, J., Kim, C.M., Goldberg, K., Kanazawa, A., Tancik, M.: Lerf: Language em-bedded radiance fields. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 19729–19739 (2023) 16 G. Liao et al. 16. Kobayashi, S., Matsumoto, E., Sitzmann, V.: Decomposing nerf for editing via feature field distillation. In: Proceedings of the Advances in Neural Information Processing Systems. pp. 23311–23330 (2022) 17. Leroy, V., Cabon, Y., Revaud, J.: Grounding image matching in 3d with mast3r. In: European Conference on Computer Vision. pp. 71–91 (2024) 18. Li, B., Weinberger, K.Q., Belongie, S., Koltun, V., Ranftl, R.: Language-driven se-mantic segmentation. In: Proceedings of the International Conference on Learning Representations (2022) 19. Li, H., Zou, Z., Liu, F., Zhang, X., Hong, F., Cao, Y., Lan, Y., Zhang, M., Yu, G., Zhang, D., et al.: Iggt: Instance-grounded geometry transformer for semantic 3d reconstruction. arXiv preprint arXiv:2510.22706 (2025) 20. Liu, K., Zhan, F., Zhang, J., Xu, M., Yu, Y., El Saddik, A., Theobalt, C., Xing, E., Lu, S.: Weakly supervised 3d open-vocabulary segmentation. In: Proceedings of the Advances in Neural Information Processing Systems. pp. 53433–53456 (2023) 21. Liu, Y., Fan, K., Yu, W., Li, C., Lu, H., Yuan, Y.: Monosplat: Generalizable 3d gaussian splatting from monocular depth foundation models. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 21570–21579 (2025) 22. Lu, T., Yu, M., Xu, L., Xiangli, Y., Wang, L., Lin, D., Dai, B.: Scaffold-gs: Struc-tured 3d gaussians for view-adaptive rendering. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 20654–20664 (2024) 23. Mildenhall, B., Srinivasan, P.P., Tancik, M., Barron, J.T., Ramamoorthi, R., Ng, R.: Nerf: Representing scenes as neural radiance fields for view synthesis. In: Pro-ceedings of the European Conference on Computer Vision. pp. 405–421. Springer (2020) 24. Müller, T., Evans, A., Schied, C., Keller, A.: Instant neural graphics primitives with a multiresolution hash encoding. ACM Transactions on Graphics 41 (4), 1–15 (2022) 25. Nam, S., Sun, X., Kang, G., Lee, Y., Oh, S., Park, E.: Generative densification: Learning to densify gaussians for high-fidelity generalizable 3d reconstruction. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 26683–26693 (2025) 26. Oquab, M., Darcet, T., Moutakanni, T., Vo, H., Szafraniec, M., Khalidov, V., Fernandez, P., Haziza, D., Massa, F., El-Nouby, A., et al.: Dinov2: Learning robust visual features without supervision. Transactions on Machine Learning Research Journal pp. 1–31 (2024) 27. Park, H., Ryu, G., Kim, W.: Dropgaussian: Structural regularization for sparse-view gaussian splatting. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 21600–21609 (2025) 28. Qin, M., Li, W., Zhou, J., Wang, H., Pfister, H.: Langsplat: 3d language gaussian splatting. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 20051–20060 (2024) 29. Radford, A., Kim, J.W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G., Askell, A., Mishkin, P., Clark, J., et al.: Learning transferable visual models from natural language supervision. In: Proceedings of the International conference on machine learning. pp. 8748–8763. PMLR (2021) 30. Ranftl, R., Bochkovskiy, A., Koltun, V.: Vision transformers for dense prediction. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 12179–12188 (2021) 31. Ravi, N., Gabeur, V., Hu, Y.T., Hu, R., Ryali, C., Ma, T., Khedr, H., Rädle, R., Rolland, C., Gustafson, L., et al.: Sam 2: Segment anything in images and videos. arXiv preprint arXiv:2408.00714 (2024) UniSem 17 32. Schonberger, J.L., Frahm, J.M.: Structure-from-motion revisited. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 4104–4113 (2016) 33. Sheng, Y., Deng, J., Zhang, X., Zhang, Y., Hua, B., Zhang, Y., Ji, J.: Spatial-splat: Efficient semantic 3d from sparse unposed images. In: Proceedings of the IEEE/CVF International Conference on Computer Vision (2025) 34. Shi, J.C., Wang, M., Duan, H.B., Guan, S.H.: Language embedded 3d gaussians for open-vocabulary scene understanding. In: Proceedings of the IEEE/CVF Con-ference on Computer Vision and Pattern Recognition. pp. 5333–5343 (2024) 35. Smart, B., Zheng, C., Laina, I., Prisacariu, V.A.: Splatt3r: Zero-shot gaussian splatting from uncalibrated image pairs. arXiv preprint arXiv:2408.13912 (2024) 36. Straub, J., Whelan, T., Ma, L., Chen, Y., Wijmans, E., Green, S., Engel, J.J., Mur-Artal, R., Ren, C., Verma, S., et al.: The replica dataset: A digital replica of indoor spaces. arXiv preprint arXiv:1906.05797 (2019) 37. Sun, X., Jiang, H., Liu, L., Nam, S., Kang, G., Wang, X., Sui, W., Su, Z., Liu, W., Wang, X., et al.: Uni3r: Unified 3d reconstruction and semantic understanding via generalizable gaussian splatting from unposed multi-view images. arXiv preprint arXiv:2508.03643 (2025) 38. Tian, Q., Tan, X., Gong, J., Xie, Y., Ma, L.: Uniforward: Unified 3d scene and semantic field reconstruction via feed-forward gaussian splatting from only sparse-view images. arXiv preprint arXiv:2506.09378 (2025) 39. Ullman, S.: The interpretation of structure from motion. Proceedings of the Royal Society of London. Series B. Biological Sciences 203 (1153), 405–426 (1979) 40. Wang, J., Chen, M., Karaev, N., Vedaldi, A., Rupprecht, C., Novotny, D.: Vggt: Visual geometry grounded transformer. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 5294–5306 (2025) 41. Wang, S., Leroy, V., Cabon, Y., Chidlovskii, B., Revaud, J.: Dust3r: Geometric 3d vision made easy. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 20697–20709 (2024) 42. Wang, X., Lan, C., Zhu, H., Chen, Z., Lu, Y.: Gsemsplat: Generalizable semantic 3d gaussian splatting from uncalibrated image pairs. arXiv preprint arXiv:2412.16932 (2024) 43. Wang, Y., Huang, T., Chen, H., Lee, G.H.: Freesplat: Generalizable 3d gaussian splatting towards free view synthesis of indoor scenes. Advances in Neural Infor-mation Processing Systems pp. 107326–107349 (2024) 44. Wang, Z., Bovik, A.C., Sheikh, H.R., Simoncelli, E.P.: Image quality assessment: from error visibility to structural similarity. IEEE Transactions on Image Process-ing 13 (4), 600–612 (2004) 45. Wu, T., Yuan, Y.J., Zhang, L.X., Yang, J., Cao, Y.P., Yan, L.Q., Gao, L.: Recent advances in 3d gaussian splatting. Computational Visual Media 10 (4), 613–642 (2024) 46. Xu, H., Peng, S., Wang, F., Blum, H., Barath, D., Geiger, A., Pollefeys, M.: Depth-splat: Connecting gaussian splatting and depth. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 16453–16463 (2025) 47. Xu, Q., Wei, D., Zhao, L., Li, W., Huang, Z., Ji, S., Liu, P.: Siu3r: Simultaneous scene understanding and 3d reconstruction beyond feature alignment. Advances in neural information processing systems (2025) 48. Xu, Y., Wang, L., Chen, M., Ao, S., Li, L., Guo, Y.: Dropoutgs: Dropping out gaussians for better sparse-view rendering. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 701–710 (2025) 18 G. Liao et al. 49. Yang, J., Sax, A., Liang, K.J., Henaff, M., Tang, H., Cao, A., Chai, J., Meier, F., Feiszli, M.: Fast3r: Towards 3d reconstruction of 1000+ images in one forward pass. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 21924–21935 (2025) 50. Ye, B., Liu, S., Xu, H., Li, X., Pollefeys, M., Yang, M.H., Peng, S.: No pose, no problem: Surprisingly simple 3d gaussian splats from sparse unposed images. arXiv preprint arXiv:2410.24207 (2024) 51. Ye, M., Danelljan, M., Yu, F., Ke, L.: Gaussian grouping: Segment and edit any-thing in 3d scenes. In: Proceedings of the European Conference on Computer Vi-sion. pp. 162–179. Springer (2024) 52. Yeshwanth, C., Liu, Y.C., Nießner, M., Dai, A.: Scannet++: A high-fidelity dataset of 3d indoor scenes. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 12–22 (2023) 53. Yu, A., Ye, V., Tancik, M., Kanazawa, A.: pixelnerf: Neural radiance fields from one or few images. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 4578–4587 (2021) 54. Yu, Z., Chen, A., Huang, B., Sattler, T., Geiger, A.: Mip-splatting: Alias-free 3d gaussian splatting. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 19447–19456 (2024) 55. Zhang, R., Isola, P., Efros, A.A., Shechtman, E., Wang, O.: The unreasonable effectiveness of deep features as a perceptual metric. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 586–595 (2018) 56. Zhou, S., Chang, H., Jiang, S., Fan, Z., Zhu, Z., Xu, D., Chari, P., You, S., Wang, Z., Kadambi, A.: Feature 3dgs: Supercharging 3d gaussian splatting to enable distilled feature fields. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 21676–21685 (2024)

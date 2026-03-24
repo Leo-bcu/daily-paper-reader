@@ -1,0 +1,294 @@
+Title: Mitigating Objectness Bias and Region-to-Text Misalignment for Open-Vocabulary Panoptic Segmentation
+
+URL Source: https://arxiv.org/pdf/2603.21386v1
+
+Published Time: Tue, 24 Mar 2026 01:51:31 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# Mitigating Objectness Bias and Region-to-Text Misalignment for Open-Vocabulary Panoptic Segmentation 
+
+## Nikolay Kormushev 1,2 Josip ˇ Sari´ c1,3 Matej Kristan 1
+
+> 1
+
+University of Ljubljana 2ETH Zurich 3University of Zagreb Faculty of Comp. and Inf. Science Dept. of Computer Science Faculty of Elec. Eng. and Computing 
+
+## Abstract 
+
+Open-vocabulary panoptic segmentation remains hindered by two coupled issues: (i) mask selection bias, where objectness heads trained on closed vocabularies suppress masks of categories not observed in training, and (ii) limited regional understanding in vision–language models such as CLIP, which were optimized for global image clas-sification rather than localized segmentation. We intro-duce OVRCOAT, a simple, modular framework that tack-les both. First, a CLIP-conditioned objectness adjustment (COAT) updates background/foreground probabilities, pre-serving high-quality masks for out-of-vocabulary objects. Second, an open-vocabulary mask-to-text refinement (OVR) strengthens CLIP’s region-level alignment to improve clas-sification of both seen and unseen classes with markedly lower memory cost than prior fine-tuning schemes. The two components combine to jointly improve objectness esti-mation and mask recognition, yielding consistent panoptic gains. Despite its simplicity, OVRCOAT sets a new state of the art on ADE20K (+5.5% PQ) and delivers clear gains on Mapillary Vistas and Cityscapes (+7.1% and +3% PQ, respectively). The code is available here. 
+
+## 1. Introduction 
+
+Panoptic segmentation provides a semantic visual scene decomposition by assigning a class-label to every pixel, while distinguishing individual object instances (things) from background regions (stuff) [15]. It thus unifies se-mantic and instance segmentation, combining class-level la-belling with object-level differentiation, and delivers a com-prehensive representation of objects and their surroundings. Conventional panoptic segmentation models [2, 4, 5, 12, 18, 19, 35, 40, 48] are constrained by a fixed label set (vocabulary) of training data, thus limited only to the categories observed in training. This closed-vocabulary restriction poses a major obstacle for real-world deploy-Ground Truth  MAFT+  
+
+> FC-CLIP OVRCOAT
+
+Figure 1. State-of-the-art (e.g., MAFT+ [14], FC-CLIP [49]) in-correctly discard detections on categories not present at training time (eg., paintings), leading to failed detection. OVRCOAT cor-rectly classifies these instances by leveraging a CLIP-based up-date to background probabilities, improving performance on un-seen classes. 
+
+ment [8, 14, 45, 49, 51], where visual diversity exceeds the scope of curated datasets, motivating the development of generalisable segmentation paradigms. One such paradigm is open-vocabulary panoptic segmentation, which leverages vision–language models (VLMs), for example, CLIP [28] and ALIGN [13]. These methods overcome the aforementioned limitations by first generating individual mask proposals, removing those with low objectness score, and classifying the rest by a VLM-based model. However, this introduces a mask selection bias, since the module for estimating the objectness score is trained on limited data. A recent study [38] noted that in practice, networks often provide very low scores on un-labelled or out-of-training-vocabulary masks, thus classify-ing them to the background. Figure 1 visualises this bias, where state-of-the-art methods [14, 49] trained on datasets that did not include a painting class, incorrectly discard the corresponding masks. Another challenge is that VLMs, such as CLIP [28] and ALIGN [13], are trained for global image classifica-tion rather than image regions localized by segmentation. 
+
+> arXiv:2603.21386v1 [cs.CV] 22 Mar 2026
+
+While early approaches [45, 49] relied on frozen CLIP backbones, and proposed work-arounds, recent works such as OVSeg [20] and MAFT+ [14] propose involved fine-tuning strategies and achieve excellent open vocabulary se-mantic segmentation. However, in panoptic segmentation, only marginal improvements are observed on datasets like ADE20K [52] and notable drops on others. To address the aforementioned challenges, we propose OVRCOAT a novel framework for open-vocabulary panop-tic segmentation. The framework is built upon two key components. A CLIP-conditioned objectness adjustment (COAT) leverages CLIP [28] to refine mask selection by distinguishing foreground from background regions, effec-tively mitigating the mask selection bias present in previ-ous models and improving the overall robustness. Open vocabulary mask-to-text feature refinement (OVR) intro-duces an objective that enhances CLIP’s regional under-standing and improves mask classification accuracy across both seen and unseen classes, while being considerably more memory-efficient than existing approaches. When combined, these two components form OVRCOAT, which jointly improves objectness estimation and mask classifi-cation, leading to improved panoptic generalization. Al-though fine-tuned specifically for panoptic segmentation, OVRCOAT retains strong generalization across other seg-mentation tasks. In summary, our main contributions are: • CLIP-conditioned objectness adjustment (COAT) miti-gates the mask selection bias and improves previously un-seen objects detection. • Open vocabulary mask-to-text refinement (OVR) en-hances CLIP’s localization and classification capabilities. Compared to the current state-of-the-art [14], OVRCOAT proposes a substantially simpler architecture, which brings several benefits. It reduces the memory requirements, fu-ture extensions are simpler, and the proposed modules are easily deployable in related methods. OVRCOAT sets a new state-of-the-art on ADE20K [52], outperforming prior open-vocabulary panoptic works by +5.5% PQ, and de-livers +7.1% PQ gains on Mapillary Vistas [26] and 3%
+
+PQ on Cityscapes [7], underscoring its generalisation across different domains. 
+
+## 2. Related Work 
+
+2.1. Vision-language models 
+
+Vision-language models (VLMs) learn mappings of images and text into a shared embedding space by training on large-scale collections of image-caption pairs. Seminal works such as CLIP [28] and ALIGN [13] adopt a contrastive ob-jective that jointly optimizes image and text encoders to pro-duce close embeddings for positive pairs while maximizing the distance for negative pairs. Such an objective is primar-ily retrieval-orientated, but also aligns well with classifica-tion tasks. These models demonstrate strong zero-shot per-formance by matching image features with text embeddings of class names, requiring no additional fine-tuning. However, many downstream tasks, such as semantic and instance segmentation, require pixel-level recognition. Yet the contrastive objective enforces only global image-text alignment, resulting in representations with limited local-ization capabilities, which are crucial for dense predic-tion [29]. As a result, the naive application of VLMs to pixel-level tasks yields poor segmentation performance. Various approaches have been considered to address these limitations. Some studies introduce additional pre-training objectives such as masked image reconstruc-tion [23, 37], local-to-global view consistency [37], and region-to-text alignment [44]. In parallel, other studies repurpose pre-trained VLMs for dense prediction through post-training adaptation without relying on dense labels. For instance, these methods improve localization by refin-ing attention mechanisms [39, 53] or by leveraging com-plementary representations from other foundation mod-els [17, 41, 42, 50]. Despite significant progress, training-free methods still achieve limited performance and most often lack the ability to distinguish individual object in-stances. To overcome these limitations, training-based open-vocabulary segmentation methods leverage dense la-bels to improve localization while retaining the generaliza-tion ability of vision–language pretraining. 
+
+2.2. Training-based open-vocabulary segmentation 
+
+While dense semantic labels enable direct fine-tuning of the VLM’s visual encoder, it is beneficial to employ a dedicated decoder to overcome the low output resolution and produce high-resolution segmentation maps. A line of work uses per-pixel decoders that operate on image–text cost volumes and learn to refine the VLM’s predictions using dense super-vision [6, 43]. While effective for semantic segmentation, extending these approaches to instance or panoptic segmen-tation remains highly challenging [24]. Consequently, most methods adopt mask-transformer decoders, which have proven to be effective architectures for all segmentation tasks [4, 5]. Early approaches [8, 20] employ mask transformers to generate mask proposals that are then cropped and classified using CLIP. However, this strategy requires multiple evaluations of the CLIP back-bone, making it computationally expensive. More efficient variants [9, 45] mitigate this overhead by extracting image features once and reusing them to classify masks through a mask-pooling operator. FC-CLIP [49] further stream-lines this design by employing a single frozen convolutional CLIP backbone together with a combined mask-transformer and CLIP-based classifier. MAFT+ [14] extends this idea by fine-tuning the backbone for mask classification, while preserving the vision–language alignment of CLIP. Despite Mask pooling  
+
+> Label set Sim
+> Ensemble
+> OVR CLIP
+> Image Encoder
+> CLIP
+> Text Encoder
+> Mask
+> Transformer
+> COAT
+
+Figure 2. OVRCOAT extracts mask-to-text aligned features by CLIP image encoder and mask transformer, adjusted by a novel open-vocabulary mask-to-text refinement finetuning protocol (OVR). A new CLIP-conditioned objectness adjustment (COAT) module reduces the objectness bias in the mask transformer, improving detection of vocabulary instances not observed in training. Our main contributed blocks are denoted by red. 
+
+these advances, mask-transformer-based methods still face two key challenges: suboptimal classification performance and missed detections of valid segments caused by biases in the training data [38]. Our work tackles these challenges directly. 
+
+## 3. OVRCOAT 
+
+We propose OVRCOAT, which features a clean architec-ture (Figure 2), with two complementary components. ACLIP-conditioned objectness adjustment (COAT) leverages CLIP’s classification confidence to debias the objectness score (Section 3.1), while an open-vocabulary mask-to-text refinement (OVR) adjusts CLIP’s regional understanding and improves mask-level classification accuracy across both seen and unseen categories (Section 3.2). The following subsections describe these two components in detail. 
+
+3.1. CLIP-Conditioned Objectness Adjustment 
+
+Mask-transformers-based [4, 5] panoptic methods pro-pose a number of potential masks per image, remove the ones with low objectness scores and classify the rest into vocabulary-defined classes [14, 49]. The central interaction between vocabulary classes and objectness score occurs at the definition of the probability density function 
+
+pcls = pens · pobj , 1 − pobj 
+
+, (1) where pens is the standard ensembled per-vocabulary-class probability density [49] and pobj is the objectness score (usually defined via pobj = 1 − pvoid ), acting as a gating function – a low pobj leads to early mask rejection. We make an insight that this score is computed by the mask transformer as a (normalized) similarity of the mask-wide feature with a pre-trained void token. It is thus substantially biased towards the training-time vocabulary, in particular, if test-time vocabulary instances occur in unlabeled regions of training images, the void token takes form that makes their classification as background more probable (i.e., low objectness). On the other hand, CLIP does not contain the inherit bias due to its large-scale training, and effectively treats all cate-gories as seen classes. We thus propose the following CLIP-based test-time vocabulary-guided bias correction. For a considered proposal mask Mi ∈ { 0, 1}H×W , we extract a feature representation Fseg ,i by a global mask pooling, i.e., 
+
+Fseg ,i =
+
+PH,W u,v Mi(u, v ) · Fimg (u, v )
+
+PH,W u,v Mi(u, v ) . (2) A probability distribution that the mask contains any of the test-time vocabulary categories is computed by soft-max over dot-products between the mask feature and CLIP-encoded vocabulary terms embeddings Ftxt ∈ RNcls ×E ,
+
+pCLIP ,i = softmax 
+
+
+
+Fseg ,i F⊤
+
+> txt
+
+
+
+∈ [0 , 1] 1×Ncls . (3) If the mask feature agrees well with one of the classes, this results in a high corresponding probability. Alternatively, if it does not agree with any in particular, the distribution is driven towards uniform, effectively reducing the maximal probability. We thus estimate the CLIP-based classification certainty as pcer = max i pCLIP ,i . Thus the objectness score in (1) is adjusted to 
+
+p′ 
+
+> obj
+
+= 1 − (1 − γp cer )(1 − pobj ), (4) where pobj is the initial mask-transformer objectness score and γ is the CLIP trust factor. Note that pcer sets the upper bound on the adjusted objectness p′
+
+> obj
+
+, with higher values tightening the bound. To account for poor locality in CLIP embeddings, leading to noisy similarities, we set the trust factor to γ = 0 .5.
+
+3.2. Mask to Text Alignment 
+
+Since CLIP is trained for global image-to-text match-ing [28], it’s per-pixel features do not align well with object boundaries, leading to inferior mask-level encoding [33]. To address this, we propose open-vocabulary mask-to-text refinement finetuning protocol (OVR) as shown in Figure 3. OVR CLIP      
+
+> Image Encoder
+> CLIP
+> Text Encoder
+> Mask
+> pooling
+> Label
+> set sim
+> Mask
+> Tramsformer
+> Figure 3. OVR optimizes a combined objective: a mask proposal accuracy LM2F and mask classification Lcls for aligning per-pixel and text embeddings, while preserving vocabulary generalization.
+
+In finetuning, embeddings are extracted by local pooling CLIP image encoder features for each mask proposal gener-ated by the mask transformer. The features are matched to the CLIP embeddings of vocabulary terms and softmaxed, producing the class-wise probability density. Classification is supervised by a cross-entropy loss Lcls between the ob-tained class-wise density and the ground truth classifica-tion obtained by Hungarian matching [16] of the proposed masks with ground truth masks. In addition, to supervise mask transformer learning, the classical mask transformer loss [5] LM2F is applied, leading to the following com-pounded loss 
+
+L = α Lcls + LM2F . (5) Due to limited panoptic training datasets, care has to be taken in the refinement protocol design. Namely, the lim-ited training-time visual examples and restricted class vo-cabulary pose overfitting risks, potentially weakening the vision–language alignment generalization. A two-stage ap-proach is thus proposed. In the first stage, the CLIP im-age encoder (Figure 3) is kept frozen to pre-train the mask generation, without disrupting the CLIP image embedding space. In the second stage, the CLIP image encoder is un-frozen and training continues to jointly tune the embedding-mask alignment and mask proposal generation accuracy. As in [14] the final projection multilayer perceptron and nor-malization layers in the CLIP image encoder are frozen for restricted training. 
+
+## 4. Experiments 
+
+OVRCOAT uses the standard backbone, i.e., ConvNeXt-Large [22, 28, 49] from OpenCLIP [10], pretrained on LAION-2B [32]. The mask transformer architecture fol-lows standard Mask2Former [5]. We train OVRCOAT us-ing the AdamW optimiser with a weight decay 0.05, us-ing a learning rate 1 × 10 −4 in the first-stage training, and 
+
+5 × 10 −5 in the second stage. The classification loss Lcls 
+
+weight in (5) is set to α = 0 .1, while we use the same pa-rameters as in [5] to train the mask transformer. The trust factor in (4) is set to γ = 0 .5. We employ three NVIDIA A100 GPUs (40 GB each), and a batch size of 9. In all of our experiments, the COCO [21] closed-vocabulary panoptic segmentation dataset is used for train-ing OVRCOAT. We then evaluate it under two setups: open-vocabulary panoptic segmentation (Section 4.1) and seman-tic segmentation (Section 4.2.1). 
+
+4.1. Open-Vocabulary Panoptic Segmentation 
+
+OVRCOAT is compared with several state-of-the-art meth-ods, i.e., MaskCLIP [8], FreeSeg [27], OPSNet [3], ODISE [45], FC-CLIP [49] and the panoptic version of the recent state-of-the-art MAFT+ [14] (MAFT+ pan )on three challenging out-of-vocabulary (OOV) datasets ADE20K [52], Cityscapes [7] and Mapillary Vistas [26]. Standard performance measures [15] are used: Panoptic Quality (PQ), Segmentation Quality (SQ) and Recognition Quality (RQ). Results are reported in Table 1. OVRCOAT con-sistently outperforms previous methods across out-of-vocabulary datasets, on average outperforming the state-of-the-art MAFT+ in PQ by approximately 16% . Only on COCO [21], OVRCOAT slightly lags behind ODISE [45], with a 1.4% drop. This can be attributed to the COAT mod-ule, which is designed to improve generalisation by leverag-ing CLIP [28] for mask selection. While it reduces training biases in unseen classes, replacing the original specialised mask evaluation, which was trained on the COCO dataset, can hinder performance in those seen classes (we verify this empirically in Section 4.2). Nevertheless, despite this ef-fect, OVRCOAT substantially outperforms ODISE on all other datasets, by up to 90% on Cityscapes [7]. OVRCOAT achieves substantial gains in the component metrics. In particular, on Mapillary Vistas [26], a remark-able 18% SQ performance improvement is observed com-pared to the current state-of-the-art MAFT+ [14] and 7.7% 
+
+compared to ODISE [45]. An approximate 5.5% RQ im-provement compared to top per-dataset performer is ob-served across all datasets. These results demonstrate the strong cross-domain generalisation of OVRCOAT. The gen-eralisation result is particularly strong in the context of comparatively large MAFT+ PQ degradation outside of ADE20k [52], highlighting the challenges of fine-tuning. Table 1. Analysis on standard datasets. Gray indicates a test set with same vocabulary as used in training.                                                                                                     
+
+> Method ADE20k [52] Mapillary Vistas [26] Cityscapes [7] COCO [21] PQ SQ RQ PQ SQ RQ PQ SQ RQ PQ SQ RQ MaskCLIP [8] 15.1 70.5 19.2 ---------FreeSeg [27] 16.3 71.8 21.6 ---------OPSNet [3] 19.0 52.4 23.0 ---41.5 67.5 50.0 52.4 83.5 62.1 ODISE [45] 23.4 78.1 28.3 14.2 61.0 17.2 23.9 75.3 29.0 55.4 --FC-CLIP [49] 26.8 71.2 32.3 18.3 56.0 23.1 44.0 75.4 53.6 54.4 --MAFT+ pan [14] 27.1 73.5 32.9 15.7 55.5 19.8 38.3 70.2 46.9 50.3 82.2 60.3 OVRCOAT (Ours) 28.6 +1.5 77.3 -0.8 34.7 +1.8 19.6 +1.3 65.7 +4.7 24.8 +1.7 45.3 +1.3 78.7 +3.3 55.6 +2.0 54.6 82.9 65.1
+
+4.2. Ablation study 
+
+We analyse the individual contributions of the proposed CLIP-conditioned objectness adjustment (COAT) and open-vocabulary mask-to-text refinement (OVR) to panoptic seg-mentation performance. The results are reported in Table 2. We first isolate the effect of the proposed COAT by applying it to our baseline (FC-CLIP [49]). This mod-ification alone consistently improves PQ across all out-of-vocabulary datasets, demonstrating gains ranging from 1.4% to 3%. We next evaluate the contribution of the mask-to-text refinement alone. The performance drops by 3.6% 
+
+in PQ compared to original OVRCOAT, but improves by 
+
+1% − 5% compared to the baseline. Our training strat-egy, applied on the COCO dataset, is effective not only in enhancing performance on its validation set, encouraging CLIP to focus on the dataset’s distribution, but also in pre-serving a strong generalisation to unseen domains. Combin-ing COAT and OVR, producing OVRCOAT, delivers clear advantages over the baseline, with improvements of up to 7% PQ, validating the complementary contributions of the two components, while incurring a small trade-off in per-formance on seen classes. Despite this, OVRCOAT still surpasses most state-of-the-art models (Table 1).                          
+
+> Table 2. Ablation study of OVRCOAT individual modules.
+> COAT OVR ADE20k Mapillary Cityscapes COCO
+> ✗✗26.8 18.3 44.0 54.4
+> ✓✗27.6 18.8 44.6 53.7
+> ✗✓27.6 19.2 44.5 55.5
+> ✓✓28.6 19.6 45.3 54.6
+
+To more precisely disentangle the improvements intro-duced by OVRCOAT, we additionally analyze per-class panoptic quality (PQ) on ADE20K. We stratify categories into seen and unseen groups depending on whether they ap-pear in the training set. Figure 4 shows per-class PQ dif-ferences between the baseline and OVRCOAT for the 10 seen and 10 unseen classes with the largest absolute change, measured as |PQ FC-CLIP (c) − PQ OVRCOAT (c)| for each class 
+
+c. Additionally, we report the baseline enhanced with OVR, allowing us to isolate the specific contribution of COAT be-yond this component. For classes seen during training, OVRCOAT exhibits a mixed effect: categories less common in the COCO training set ( ≈ 5000 masks on average), such as apparel , boat , and 
+
+counter , show clear gains, while those more frequently ob-served during training ( ≈ 14 000 masks on average) experi-ence only a moderate decrease. On average, panoptic qual-ity across seen classes is minimally reduced for -0.05 pp, indicating that performance is largely preserved, while a +3.9 pp improvement is observed on unseen classes. Conversely, unseen classes gain substantially from the combined effect of our mask-to-text refinement training strategy and the COAT module. For example, a dramatic relative improvement of 192% is observed for category 
+
+paintings , which is commonly misclassified as background by the current state-of-the-art [31]. Overall, average rela-tive improvement of 25% is observed across unseen classes. These results clearly highlight that OVRCOAT enhances generalisation to novel classes while simultaneously main-taining competitive accuracy on those seen during training. 
+
+4.2.1. Semantic Segmentation 
+
+For further insights, we evaluate the impact of our con-tributions on the semantic segmentation performance. Ta-ble 3 presents the results in terms of standard mean Inter-section over Union (mIoU) on the PASCAL Context [25] and ADE20K [52] datasets. The first section presents the results of mask-transformer-based approaches from the lit-erature. The second section incrementally presents the im-pact of our contributions OVR and COAT. We first establish the notion of slight disadvantage of panoptic models compared to semantic segmentation mod-els when evaluated on the semantic segmentation task. The results in Table 3 show that the current state-of-the-art MAFT+ variant trained specifically for semantic segmen-tation (MAFT+ sem ) achieves the highest overall mIoU. It consistently outperforms the variant trained with panoptic labels (MAFT+ pan ) by 1–9% in relative terms. This sug-gests that the additional demands of panoptic recognition consume part of the model’s capacity, thereby degrading the semantic segmentation performance. clothes    
+
+> pot
+> counter
+> boat
+> tv
+> river
+> bridge
+> toilet
+> refrigerator
+> stairs 0
+> 10
+> 20
+> 30
+> 40
+> 50
+> 60
+> 70
+> 80
+> PQ (%)
+> mean( PQ Seen ) : 0.28pp
+> radiator
+> tub
+> washer
+> trash can
+> plaything
+> painting
+> fan
+> wardrobe
+> basket
+> sculpture
+> PQ (%)
+> mean( PQ Unseen ) : 3.98pp
+> = PQ OVRCOAT PQ FC-CLIP
+> n = mask count in ADE20K val
+> BASELINE(FC-CLIP)
+> BASELINE+OVR
+> OVRCOAT
+
+Figure 4. Per-class PQ differences between OVRCOAT and FC-CLIP [49] on ADE20k [52] for classes with largest PQ differences. Mean values are reported weighted with ground truth class frequency (weighted), and treating all classes equally (unweighted). OVRCOAT yields substantial improvements on unseen categories, demonstrating stronger generalisation, with stable performance on seen classes. 
+
+Our open-vocabulary mask-to-text refinement (OVR) improves semantic segmentation performance over the baseline (FC-CLIP) in 4 out of 5 datasets, despite originally designed for panoptic segmentation. On the other hand, fur-ther inclusion of COAT slightly degrades the semantic seg-mentation performance. This behavior stems from the way mask transformers perform semantic inference. Unlike in panoptic segmentation, no masks are rejected. Instead, all predicted masks contribute to the aggregated class distribu-tion at every pixel. As a result, masks that would otherwise be discarded in panoptic inference due to low objectness, still influence the final per-pixel predictions. Hence, adjust-ing objectness has little real effect and actually introduces noise due to CLIP’s weaker localization. 
+
+Table 3. Open-vocabulary semantic segmentation performance (mIoU) across multiple datasets, with best performance bolded.                                                               
+
+> Model Backbone A-847 A-150 PC-459 PC-59 PAS-20 OpenSeg [13] ALIGN 8.8 28.6 12.2 48.2 72.2 OVSeg [20] ViT-L 9.0 29.6 12.4 55.7 94.5 SAN [46] ViT-L 12.4 32.1 15.7 57.7 94.6 ODISE [45] ViT-L 11.1 29.9 14.5 57.3 -FC-CLIP* [49] ConvNeXt-L 14.8 34.0 18.2 58.4 95.4 MAFT+ sem [14] ConvNeXt-L 15.1 36.1 21.6 59.4 96.5
+> MAFT+ pan [14] ConvNeXt-L 14.2 33.8 19.8 58.0 95.6 OVR ConvNeXt-L 14.3 34.3 19.1 58.5 95.5 OVRCOAT ConvNeXt-L 14.0 33.7 18.1 55.4 94.1
+
+4.3. Architecture Design Validation Study 
+
+4.3.1. Mask Classifier Validation 
+
+Since OVRCOAT fine-tunes the CLIP [28] image encoder on COCO [21], it is natural to investigate whether using only CLIP suffices for mask classification. Table 4 evalu-ates four different setups: the standard ensemble of mask-transformer and our CLIP OVR predictions [49] with and without COAT, and using the fine-tuned CLIP OVR alone, again with and without COAT. The results show that the ensemble with COAT (as used in OVRCOAT) outperforms all other variants. In particular, leveraging the mask-transformer probabilities as a stronger specialist on seen classes yields around a 14% relative improvement over us-ing CLIP alone in both configurations. We also observe that COAT consistently boosts performance for both the ensem-ble and the standalone CLIP-based mask classifier. 
+
+Table 4. Comparison of various mask classification methods. 
+
+Mask Classifier COAT PQ SQ RQ CLIP OVR ✗ 24.2 75.9 29.2 CLIP OVR ✓ 24.9 78.4 30.2 Ensemble ✗ 27.6 74.1 33.4 Ensemble ✓ 28.6 77.3 34.7 
+
+4.3.2. Classification of Perfect Masks 
+
+To further evaluate the effectiveness of our OVR fine-tuning approach and its impact on seen and unseen classes, we analyse the performance using a segmentation oracle. The oracle generates perfect binary masks, one for each ground truth panoptic segment, replacing those produced by the mask transformer. During inference, we follow the OVR-COAT pipeline, but completely omit the mask transformer, relying solely on the CLIP for classification. We compare two variants of CLIP [28] using this ora-cle: the pre-trained OpenCLIP ConvNeXt-Large [10, 22], referred to as CLIP, and our OVR fine-tuned version (CLIP OVR ). Results in Table 5 show an 11% improve-ment on PQ in favour of CLIP OVR . We also observe sub-stantial gains of 9.2% on seen classes and 13% on unseen classes, indicating that our fine-tuning not only enhances performance on trained categories, but also generalises ef-fectively. These results indicate that OVR effectively adapts CLIP to open-vocabulary panoptic segmentation. 
+
+> Table 5. Evaluation of OVR using oracle (ground truth) masks.
+
+Model PQ PQ seen PQ unseen 
+
+CLIP 41.8 53.3 33.3 CLIP OVR 46.4 58.2 37.6 4.3.3. Training strategy 
+
+Inspired by MAFT+ [14], OVR adopts a freezing strat-egy for the CLIP ConvNeXt-L backbone [22, 28], target-ing the final MLP and normalisation layers, but discarding their representation consistency (RC) loss. To support this choice, we compare OVR against five variants that employ different strategies to preserve CLIP’s embedding align-ment. For a controlled comparison, we omit COAT in all variants of this experiment. We define the variants of the training loss as Lc ∈L, RC, G , where L denotes the base loss introduced in (5). The variant RC = L + LRC incorporates the MAFT+ [14] RC loss, while G = L + LGram adds a Gram Matrix con-sistency loss inspired by DINOv3 [34]. Furthermore, we define the state of the CLIP [28] image encoder as s ∈ F, U, where F and U denote a frozen and unfrozen state, respec-tively. This allows us to denote each model variant as OVR Lc, s , with the baseline represented as OVR B, F . The results are shown in Table 6. 
+
+> Table 6. Comparison of finetuning strategies on ADE20K [52].
+
+Method PQ SQ RQ OVR B,U 27.2 72.4 33.1 OVR RC,U 27.7 73.0 33.7 
+
+OVR G,U 27.7 71.3 33.6 OVR G,F 27.6 73.5 33.4 OVR RC,F 27.7 71.2 33.6 OVR 27.6 73.6 33.4 Training without additional constraints (OVR B, U ) re-sults in only a 1.5% decrease in PQ compared to OVR, while achieving performance comparable to MAFT+ [14] (cf. Tab. 1) with a marginal gain of 0.1 PQ (0.03%). This robustness is attributed to the stage-one training and the lower learning rate used during the second-stage tuning of CLIP [28]. Aggressively enforcing feature constraints via RC or Gram matrix losses [8, 14] does not have a significant impact on models performance with respect to OVR. Across all configurations, the best-performing variants achieve re-sults within 1% of OVR’s performance. These findings justify freezing the final layers without additional auxiliary losses, providing a favourable trade-off between simplicity and stability while avoiding the complexity and sensitivity introduced by constraint-based training. 
+
+4.3.4. Memory Efficiency 
+
+We further analyse the memory usage of OVRCOAT. Re-sults in Table 7 show that OVRCOAT requires substantially less memory compared to the state-of-the-art MAFT+ [14]. For a batch size of 1, the average memory usage is reduced by approximately 56% (16.1 GB). This is due to the stream-lined design of our fine-tuning strategy OVR, which does not require content-dependent vocabulary embeddings or additional mask-overlap computations. Considering that the reduction in memory consumption comes with an improvement in 5.5% PQ, OVRCOAT brings several practical benefits: it accelerates experimentation, enables use of larger batches (which is particularly impor-tant in modern unsupervised learning), and caters to the trend of exploring ever larger models, where memory con-sumption is a critical limiting factor. Finally, it also en-ables training on resource-constrained hardware, offering far greater accessibility. 
+
+> Table 7. Average training-time memory consumption.
+
+Model PQ (ADE20K) Memory [GB/image] MAFT+ 27.1 27.0 OVRCOAT 28.6 12.5 4.3.5. CLIP Trust Factor 
+
+As a final validation, we evaluate the sensitivity of OVR-COAT to the CLIP trust weight γ used in (4). Figure 5 re-ports the PQ values on ADE20K [52] with respect to differ-ent values of γ. As γ increases towards 0.5, the performance increases to 28.6 PQ, then gradually decreases to 22.8 PQ (a 20% drop) at γ = 1 .0. The graph suggests that OVRCOAT      
+
+> Figure 5. OVRCOAT performance on ADE20K [52] remains sta-ble over a range of trust factor γvalues. Ground truth FC-CLIP OVRCOAT (ours) Input MAFT+ Figure 6. Qualitative analysis. OVRCOAT consistently recovers more object masks, including regions that MAFT+ [14] and FC-CLIP [49] misclassify as background, e.g., playthings in the bedroom and bottles in the bar. It also produces more accurate segmentations.
+
+is stable across a range of CLIP trust values, with a broad range of values resulting in top PQ score. 
+
+4.4. Qualitative analysis 
+
+Figure 6 provides qualitative comparison of OVRCOAT with FC-CLIP [49] and MAFT+ [14]. We observe that OVRCOAT consistently identifies more meaningful object masks than the state-of-the-art, supporting the generaliza-tion improvements reflected in previous experiments. In the 
+
+bedroom and children scenes, OVRCOAT successfully re-covers additional playthings and balls that competing mod-els misclassify as background. In the museum example, OVRCOAT detects finer architectural details such as doors and pillars. Moreover, OVRCOAT produces finer, object-centric segmentations. For instance, it separates multiple bottles in the bar scene instead of a larger shelf mask as in MAFT+ [14]. This behaviour highlights a strengthened general object understanding, particularly benefiting the de-tection of smaller and unseen objects. 
+
+## 5. Conclusion 
+
+We addressed two pressing obstacles in open-vocabulary panoptic segmentation: the mask-selection bias induced by mask transformer training on a closed vocabulary dataset, and reduced accuracy of region-level understanding in vi-sion–language models trained for global classification. We introduced OVRCOAT, a minimal and modular framework that tackles both: COAT adjusts background/foreground probabilities using CLIP to retain object masks for unseen categories, while OVR refines mask-to-text alignment to improve recognition of both seen and unseen classes. OVRCOAT’s design brings practical benefits: clean in-tegration into standard Mask2Former pipelines and sub-stantially lower memory demands than recent fine-tuning approaches, while remaining robust across datasets. Em-pirically, OVRCOAT consistently surpasses prior open-vocabulary panoptic methods on challenging out-of-vocabulary benchmarks, and ablations verify the individ-ual components. COAT reduces selection bias and boosts recall of novel objects, OVR strengthens regional align-ment, and their combination yields the most reliable panop-tic improvements. Analyses with oracle masks confirm the alignment gains, probability-fusion studies favor combining CLIP with mask-transformer scores, and training-strategy experiments show that strong results are attainable without complex representation-consistency losses. Looking forward, we see OVRCOAT as a foundation for broader open-world perception, extending to video panop-tics with temporal consistency, coupling with promptable or interactive segmentation. As stronger VLMs and data en-gines emerge, OVRCOAT’s modularity should make such upgrades straightforward, further closing the gap between closed-set training and open-world deployment. Acknowledgements 
+
+This work was supported in part by research programs and projects P2-0214, J2-60054 and SLAIF grant no. 101254461 and by ARNES/SLING supercomputer clus-ters. Josip ˇ Sari´ c was funded from the European Union‘s Horizon Europe research and innovation program under the Marie Sklodowska Curie COFUND Postdoctoral Pro-gramme grant agreement No.101081355- SMASH, the Re-public of Slovenia and the European Union from the Euro-pean Regional Development Fund. Disclosure: Co-funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessar-ily reflect those of the European Union or European Re-search Executive Agency. Neither the European Union nor the granting authority can be held responsible for them. 
+
+## References 
+
+[1] A. E. Booth. Own work. https : / / commons . wikimedia . org / w / index . php ? curid = 73612035 , 2015. 1 [2] Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-end object detection with transformers. In European confer-ence on computer vision , pages 213–229. Springer, 2020. 1 [3] Xi Chen, Shuang Li, Ser-Nam Lim, Antonio Torralba, and Hengshuang Zhao. Open-vocabulary panoptic segmenta-tion with embedding modulation. In Proceedings of the IEEE/CVF International Conference on Computer Vision ,pages 1141–1150, 2023. 4, 5 [4] Bowen Cheng, Alex Schwing, and Alexander Kirillov. Per-pixel classification is not all you need for semantic segmen-tation. Advances in neural information processing systems ,34:17864–17875, 2021. 1, 2, 3 [5] Bowen Cheng, Ishan Misra, Alexander G Schwing, Alexan-der Kirillov, and Rohit Girdhar. Masked-attention mask transformer for universal image segmentation. In Proceed-ings of the IEEE/CVF conference on computer vision and pattern recognition , pages 1290–1299, 2022. 1, 2, 3, 4 [6] Seokju Cho, Heeseong Shin, Sunghwan Hong, Anurag Arnab, Paul Hongsuck Seo, and Seungryong Kim. Cat-seg: Cost aggregation for open-vocabulary semantic seg-mentation. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 4113– 4123, 2024. 2 [7] Marius Cordts, Mohamed Omran, Sebastian Ramos, Timo Rehfeld, Markus Enzweiler, Rodrigo Benenson, Uwe Franke, Stefan Roth, and Bernt Schiele. The cityscapes dataset for semantic urban scene understanding. In Proceed-ings of the IEEE conference on computer vision and pattern recognition , pages 3213–3223, 2016. 2, 4, 5 [8] Zheng Ding, Jieke Wang, and Zhuowen Tu. Open-vocabulary universal image segmentation with maskclip. 
+
+arXiv preprint arXiv:2208.08984 , 2022. 1, 2, 4, 5, 7 [9] Golnaz Ghiasi, Xiuye Gu, Yin Cui, and Tsung-Yi Lin. Scal-ing open-vocabulary image segmentation with image-level labels. In European conference on computer vision , pages 540–557. Springer, 2022. 2 [10] Guilherme Ilharco, Mitchell Wortsman, Ross Wightman, Charlie Gordon, Nicholas Carlini, Rohan Taori, Anish Dave, Vikram Shankar, Hyunjoon Namkoong, John Miller, Han-naneh Hajishirzi, Ali Farhadi, and Ludwig Schmidt. Open-clip (v0.1). https://doi.org/10.5281/zenodo. 7301701 , 2021. Zenodo. 4, 6 [11] iStock / Nikada. Shibuya scramble crossing, tokyo, japan, 2019. 1 [12] Jitesh Jain, Jiachen Li, Mang Tik Chiu, Ali Hassani, Nikita Orlov, and Humphrey Shi. Oneformer: One transformer to rule universal image segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 2989–2998, 2023. 1 [13] Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu Pham, Quoc Le, Yun-Hsuan Sung, Zhen Li, and Tom Duerig. Scaling up visual and vision-language representa-tion learning with noisy text supervision. In International conference on machine learning , pages 4904–4916. PMLR, 2021. 1, 2, 6 [14] Siyu Jiao, Hongguang Zhu, Jiannan Huang, Yao Zhao, Yun-chao Wei, and Humphrey Shi. Collaborative vision-text rep-resentation optimizing for open-vocabulary segmentation. In 
+
+European Conference on Computer Vision , pages 399–416. Springer, 2024. 1, 2, 3, 4, 5, 6, 7, 8 [15] Alexander Kirillov, Kaiming He, Ross Girshick, Carsten Rother, and Piotr Doll´ ar. Panoptic segmentation. In Pro-ceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 9404–9413, 2019. 1, 4 [16] Harold W Kuhn. The hungarian method for the assignment problem. Naval research logistics quarterly , 2(1-2):83–97, 1955. 4 [17] Mengcheng Lan, Chaofeng Chen, Yiping Ke, Xinjiang Wang, Litong Feng, and Wayne Zhang. Proxyclip: Proxy attention improves clip for open-vocabulary segmentation. In European Conference on Computer Vision , pages 70–88. Springer, 2024. 2 [18] Feng Li, Hao Zhang, Huaizhe Xu, Shilong Liu, Lei Zhang, Lionel M Ni, and Heung-Yeung Shum. Mask dino: Towards a unified transformer-based framework for object detection and segmentation. In Proceedings of the IEEE/CVF con-ference on computer vision and pattern recognition , pages 3041–3050, 2023. 1 [19] Zhiqi Li, Wenhai Wang, Enze Xie, Zhiding Yu, Anima Anandkumar, Jose M Alvarez, Ping Luo, and Tong Lu. Panoptic segformer: Delving deeper into panoptic segmenta-tion with transformers. In Proceedings of the IEEE/CVF con-ference on computer vision and pattern recognition , pages 1280–1289, 2022. 1 [20] Feng Liang, Bichen Wu, Xiaoliang Dai, Kunpeng Li, Yinan Zhao, Hang Zhang, Peizhao Zhang, Peter Vajda, and Diana Marculescu. Open-vocabulary semantic segmentation with mask-adapted clip. In Proceedings of the IEEE/CVF con-ference on computer vision and pattern recognition , pages 7061–7070, 2023. 2, 6 [21] Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr Doll´ ar, and C Lawrence Zitnick. Microsoft coco: Common objects in context. In 
+
+European Conference on Computer Vision (ECCV) , 2014. 4, 5, 6 [22] Zhuang Liu, Hanzi Mao, Chao-Yuan Wu, Christoph Feicht-enhofer, Trevor Darrell, and Saining Xie. A convnet for the 2020s. In Proceedings of the IEEE/CVF conference on com-puter vision and pattern recognition , pages 11976–11986, 2022. 4, 6, 7 [23] Huaishao Luo, Junwei Bao, Youzheng Wu, Xiaodong He, and Tianrui Li. Segclip: Patch aggregation with learnable centers for open-vocabulary semantic segmentation. In In-ternational Conference on Machine Learning , pages 23033– 23044. PMLR, 2023. 2 [24] Ivan Martinovi´ c, Josip ˇ Sari´ c, Marin Orˇ si´ c, Matej Kristan, and Siniˇ sa ˇ Segvi´ c. Dearli: Decoupled enhancement of recog-nition and localization for semi-supervised panoptic segmen-tation. arXiv preprint arXiv:2507.10118 , 2025. 2 [25] Roozbeh Mottaghi, Xianjie Chen, Xiaobai Liu, Nam-Gyu Cho, Seong-Whan Lee, Sanja Fidler, Raquel Urtasun, and Alan Yuille. The role of context for object detection and semantic segmentation in the wild. In IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2014. 5 [26] Gerhard Neuhold, Tobias Ollmann, Samuel Rota Bulo, and Peter Kontschieder. The mapillary vistas dataset for semantic understanding of street scenes. In Proceedings of the IEEE international conference on computer vision , pages 4990– 4999, 2017. 2, 4, 5 [27] Jie Qin, Jie Wu, Pengxiang Yan, Ming Li, Ren Yuxi, Xue-feng Xiao, Yitong Wang, Rui Wang, Shilei Wen, Xin Pan, et al. Freeseg: Unified, universal and open-vocabulary image segmentation. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 19446– 19455, 2023. 4, 5 [28] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervi-sion. In International conference on machine learning , pages 8748–8763. PmLR, 2021. 1, 2, 4, 6, 7 [29] Yongming Rao, Wenliang Zhao, Guangyi Chen, Yansong Tang, Zheng Zhu, Guan Huang, Jie Zhou, and Jiwen Lu. Denseclip: Language-guided dense prediction with context-aware prompting. In Proceedings of the IEEE/CVF con-ference on computer vision and pattern recognition , pages 18082–18091, 2022. 2 [30] Reno Liquidators. Creating a workshop at home – must-haves. 1 [31] Josip ˇSari´ c, Ivan Martinovi´ c, Matej Kristan, and Siniˇ sa ˇSegvi´ c. What holds back open-vocabulary segmentation? In 
+
+Proceedings of the IEEE/CVF International Conference on Computer Vision , pages 4256–4266, 2025. 5 [32] Christoph Schuhmann, Romain Beaumont, Richard Vencu, Cade Gordon, Ross Wightman, Mehdi Cherti, Theo Coombes, Aarush Katta, Clayton Mullis, Mitchell Worts-man, et al. Laion-5b: An open large-scale dataset for training next generation image-text models. Advances in neural in-formation processing systems , 35:25278–25294, 2022. 4 [33] Bowen Shi, Peisen Zhao, Zichen Wang, Yuhang Zhang, Yaoming Wang, Jin Li, Wenrui Dai, Junni Zou, Hongkai Xiong, Qi Tian, et al. Umg-clip: A unified multi-granularity vision generalist for open-world understanding. In European Conference on Computer Vision , pages 259–277. Springer, 2024. 4 [34] Oriane Sim´ eoni, Huy V Vo, Maximilian Seitzer, Federico Baldassarre, Maxime Oquab, Cijo Jose, Vasil Khalidov, Marc Szafraniec, Seungeun Yi, Micha¨ el Ramamonjisoa, et al. Dinov3. arXiv preprint arXiv:2508.10104 , 2025. 7 [35] Shuyang Sun, Weijun Wang, Andrew Howard, Qihang Yu, Philip Torr, and Liang-Chieh Chen. Remax: Relaxing for better training on efficient panoptic segmentation. Advances in Neural Information Processing Systems , 36:73480–73496, 2023. 1 [36] Tips.at Redaktion. Italienischer k¨ unstler verkauft unsicht-bare kunst f¨ ur preise zwischen 14.000 und 30.000 euro. 1 [37] Michael Tschannen, Alexey Gritsenko, Xiao Wang, Muham-mad Ferjad Naeem, Ibrahim Alabdulmohsin, Nikhil Parthasarathy, Talfan Evans, Lucas Beyer, Ye Xia, Basil Mustafa, et al. Siglip 2: Multilingual vision-language en-coders with improved semantic understanding, localization, and dense features. arXiv preprint arXiv:2502.14786 , 2025. 2[38] Josip ˇSari´ c, Ivan Martinovi´ c, Matej Kristan, and Siniˇ sa ˇSegvi´ c. What holds back open-vocabulary segmentation? In Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) Workshops , pages 4256–4266, 2025. 1, 3 [39] Feng Wang, Jieru Mei, and Alan Yuille. Sclip: Rethink-ing self-attention for dense vision-language inference. In 
+
+European Conference on Computer Vision , pages 315–332. Springer, 2024. 2 [40] Huiyu Wang, Yukun Zhu, Hartwig Adam, Alan Yuille, and Liang-Chieh Chen. Max-deeplab: End-to-end panoptic segmentation with mask transformers. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 5463–5474, 2021. 1 [41] Junjie Wang, Bin Chen, Yulin Li, Bin Kang, Yichi Chen, and Zhuotao Tian. Declip: Decoupled learning for open-vocabulary dense perception. In Proceedings of the Com-puter Vision and Pattern Recognition Conference , pages 14824–14834, 2025. 2 [42] Monika Wysocza´ nska, Oriane Sim´ eoni, Micha¨ el Ramamon-jisoa, Andrei Bursuc, Tomasz Trzci´ nski, and Patrick P´ erez. Clip-dinoiser: Teaching clip a few dino tricks for open-vocabulary semantic segmentation. In European Conference on Computer Vision , pages 320–337. Springer, 2024. 2 [43] Bin Xie, Jiale Cao, Jin Xie, Fahad Shahbaz Khan, and Yanwei Pang. Sed: A simple encoder-decoder for open-vocabulary semantic segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 3426–3436, 2024. 2 [44] Jiarui Xu, Shalini De Mello, Sifei Liu, Wonmin Byeon, Thomas Breuel, Jan Kautz, and Xiaolong Wang. Groupvit: Semantic segmentation emerges from text supervision. In 
+
+Proceedings of the IEEE/CVF conference on computer vi-sion and pattern recognition , pages 18134–18144, 2022. 2 [45] Jiarui Xu, Sifei Liu, Arash Vahdat, Wonmin Byeon, Xiao-long Wang, and Shalini De Mello. Open-vocabulary panop-tic segmentation with text-to-image diffusion models. In 
+
+Proceedings of the IEEE/CVF conference on computer vi-sion and pattern recognition , pages 2955–2966, 2023. 1, 2, 4, 5, 6 [46] Mengde Xu, Zheng Zhang, Fangyun Wei, Han Hu, and Xi-ang Bai. Side adapter network for open-vocabulary semantic segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 2945– 2954, 2023. 6 [47] YouTube / i.ytimg.com. Thumbnail for youtube video (id: C-4x4qpmtms), 2026. 1 [48] Qihang Yu, Huiyu Wang, Dahun Kim, Siyuan Qiao, Maxwell Collins, Yukun Zhu, Hartwig Adam, Alan Yuille, and Liang-Chieh Chen. Cmt-deeplab: Clustering mask transformers for panoptic segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 2560–2570, 2022. 1 [49] Qihang Yu, Ju He, Xueqing Deng, Xiaohui Shen, and Liang-Chieh Chen. Convolutions die hard: Open-vocabulary seg-mentation with single frozen convolutional clip. Advances in Neural Information Processing Systems , 36:32215–32234, 2023. 1, 2, 3, 4, 5, 6, 8 [50] Dengke Zhang, Fagui Liu, and Quan Tang. Corrclip: Re-constructing patch correlations in clip for open-vocabulary semantic segmentation. In Proceedings of the IEEE/CVF In-ternational Conference on Computer Vision , pages 24677– 24687, 2025. 2 [51] Hang Zhao, Xavier Puig, Bolei Zhou, Sanja Fidler, and An-tonio Torralba. Open vocabulary scene parsing. In Proceed-ings of the IEEE International Conference on Computer Vi-sion , pages 2002–2010, 2017. 1 [52] Bolei Zhou, Hang Zhao, Xavier Puig, Sanja Fidler, Adela Barriuso, and Antonio Torralba. Scene parsing through ade20k dataset. In Proceedings of the IEEE conference on computer vision and pattern recognition , pages 633–641, 2017. 2, 4, 5, 6, 7, 1 [53] Chong Zhou, Chen Change Loy, and Bo Dai. Extract free dense labels from clip. In European conference on computer vision , pages 696–712. Springer, 2022. 2 Mitigating Objectness Bias and Region-to-Text Misalignment for Open-Vocabulary Panoptic Segmentation 
+
+# Supplementary Material 
+
+## A. Per-Image Inference Latency 
+
+We measured the per-image inference time on the ADE20k validation set to assess computational efficiency. All three methods run at comparable speeds: 0.31 s for FC-CLIP [49], 0.30 s for MAFT+ [14], and 0.32 s for OVR-COAT. The maximum difference of 0.02 s indicates that the proposed method delivers competitive performance without introducing significant computational overhead. 
+
+## B. Extended Qualitative Analysis 
+
+We provide five example images from the internet [1, 11, 30, 36, 47] to highlight model performance. In three cases, the ADE20K [52] vocabulary is extended with musical in-struments, workshop tools, or safari animals (Fig. 7). OVR-COAT outperforms both FC-CLIP [49] and MAFT+ [14], leveraging COAT to recover masks and OVR to classify them more accurately. Nevertheless, certain instruments, such as flutes and the baroque guitar, are not detected, likely 
+
+> Figure 7. Qualitative comparison on unconventional scenes using an extended ADE20K vocabulary.
+
+due to their unconventional appearance. Tool masks are also suboptimal, with oversegmentation (e.g., the drill) and un-dersegmentation (e.g., the wrench and chisel) in the unseen setting. All models miss distant animals on the safari scene, likely due to their small size. These examples demonstrate the superior generalisation capabilities of OVRCOAT, while exposing common limitations. The museum scene evaluates robustness to visually am-biguous content: blank paintings matching the wall colour. OVRCOAT detects the most paintings, while MAFT+ [14] fails to detect any. One of the paintings is incorrectly in-cluded in the wall segment by OVRCOAT, highlighting re-maining segmentation challenges. Finally, the Shibuya scene illustrates a real-world sce-nario where all models perform similarly. OVRCOAT cor-rectly classifies buildings and segments more civilians, but fails to capture five signboards in ambiguous regions. This underscores that such areas remain a significant challenge for open-vocabulary models and represent a key area for fu-ture investigation into segmentation robustness.

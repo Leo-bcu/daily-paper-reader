@@ -1,0 +1,607 @@
+Title: Scene Graph-guided SegCaptioning Transformer with Fine-grained Alignment for Controllable Video Segmentation and Captioning
+
+URL Source: https://arxiv.org/pdf/2603.20887v1
+
+Published Time: Tue, 24 Mar 2026 00:54:08 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+> 1
+
+# Scene Graph-guided SegCaptioning Transformer with Fine-grained Alignment for Controllable Video Segmentation and Captioning 
+
+Xu Zhang ∗, Jin Yuan ∗, BinHong Yang, Xuan Liu, Qianjun Zhang †, Yuyi Wang †, Zhiyong Li, and Hanwang Zhang 
+
+Abstract —Recent advancements in multimodal large models have significantly bridged the representation gap between diverse modalities, catalyzing the evolution of video multimodal interpre-tation, which enhances users’ understanding of video content by generating correlated modalities. However, most existing video multimodal interpretation methods primarily concentrate on global comprehension with limited user interaction. To address this, we propose a novel task, Controllable Video Segmentation and Captioning (SegCaptioning), which empowers users to provide specific prompts, such as a bounding box around an object of interest, to simultaneously generate correlated masks and captions that precisely embody user intent. An innovative framework Scene Graph-guided Fine-grained SegCaptioning Transformer (SG-FSCFormer) is designed that integrates a Prompt-guided Temporal Graph Former to effectively captures and represents user intent through an adaptive prompt adaptor, ensuring that the generated content well aligns with the user’s requirements. Furthermore, our model introduces a Fine-grained Mask-linguistic Decoder to collaboratively predict high-quality caption-mask pairs using a Multi-entity Contrastive loss, as well as provide fine-grained alignment between each mask and its corresponding caption tokens, thereby enhancing users’ comprehension of videos. Comprehensive experiments conducted on two benchmark datasets demonstrate that SG-FSCFormer achieves remarkable performance, effectively capturing user intent and generating pre-cise multimodal outputs tailored to user specifications. Our code is available at https://github.com/XuZhang1211/SG-FSCFormer. 
+
+Index Terms —Video Understanding, Scene Analysis, Multi-modal Interpretation, Multimodal Alignment. 
+
+I. I NTRODUCTION 
+
+# VIDEO understanding [1], [2], which entails the precise extraction of semantic information from temporal visual data, holds immense potential for applications in autonomous driving [3], [4], human-computer interaction [5], [6], robots [7], [8], and intelligent surveillance [9], [10]. Current video understanding tasks encompass video segmentation [11]–[15], action detection [16], [17], and captioning [18]–[20], among 
+
+This work was supported in part by the National Natural Science Foundation of China (No.62406263, No. 62272157, and No. U23A20341). X. Zhang, B. Yang, J. Yuan, and X. Liu are with the College of Computer Science and Electronic Engineering, Hunan University, Changsha 410082, China. Z. Li is with the School of Robotics and the National Engineering Research Center of Robot Visual Perception and Control Technology, Hunan University, Changsha 410082, China. Q. Zhang is with the School of Computing and Artificial Intelligence, Southwest Jiaotong University, Chengdu 611756, P.R. China. Y. Wang is with CRRC Zhuzhou Institute Company Ltd., Zhuzhou, Hunan 412001, China. H. Zhang is with Nanyang Technological University, Singapore 639798. 
+
+†Corresponding authors: Qianjun Zhang and Yuyi Wang. (E-mail: zqjblue@foxmail.com, yuyiwang920@gmail.com.) 
+
+∗Equal contribution. (a) Open -World Video Instance Segmentation and Captioning                                                                  
+
+> User Prompt
+> The rider in the yellow vest on the
+> left leads the blue rider on the right .
+> A little yellow bike being ridden.
+> A bike ridden by a blue rider.
+> The man on the left riding a
+> yellow bike initially led the one on
+> the right riding amountain bike
+> in blue ,but the right man sped
+> up to close the gap .However, the
+> man on the left pulled ahead
+> again at the turn dramatically .
+> (b) Controllable Video Segmentation and Captioning
+> Open -World Video
+> Instance Segmentation and
+> Captioning
+> The rider in the blue jersey is chasing
+> the rider on the left .
+> Ablack car on the far left drives in.
+> … …
+
+!!! bike1   
+
+> man1
+> 1bike2
+> 4
+> 3
+> 2man2
+> 24
+> 3
+> bike1
+> man2
+> man 1
+> bike2 1
+> Object
+> Abstractor
+> Grid of
+> Points
+> PTGFormer
+> Video  SegCaptioning
+> Model
+
+Fig. 1: An example to illustrate the difference between the segmentation and captioning method and our approach, which allows users to provide a bounding box to generate multimodal outputs that are tailored to the user’s intent. others. In these tasks, videos are transformed into semantic representations, such as masks, tags, and captions. With the rapid advancement of large model architectures, particularly in their ability to represent modalities and per-form cross-modal transformations, video understanding has transitioned from traditional single-task, unimodal outputs to multitask, multimodal outputs. These multimodal representa-tions exhibit intricate interdependencies between modalities, effectively harnessed by multimodal large models to provide more comprehensive and nuanced feedback, thereby enhancing user comprehension. For instance, as depicted in Fig. 1 (a), [21] associates each video instance with both a corresponding caption and mask, delivering a dual visual-textual interpretation of the video content. While these innovations have undoubtedly expanded the informational breadth available to users for video comprehension, they still lack direct user interaction. Consequently, the generated outputs often contain superfluous information that may not fully align with specific user require-ments, thereby limiting their utility in precise, context-driven applications. To address this gap, this paper introduces a novel task,“Controllable Video Segmentation and Captioning” (Seg-Captioning), which empowers users to provide a visual prompt—such as a bounding box delineating an object of interest—to concurrently generate a caption and several cor-responding masks across temporal frames, as depicted in Fig. 1 (b). Through this prompt-driven paradigm, the task challenges the model to autonomously identify all potential 
+
+> arXiv:2603.20887v1 [cs.CV] 21 Mar 2026 2
+
+objects of interest and accurately model their spatio-temporal interrelationships, ensuring alignment with user-specific intent. Additionally, the multimodal outputs necessitate a precise correspondence between each mask and its respective caption word, posing substantial challenges in achieving robust cross-modal fine-grained alignment. To this end, this paper introduces a pioneering “Scene Graph guided Fine-grained SegCaptioning Transformer” (SG-FSCFormer), which leverages structured scene graphs to translate user intent from a basic prompt into an intent subgraph which is used to guide the generation of correlated captions and masks for precise multimodal content understanding tailored to user needs. Specifically, given a video and a user prompt, such as a bounding box around an object, we first design a Prompt-guided Temporal Graph Former (PTGFormer) to identify objects of interest and their complex relationships, represented as a prompt-related graph feature. PTGFormer incorporates a novel prompt adaptor to remove irrelevant nodes and edges from the global scene graph by thoroughly exploring the spatial and temporal correlations between each object and the prompt object, resulting in a refined representation that aligns closely with user intent. Next, we design a Fine-grained Mask-linguistic Decoder to guide the generation of captions and masks. Concretely, the decoder first employs a Graph-guided Iterative Query Former that converts graph features into language embeddings, which are subsequently processed by a frozen large language model to predict captions. For mask prediction, the revised SAM2 decoder receives both images and graph features, and then simultaneously predicts masks associated with their position information appearing in the caption. This cross-modal fine-grained correspondence is supervised by a proposed fine-grained alignment loss. Furthermore, to achieve precise alignment between masks and caption words, the Mask-linguistic decoder employs a Cross-modal Multi-entity Contrastive loss, which draws the embeddings of positive caption words and their corresponding masks closer while distancing negative ones. Consequently, the improved cross-modal representations help the decoder to produce high-quality caption-mask pairs, enhancing user comprehension. Extensive experiments on two annotated datasets (“LV-VIS” and “OVIS”) demonstrate the effectiveness of SG-FSCFormer, achieving state-of-the-art performance surpassing existing methods. In summary, the main contributions of this work are as follows:  
+
+> •
+
+We introduce a pioneering task, “Controllable Video Segmentation and Captioning”, marking the inaugural controllable video multimodal interpretation. This task enables the flexible and nuanced multimodal interpre-tations of video content, meticulously tailored to align with specific user requirements. To support this task, we present two newly annotated datasets based on LV-VIS and OVIS, which will be publicly released to facilitate future research 1. 
+
+> •
+
+We propose an innovative Scene Graph-guided Fine-grained SegCaptioning Transformer, featuring a Prompt-guided Temporal Graph Former that captures user intent by thoroughly exploring spatial and temporal correlations 
+
+> 1https://github.com/XuZhang1211/SG-FSCFormer
+
+between objects and the prompt, yielding a precise prompt-related graph feature aligned with user intent.  
+
+> •
+
+We devise a Mask-linguistic Decoder to collaboratively generate accurate, coherent multimodal outputs using a Multi-entity Contrastive loss. The outcomes achieve instance-level cross-modal alignment, significantly enhanc-ing the user’s comprehension of video content. II. R ELATED WORK 
+
+A. Controllable Video Captioning 
+
+Recent advancements in vision-language models (VLMs) have significantly enhanced models’ understanding of visual content, leading to substantial improvements in video caption-ing [1], [2], [22], which aims to describe global video content in natural language [23], [24], However, this global captioning paradigm fails to satisfy users’ personalized requirements, motivating the development of controllable video captioning [18], [25] to specify visual elements guided by user prompts. For example, [26] uses an exemplar sentence to directly control syntax and style during captioning, while [27] introduces a video caption editing (VCE) task that automatically revises an existing video description based on user requests. Beyond text prompts, [28] enables users to specify visual bounding boxes for subject-focused descriptions. To achieve fine-grained control over caption length or topic, [25] employs multi-hot vector representations to precisely regulate caption length, while [19] proposes a topic-guided model to generate topic-oriented descriptions. In contrast, our method jointly generates captions and masks with precise alignment, delivering more meaningful and user-tailored video understanding. 
+
+B. Referring Video Segmentation 
+
+Referring video object segmentation (R-VOS) is a specialized subfield of video segmentation that seeks to localize and segment target objects across all video frames given a user-provided prompt [29]–[31]. Classical video segmentation focuses on segmenting, tracking, and classifying objects drawn from a fixed set of training categories [12], [32], [33]. Recent efforts have moved beyond this closed-set assumption toward open-vocabulary video instance segmentation (OV-VIS) [34]–[37], which leverages the visual–language alignment capabilities of vision–language models (VLMs) [38]. For example, OV2Seg [35], trained on image datasets, can be directly applied to videos at test time to recognize novel categories, while OVFormer [36] improves generalization via a lightweight module that aligns query embeddings with CLIP image embeddings, narrowing the domain gap. Although OV-VIS alleviates the limitations of predefined taxonomies, it still does not guarantee segmentation that is tailored to diverse user prompts and intent. R-VOS [39]–[42] addresses this gap by conditioning segmentation on natural-language (or other) prompts; however, effectively modeling object dynamics and long-range temporal correlations remains challenging. To address this, [43] introduces a temporal collection-distribution mechanism that facilitates interactions between the reference token and object queries, while [29] suggests decoupling video-level referring expressions into static and motion components 3
+
+to enhance temporal comprehension. To adapt to novel scenes, [44] proposes an effective few-shot R-VOS model to enable rapid semantic learning and adaptation across diverse scenarios. [13] explores the use of a pretrained text-to-video (T2V) diffusion model, incorporating specially designed components for R-VOS. Besides text prompts, SAM2 [45] first introduces an interactive video segmentation method built on SAM [46], using visual prompts for high efficiency. In contrast, our method not only provides open-vocabulary labels for the predicted masks but also supports the automatic expansion of a concise user prompt into multiple semantically related objects, all organized by a semantic caption with fine-grained cross-modal alignment. 
+
+C. Video Multimodal Interpretation 
+
+Advancements in multimodal large models [38], [47]–[50] have driven the development of video multimodal interpretation, which aims to generate correlated multimodal outputs for enhanced video understanding. These approaches can be broadly categorized into two primary paradigms. Box-caption methods, such as [24], integrate object detection, tracking, and trajectory captioning within videos by associating instance-level bounding boxes with corresponding captions. Expanding on this idea, controllable box-caption generation incorporates user guidance to improve interpretability. For example, SMOTer [51] introduces dynamic conditional inputs to guide object trajectory generation and produce interaction-aware captions, enabling user-specified tracking granularity. Another line of research focuses on mask-caption pair generation, where meth-ods like OW-VisCaptor [21] perform segmentation, tracking, and captioning using open-world object queries, producing instance masks paired with captions for each detected object. However, these approaches describe each identified target in isolation, overlooking the surrounding contextual information and often resulting in incomplete or fragmented descriptions. VideoGLaMM [52] generates broad and unfocused captions without precisely addressing the user’s region of interest. At the same time, it relies solely on text-level referring features for mask decoding and processes each target’s textual features independently within the segmentation module. This design not only amplifies inherent cross-modal discrepancies between textual and visual modalities but also aggravates ambiguities among visually similar objects, ultimately hindering accurate pixel-level segmentation. Building on these limitations, we introduce a novel Control-lable Video Segmentation and Captioning task that leverages user-specified prompts to produce correlated captions and segmentation masks. Unlike prior approaches, our framework emphasizes faithfully capturing user intent by inferring related object masks guided by a prompt box. Furthermore, it effec-tively bridges dynamic visual contexts with textual descriptions, enabling the collaborative generation of multimodal outputs that mitigate cumulative errors and promote complementary information exchange across modalities. Importantly, our fine-grained alignment mechanism ensures that noun entities in the generated captions are tightly and accurately grounded to their corresponding segmented objects, thereby achieving precise cross-modal consistency. III. M ETHOD 
+
+A. Overview 
+
+Given a video V and a user prompt Po, such as a bounding box around an object o in the first frame, controllable video Seg-Captioning extracts user-specified semantic information from the video according to Po, which is represented as a caption sentence S paired with related masks M that cover all instances in S. We propose a novel “ Scene Graph guided Fine-grained 
+
+Seg Captioning Trans former ” (SG-FSCFormer), designed to simultaneously generate a caption with semantically aligned masks, which consists of three main components (see Figure 2): a visual encoder, a Prompt-guided Temporal Graph Former (PTGFormer), and a Fine-grained Mask-Linguistic Decoder. The visual encoder extracts visual features for all video frames. On this basis, the PTGFormer generates temporal scene graph features to capture objects of interest and their complex relationships based on the input prompt, ensuring an accurate representation of user intent. The fine-grained mask-linguistic decoder transforms these graph features along with the encoded visual features into paired masks and captions. Notably, this collaborative decoding on both modalities is supervised by the Cross-temporal Fine-grained Alignment Loss, which aims to capture the complex fine-grained correspondence between each mask and captions words in instance-level instead of class-level, providing detailed cross-modal semantic relationships to facilitate users’ understanding. 
+
+B. Prompt-guided Temporal Graph Former 
+
+Given a video V ∈ RT ×H×W ×3 with height H, width W ,and T frames, our PTGFormer generates temporal scene graph features to capture the visual content of interest to users across the frames, as well as the complex semantic context embedded within them. Specifically, the PTGFormer first generates global scene graphs {Gt}Tt=1 = {(Nt, E t)}Tt=1 for each frame Ft
+
+following [53], where Nt and Et denote the sets of nodes and edges, respectively. To filter out redundant nodes and edges in 
+
+Gt that are not relevant to the user’s interest, PTGFormer aims to identify a subgraph G′ 
+
+> t
+
+⊆ Gt, guided by the prompt Po, to well align with the mask-caption pair (M, S ) for model training. The goal of this selection is to maximize the expression below: 
+
+P (G′
+
+> ts
+
+= ( S, M )|Gt, P o). (1) where s
+
+= indicates the semantic consistency between G′ 
+
+> t
+
+and 
+
+(M, S ), approximated by object consistency between Nt of G′
+
+> t
+
+and (M, S ). To achieve this, we design an adaptive prompt adaptor to automatically extract a subgraph G′ 
+
+> t
+
+from Gt.Concretely, the adaptor first removes nodes and edges in Gt
+
+that are not connected to the prompt object, creating a coarse subgraph with node features f to ∈ RLo×D and edge features 
+
+f te ∈ RLe×D , where Lo, Le represent the number of nodes and edges, and D is the feature dimension. Next, the adaptor concatenates f to and f te and injects them into several self-attention blocks by exploring the complex correlations among nodes, followed by a mapping layer that outputs response scores α ∈ RLo , expressed as follows: 
+
+α = σ  MHSA ([ f to; f te ]), (2) 4𝛼  
+
+> MHSA
+> Concatenation
+> MLP
+> Visual
+> Encoder
+> Prompt
+> Labeling
+
+𝛼          
+
+> MHCA
+> PTGFormer
+> … …
+> 𝐺 !
+> 𝐺 "#!
+> 𝐺 "
+> 𝐺 $
+> 𝐺 !
+> ’
+> 𝐺 "#!
+> ’
+> 𝐺 "
+> ’
+> 𝐺 $
+> ’… …
+> !𝑓 !
+> "
+> !𝑓 !
+> "#$
+> #𝑓 !
+> "
+> Irrelevant object removing
+> 𝑓 &
+> !
+> 𝑓 '
+> !
+> 𝑓 &
+> $
+> 𝑓 '$
+> 𝑓 &
+> "
+> 𝑓 '"
+> 𝑓 &
+> "#!
+> 𝑓 '"#!
+> 𝑓 &
+> "
+> 𝑀𝐿𝑃
+> MLP
+> 𝑓 '"𝐴 ()
+> 𝑓 '"𝐴 (*
+> Visual -Graph
+> Cross -Attention
+> Visual -Language
+> Cross -Attention
+> Textual -Query
+> Cross -Attention
+> (K,V)
+> Q(K,V)
+> Fine -grained Mask -Linguistic Decoder
+> 𝑓 +"
+> Mask  Decoder Text Decoder
+> Masks
+> Caption
+> A man first
+> followed the girl
+> on her bicycle ,
+> and then helped
+> the girl ride her
+> bicycle
+> 𝑓 +,
+> "𝑓 -.
+> "
+> 𝑓 +/
+> "
+> Q𝑓 .
+> "
+> 𝑓 +,
+> "
+> Q
+> (K,V)
+> MHSA
+> MLP
+> Concatenation
+> ℒ01("2*3
+> ℒ41)5
+> ℒ67
+
+T
+
+> 𝑓 +/
+> "#!
+
+user 
+
+> (K,V) 𝑓 8
+> "
+> Q
+> Frame
+> Query
+> Context
+> Memory
+> ……
+> ℒ40
+> GI -QFormer
+
+Fig. 2: Framework of our Scene Graph-guided Fine-grained SegCaptioning Transformer (SG-FSCFormer), consisting of three components: a Visual Encoder, a Prompt-guided Temporal Graph Former (PTGFormer), and a Fine-grained Mask-Linguistic Decoder (MLDecoder), where the mathematical symbols are explained in the corresponding modules. where MHSA denotes the multi-head self-attention operation, 
+
+σ represents a mapping layer implemented via an MLP, and 
+
+α reflects the association strength between each node and the prompt object. Since the edge feature f te is centered on the prompt object, the deep exploration of both node and edge features allows us to effectively predict the association strength between each node and the prompt object. We then update the node features by incorporating this association strength, which helps emphasize the highly relevant nodes: 
+
+ˆf to = (1 + α) · f to, (3) where ˆf to ∈ RLo×D represents the prompt-guided reinforcement features of nodes that account for spatial correlations between each node and the prompt object. Additionally, the adaptor further incorporates temporal correlations between neighboring frames to update the node features: 
+
+˜f to = MHCA ( ˆf to, ˆf t−1 
+
+> o
+
+, ˆf t−1 
+
+> o
+
+), (4) where MHCA represents the multi-head cross-attention layers. By modeling spatio-temporal scene graphs, the enhanced feature ˜f to ∈ RLo×D effectively captures the user’s intent and the dynamic semantic information across frames, providing more accurate features for subsequent steps. Finally, we combine both the node feature ˜f to and edge feature f te to generate the final graph feature. Specifically, the edge feature f te is first multiplied by two adjacency matrices, 
+
+Aps and Apo from the graph G′
+
+> t
+
+, which capture predicate-subject and predicate-object relationships, respectively. The edge feature is then updated using two fully connected layers, MLP ps and MLP po , to ensure size consistency with ˜f to. As a result, the final prompted-related graph feature f tg ∈ RL×D is calculated as: 
+
+f tg = ˜f to + MLP ps (f te Aps ) + MLP po (f te Apo ). (5) Unlike typical scene graph features, the generated f tg has the following key characteristics: First, it effectively filters out irrelevant nodes and edges based on the prompt object, thereby better capturing the user’s intent. Second, the adaptor thoroughly explores the correlations between each graph node and the prompt object, as well as temporal correlations across frames. This enables the model to identify notable objects, which is crucial for making accurate caption predictions. More-over, it enhances the model’s ability to re-identify the target when it is occluded or temporarily disappears in intermediate frames. 
+
+C. Fine-grained Mask-linguistic Decoder 
+
+The Fine-grained Mask-Linguistic Decoder is designed to generate mask regions that highlight user-specified areas of interest, along with an associated caption that semantically aligns with the predicted masks. Moreover, the decoding outcomes specify the correspondence between each mask and individual caption words, ensuring fine-grained alignment. Technically, our decoder first leverages scene graph features to guide the feature generation process, integrating both textual and visual-semantic information through a Graph-guided Iterative Query Former. Subsequently, these features are decoded to produce the corresponding caption and masks. 
+
+1) Graph-guided Iterative Query Former: To effectively generate features that integrate textual and visual semantics, we employ a Graphs-guided Iterative Query Former (GI-QFormer), as Figure 2 shows. Given a scene graph feature 
+
+f tg ∈ RL×D , an image feature f tv ∈ RU ×D with size U , and a learnable language query f tq ∈ RL×D at frame t, our GI-QFormer generates language embeddings that align with user intent through three multi-head cross-attention layers: visual-graph cross-attention, textual-query cross-attention, and visual-language cross-attention. In the visual-graph cross-attention layer, f tg serves as the query, and f tv acts as both the key and value to obtain the prompt-related visual feature f tvg ∈ RL×D ,which accurately reflects the user’s demand guided by f tg . In 5The man on the left riding a yellow bike initially led the one on the right riding a mountain bike in blue . ⦰
+
+> T=2
+> T=1
+> T=t
+> …
+
+Fig. 3: Prediction by the revised decoder which is able to output the position of caption words for each mask instance. the textual-query cross-attention layer, a learnable embedding 
+
+f tq is used as the text query, while a context memory embedding 
+
+f tm ∈ RK×D serves as the key and value to generate a context-related language feature f tcq ∈ RL×D , where K is the number of compressed temporal frames. The initial f tm
+
+is randomly set and updated iteratively by [23] for long-term video efficiency, based on the outputs received from GI-QFormer at each time step. Finally, in the visual-language cross-attention layer, f tvg is used as the query, and f tcq serves as the key and value to generate the prompt-related textual feature f tvl ∈ RL×D . Here, f tvg acts as a user-interested visual query, dynamically retrieving relevant textual information from 
+
+f tcq . Consequently, the generated f tvl captures the user’s intent for caption generation. All the three cross-attention layers are iteratively applied to generate the final text embedding f Tvl for caption generation. 
+
+2) Decoding: For caption generation, we employ a frozen large language model (LLM) [54] as the text decoder. The LLM takes f Tvl as input to generate a caption. The caption loss 
+
+Lcaption is computed as Cross-Entropy (CE) loss, as detailed in [55]. For mask generation, we employ the SAM2 decoder [45] to generate masks by employing the original mask loss LMask .In addition, we add an branch consisting of a two-layer MLP to predict a referring probability vector, which indicates the object location of each mask in the caption, as illustrated in Figure 3. Specifically, the mask decoder takes the f tvg as input and outputs binary region masks M t ∈ RN ×H×W , along with a probability distribution matrix V t ∈ RN ×Ls , where N
+
+denotes the number of objects and Ls represents the caption length. We introduce a fine-grained alignment loss LFA to train the model for accurately predicting V t:
+
+Lt 
+
+> FA
+
+= BCE (V t, Y ), (6) where Y represents the ground-truth of the probability distri-bution matrix labeled in our experiments. To collaboratively predict both segmentation and captioning results, our approach explicitly align cross-modal features between each mask with its corresponding caption words by using a Multi-entity Contrastive loss LMC . Given a predicted mask-caption pair (M, S ), where M consists of T sets 
+
+{Mt}Tt=1 for T frames, LMC measures the correspondence between masks in Mt and words in S within each static frame Ft. Notably, there is no strict one-to-one correspondence between masks and words. For instance, the word “elephant” may correspond to multiple masks, and conversely, a single mask may relate to multiple distinct words. To account for this, we aim for the i-th mask embedding mti to be close to the set of positive word embeddings si+, while remaining distant from unrelated word embeddings sj . Similarly, we expect the i-th word embedding si to be similar to the set of positive mask <SEG C> A man wearing a blue life jacket </ SEG C> is 
+
+working together with <SEG S> another man wearing 
+
+a red life jacket </SEG S> to push <SEG S> a red canoe 
+
+</SEG S> into the water from the shore .
+
+> ……
+> BC
+> BS1
+> BS2
+
+Fig. 4: An example illustrating our data annotation. embeddings {mti}+ and dissimilar to irrelevant embeddings 
+
+mtj . Consequently, LMC is defined as: 
+
+Lt 
+
+> MC
+
+=−
+
+> |Mt|
+
+X
+
+> i=1
+
+1
+
+|{ si}+|
+
+X
+
+> si∈{ si}+
+
+log exp( mt⊤ 
+
+> i
+
+si/τ )
+
+P 
+
+> j̸=i
+
+exp( mt⊤ 
+
+> i
+
+sj /τ )
+
+−
+
+> |S|
+
+X
+
+> i=1
+
+1
+
+|{ mti }+|
+
+X  
+
+> mti∈{ mti}+
+
+log exp( s⊤ 
+
+> i
+
+mti /τ )
+
+P 
+
+> j̸=i
+
+exp( s⊤ 
+
+> i
+
+mtj /τ ) ,
+
+(7) 
+
+where τ is a learnable parameter, |Mt| and |S| denote the number of mask embeddings and word embeddings at the 
+
+t-th frame, respectively. Finally, the overall loss of our mask-linguistic decoder is composed of three parts by using a bal-ancing weight λ: the captioning loss LCaption , the segmentation loss LMask + LFA , and the cross-modal Multi-entity Contrastive loss LMC , which is expressed as: 
+
+Ltotal = LCaption + ( LMask + LFA ) + λLMC . (8) IV. D ATASET ANNOTATION 
+
+We augment existing video segmentation datasets with textual annotations to facilitate our SegCaptioning task. Specif-ically, given an input video, the original dataset provides ground-truth masks and category labels for each target. We first compute the enclosing rectangle around each mask to obtain its bounding box. Annotators then review these boxes across frames and provide a caption about the bounding target. In each caption, the bounding box corresponding to the subject is designated as the central box Bc, which serves as the user prompt box during training, while all other relevant boxes are treated as association boxes Bs. To ensure annotation quality, two independent annotators annotate each video, and their results are cross-checked for consistency. For a single video, multiple prompt box–caption pairs can be created for different objects of interest. For example, in a given video, the central box round “a man wearing a blue life jacket” (see Fig. 4). The required annotations are as 6
+
+follows: Central box → “a man wearing a blue life jacket”, Association box 1 → “another man wearing a red life jacket”, Association box 2 → “a red canoe”. To structure the caption, we use ⟨SEG C ⟩⟨ /SEG C ⟩ to enclose nouns corresponding to the central box and ⟨SEG S ⟩⟨ /SEG S ⟩ for nouns corresponding to the association box. The final annotated caption is: ⟨SEG C ⟩Aman wearing a blue life jacket ⟨/SEG C ⟩ is working together with ⟨SEG S ⟩another man wearing a red life jacket ⟨/SEG S ⟩
+
+to push ⟨SEG S ⟩a red canoe ⟨/SEG S ⟩ into the water from the shore. During model’s training and inference, only the central box is provided as the user prompt. A temporal scene graph is then used to adaptively identify other objects associated with the target (with supervision from association box labels during training), which are subsequently used for video segmentation and caption generation. Additionally, to ensure that the target of interest appears in the first frame of each sample, we filter out instances where the prompted target is absent in the first frame and discard all preceding frames. This preprocessing step ensures dataset consistency and maintains a clear focus on the target from the beginning. Our work is the pioneering study to implement the fine-grained alignment between caption tokens and masks guided by visual prompts, which inevitably introduces new annotated data. To support future research, we will publicly release the constructed dataset. 
+
+Discussing annotation quality, and potential bias. While manual annotation may affect scalability, we have taken several measures to ensure annotation quality. The original dataset provides precise masks from which our bounding boxes are generated, ensuring exact localization and eliminate potential localization bias. Captions are generated by two independent annotators per video, refined by LLMs for grammatical correct-ness, and then cross-checked to ensure consistency and high inter-annotator agreement, which guarantees annotation quality. To better reflect diverse user intentions and reduce perspective bias, we allow multiple valid central boxes within each scene. When different central boxes are designated, each team may produce distinct captions to reflect diverse user perspectives and intent. Instead of merging these into a single consensus caption, we preserve the diversity across annotations. This approach enables the dataset to better represent nuanced shifts in user intent and provides richer supervisory signals for models aimed at relation-aware and context-sensitive understanding. V. E XPERIMENTS 
+
+A. Datasets and Metrics 
+
+We conduct our experiments on two video instance segmenta-tion datasets, “LV-VIS” [35] and “OVIS” [11], by incorporating new prompt and caption annotations. 
+
+LV-VIS is a large vocabulary video instance segmentation dataset consisting of 4, 828 real-world videos across 1, 196 
+
+categories. The dataset includes annotated masks and is divided into three subsets: 3, 083 for training, 837 for validation, and 
+
+908 for testing. We have enriched this dataset by adding (box, caption) pairs. Specifically, several annotators were instructed to label one of the masked targets in each video using a bounding box in the first frame and then to describe an event centered on this target in relation to other masked objects. To provide fine-grained alignment for model training, all the masked objects were labeled with the position information to reflect their appearance in the captions. As a result, each video contains 1-3 bounding boxes with corresponding captions. This augmentation yields a total of 9, 588 (box, caption) pairs, averaging approximately 1.98 (box, caption) pairs per video. 
+
+OVIS is a dataset designed for occluded video instance seg-mentation, which requires detecting, segmenting, and tracking instances in scenes with significant occlusions. The dataset consists of 901 videos across 25 object categories, divided into 
+
+607 training, 140 validations, and 154 testing videos. We have similarly extended this dataset to include (box, caption) pairs for each video, ensuring alignment between caption words and their visual targets. In total, we have added 2, 190 (box, caption) pairs, averaging approximately 2.4 (box, caption) pairs per video. We evaluate our model from three perspectives: the quality of caption generation, the quality of video segmentation, and the quality of the alignment between caption words and masks. Caption quality is assessed using METEOR, SPICE, and CIDEr [56], [57], while video segmentation accuracy is evaluated using the J&F [58]. The alignment is evaluated at both class-level and instance-level. For class-level alignment, we use average precision (AP) to measure the classification accuracy of masks. For instance-level alignment, our approach first finds the most relevant phrase for each mask predicted by the segmentation decoder. Then, it calculates the textual similarity between the phrase and the caption words in the ground truth. If the similarity exceeds 0.5, the prediction is considered correct. We then calculate the average precision on all the instances to obtain the instance-level mAP. 
+
+B. Implementation Details 
+
+We use SwinB [59] as our visual encoder, and the SAM2 decoder [45] and Vicuna-7B [54] as the decoders for mask and caption generation, respectively. In the PTGFormer, the graph feature f tg is configured with L = 100 and D = 512 ,while the context memory has a memory length of K =10 . For the total loss function in Eq. (8) , we set λ = 2 to balance the model’s optimization. During training, we apply horizontal flip augmentation and resize each image to a square size of 1024 × 1024 . We optimize the model using the AdamW optimizer with an initial learning rate of 5.0 × 10 −4 and train for 20 epochs with a batch size of 1 per GPU. All experiments are conducted on 4 A6000 GPUs. 
+
+C. Comparison with state-of-the-art methods 
+
+We compare SG-FSCFormer with several state-of-the-art methods in video captioning, video segmentation, and mul-timodal video interpretation. The results are summarized in Table I, Table II, and Table III, respectively. Note that “-” indicates that the result is not reported by the original paper or the model is unavailable. 
+
+Video Captioning. On our LV-VIS and OVIS datasets, all the captioning models are re-executed. As Table I shows, SG-FSCFormer achieves the best performance on all the metrics. 7Q: Could you please give me a detailed description of the video? Please respond with interleaved segmentation masks                                                                                                                                                                                                                                                                                                                          
+
+> for the corresponding parts of the answer .
+> A:In this scene, there is amoving ship alongside astationary ship .The man wearing awhite sweatshirt is actively
+> steering the ship in forward motion, skillfully navigating through the waters .
+> Q:Could you please give me adetailed description of the video? Please respond with interleaved segmentation masks
+> for the corresponding parts of the answer .
+> A:In the video, aman is seen standing in front of the log ,where awoman is pulling acart with alarge red log on it
+> behind her .
+> A:The girl is pushing acart with achainsaw in front of the wooden shed while chatting with the man beside her .The
+> man initially stands with his hands on his hips, looking at the chainsaw on the cart ,then begins gesturing with his
+> hands to explain its usage to the girl .She listens and smiles in response, appearing very interested in his explanation .
+> A:Asmall white boat is slowly moving forward in front of alarge cargo ship .Aman on the stern of the small boat is
+> communicating with acrew member on the cargo ship .The boat continue to move forward, with the trees on the
+> shore gradually receding in the background .
+> obj 1:Agirl is pushing astroller and chatting with the man next to her, who occasionally gestures with his hands .
+> obj 2:The man stood next to agirl, first looking at the chainsaw, and then explaining to her how to use the chainsaw .
+> obj 3:Ahandcart is placed with an electric saw, and aman and agirl are standing beside it .
+> obj1 obj1 obj1
+> obj2 obj2 obj2
+> obj 1:Asmall white boat and alarge red -and -black cargo ship move forward closely .
+> obj 2:Alarge cargo ship is moving closely behind awhite boat .Aman on the cargo ship stands at the bow, watching
+> the path ahead .
+> (c)  SMOTer
+> obj1 obj2 obj1 obj2 obj1 obj2 obj1 obj1 obj1 obj2 obj2 obj2
+> obj3 obj2 obj2
+> (e) SG -FSCFormer
+> obj1 obj2
+> obj3
+> obj1 obj2
+> (a)  OVFormer (b) SAM2 (d)  VideoGLaMM
+
+Fig. 5: Quantitative results by different approaches tested on the LV-VIS and OVIS datasets, where the color indicates the matching relationship between masks and words. TABLE I: Performance comparison with the advanced video captioning methods. where the results on the LV-VIS and OVIS are reproduced and that on the YouCook2 is cited from the references. 
+
+Model LLM LV-VIS OVIS YouCook2 METEOR SPICE CIDEr METEOR SPICE CIDEr METEOR SPICE CIDEr Vid2Seq CVPR23 [60] T5-Base 16.3 24.7 107.4 18.0 33.0 106.8 9.3 7.9 47.1 SMOTer ECCV24 [51] GRiT 16.9 25.0 109.6 17.8 32.8 108.1 - - -MA-LMM CVPR24 [1] Vicuna-7B 17.1 25.2 110.6 18.6 33.1 109.3 17.6 31.5 131.2 VideoGLaMM CVPR25 [52] Phi3-Mini-3.8B 16.7 25.7 112.0 19.5 33.9 112.8 15.4 28.7 124.3 SG-FSCFormer (ours) Vicuna-7B 19.3 26.8 112.5 21.4 35.2 113.7 20.5 33.4 139.6 
+
+TABLE II: Performance comparison between our approach and the two controllable video segmentation methods. 
+
+Model LV-VIS OVIS 
+
+J&F J F J&F J F
+
+SAMURAI arXiv24 [61] 87.3 85.6 89.1 72.0 69.2 74.9 SAM2 ICLR25 [45] 85.6 83.3 87.9 68.7 66.0 71.3 SG-FSCFormer (ours) 87.8 85.9 89.7 74.6 72.5 76.7 
+
+Compared with approaches that generate global descriptions of entire scenes (e.g., Vid2Seq, MA-LMM, and VideoGLaMM), which tend to generate broad and unfocused captions without precisely addressing the user’s region of interest, our method provides more targeted and semantically faithful outputs. Simi-larly, while SMOTer generates captions for individual objects, it neglects the surrounding contextual information, often leading to incomplete or fragmented descriptions. In contrast, SG-FSCFormer integrates both fine-grained object details and precise contextual cues through the user-guided visual prompt mechanism. By leveraging the proposed PTGFormer, the model proficiently translates a prompt into pertinent feature representations, thereby yielding accurate caption results that are closely aligned with user intent. To further demonstrate the generalization capability of SG-FSCFormer, we extend our evaluation to the YouCook2 dataset [62], which contains pairs of query phrases and corresponding ground-truth descriptions for each video, and compare our results with the existing official results. For each video, we select the first occurrence of a ground-truth label mentioned in the description of the initial frame as the visual prompt for our method. Under this setting, our approach consistently achieves the best performance on all the metrics, further validating its robustness and adaptability. 
+
+Controllable Video Segmentation. This experiment com-pares our approach with the controllable video segmentation methods. Given a video, users label a box from the target masks in the first frame for segmentation evaluation. As Table II shows, our approach demonstrates commendable segmentation 8
+
+TABLE III: Performance comparison with several advanced video multimodal interpretation methods, where † denotes the evaluation using the instance-level AP.                               
+
+> Model Mask Decoder LV-VIS OVIS AP AP 50 AP 75 AP AP 50 AP 75
+> GLEE CVPR24 [63] MaskDINO 23.9 24.6 23.3 27.1 45.4 26.3 OVFormer ECCV24 [36] Mask2Former 24.7 31.1 26.5 21.3 38.5 20.8 OW-VISCap NIPS24 [21] Mask2Former ---25.4 48.8 22.8 SG-FSCFormer (ours) Mask2Former 25.2 31.8 27.5 27.8 49.0 27.2 VideoGLaMM CVPR25 [52] SAM2 25.4 32.2 27.6 28.0 49.3 26.9 SG-FSCFormer †(ours) SAM2 24.8 31.5 26.9 27.5 48.6 26.7 SG-FSCFormer (ours) SAM2 26.0 33.6 28.3 28.7 51.4 29.1
+
+TABLE IV: Performance comparison of PTGFormer using the adaptor with different components tested on the LV-VIS validation set, where “spa.” and “tem.” represent the use of spatial and temporal correlations, respectively. 
+
+Spa. Tem. SPICE CIDEr J&F AP - - 24.6 108.3 85.0 23.9 
+
+✓ - 25.7 111.2 86.5 25.4 - ✓ 25.3 109.8 86.4 25.1 
+
+✓ ✓ 26.8 112.5 87.8 26.0 
+
+performance with the highest J&F scores of 87 .8 and 74 .6
+
+on the LV-VIS and OVIS datasets, respectively. We guess this improvement stems from the collaborative decoding and the multi-entity contrastive loss, which could extract robust visual features from mask prediction. In the OVIS dataset, since only the training set contains offline segmentation annotations, we reserved 100 non-overlapping training videos for validation and used the rest for training. 
+
+Video Multimodal Interpretation. As shown in Table III, our approach outperforms existing video multimodal inter-pretation methods, achieving AP scores of 26 .0 and 28 .7 on the LV-VIS and OVIS datasets, respectively for class-level alignment. This performance gain stems from the integration of the proposed GI-QFormer, which effectively captures complex cross-modal correlations between textual and visual features, along with the incorporation of the fine-grained alignment loss LF A and the multi-entity contrastive loss LM C . These components jointly enforce consistent representations between corresponding caption–mask pairs, thereby enhancing the mask classification accuracy. In contrast, VideoGLaMM relies solely on text-level referring features for mask decoding. This limited modality interaction leads to suboptimal performance due to inherent cross-modal discrepancies and visual ambiguities between similar-looking objects, which hinder accurate pixel-level segmentation. Notably, even when adopting Mask2Former as the segmentation backbone, our model still surpasses the OVFormer and OW-VISCap baselines, both of which also utilize Mask2Former, further demonstrating the robustness and effectiveness of our framework. Moreover, our method implements the instance-level cross-modal alignment, with AP scores of 24 .8 and 27 .5 on the LV-VIS and OVIS datasets, respectively, which is approaching to the accuracy of the class-level results, demonstrating the effectiveness of the revised decoder. Since OW-VISCap [21] has not released its code, so TABLE V: Performance comparison by using different compo-nents of losses tested on the LV-VIS Val dataset. 
+
+LF A LM C SPICE CIDEr J&F AP - - 23.8 106.9 84.5 22.1 
+
+✓ - 25.4 109.8 86.3 25.6 - ✓ 25.1 110.4 86.9 25.8 
+
+✓ ✓ 26.8 112.5 87.8 26.0 
+
+its results in Table III are cited from the references. 
+
+D. Qualitative Results 
+
+Fig. 5 presents the quantitative results of our method in com-parison with several advanced methods. As shown in Fig. 5 (a) and (b), OVFormer and SAM2 can only generate segmentation results. Furthermore, OVFormer can only associate its output masks with coarse-grained class labels, lacking fine-grained instance-level alignment. In Fig. 5 (c), SMOTer generates target-specific descriptions for each object in the videos, but it has limited control over video segmentation, preventing it from tailoring the results to user needs. Moreover, SMOTer’s captions fail to align with specific targets in the videos, resulting in descriptions of the object’s state and actions without indicating its precise location. In Fig. 5(d), VideoGLaMM produces overly simplistic captions and segmentation masks with poorly defined boundaries. When the initial captioning stage fails to correctly identify a target (e.g., the chainsaw or cabin in Fig. 5(d) left), the cascaded framework prevents the subsequent segmentation module from generating the corresponding mask. Moreover, VideoGLaMM relies solely on text-level referring features for mask decoding, and processes each target’s textual features independently within the segmentation module. This design not only amplifies inherent cross-modal discrepancies between textual and visual modalities but also aggravates ambiguities among visually similar objects. Consequently, the limited interaction across modalities and targets results in suboptimal performance, hindering accurate boundary delineation (e.g., adjacent ships) and leading to target loss over time (e.g., the disappearing log). In contrast, as shown in Fig. 5(e), our method generates multiple coherent object masks along with a corresponding video caption based on a single user-provided box prompt. Furthermore, the integration of LF A and 
+
+LM C ensures that noun entities in the generated captions are accurately aligned with their corresponding segmented objects, thereby ensuring tight cross-modal grounding. Overall, our approach delivers customized multimodal video interpretations guided by a user’s visual prompt, not only describing the actions associated with the specified target but also localizing semantically related objects in the scene. 
+
+E. Ablation Studies 
+
+Analysis of PTGFormer. This experiment evaluates the PTGFormer incorporating an adaptive prompt adaptor to methodically filters out superfluous nodes and edges. To quantitatively assess the efficacy of this adaptor, we conduct a comprehensive analysis encompassing both spatial correlations (refer to Eq. (2) and (3) ) and temporal correlations (refer to 9
+
+TABLE VI: Performance comparison by using LMC with different weights tested on the LV-VIS Val dataset.                          
+
+> λ012510 SPICE 23.8 25.4 26.8 26.3 25.7 CIDEr 106.9 110.6 112.5 112.0 111.3
+> J&F84.5 85.7 87.8 86.5 86.1 AP 22.1 25.3 26.0 25.9 25.4
+
+TABLE VII: Performance comparison of three SG-FSCFormer variants, analyzing the impact of removing the prompt box, replacing the LLM, and using different mask decoders.                     
+
+> Method SPICE CIDEr J&FAP Our (Vicuna-7B&SAM2) 26.8 112.5 87.8 26.0
+> Without Prompt Box
+> Our (w/o Prompt) 25.4 110.8 86.5 25.3
+> Using Different LLMs
+> Our (OPT-2.7B) 25.9 111.2 87.4 25.7
+> Using Different Mask Decoders
+> Our (Mask2Former) 26.3 112.0 85.9 25.2
+
+Eq. (4) ), as delineated in Table IV. The experimental outcomes substantiate that the integration of spatial correlations engenders a substantial performance augmentation. By ascribing distinct weightings to graph nodes contingent upon their spatial affiliations with the prompt object, this methodology enables the derivation of more refined and semantically aligned node representations, congruent with user intent. Similarly, the incorporation of temporal correlations manifests an appreciable performance enhancement, facilitating the dynamic encoding of semantic nuances across sequential frames. The combined use of both correlations leads to substantial improvements in both segmentation and captioning tasks. 
+
+Analysis of Alignment Losses. We conduct an ablation study to evaluate the efficacy of the proposed losses including LFA 
+
+and LMC , as illustrated in Table V. The use of LFA or LMC both enhance the model’s performance. Specifically, LMC enforces the feature representation alignment between each mask and its corresponding caption word, thereby establishing a robust correspondence for robust decoding. Meanwhile, LFA explicitly aligns the predicted masks with their corresponding instance words by modeling the mask-to-word distribution, corroborating the efficacy of the fine-grained alignment losses. Table VI further provides additional evidence of the effectiveness of 
+
+LMC under different λ in Eq. (8) . The optimal performance is achieved when λ = 2 . Increasing λ leads to a performance degradation as it diminishes the contributions of both the captioning and segmentation losses. Conversely, reducing λ
+
+weakens the cross-modal alignment, resulting in a decline in overall performance. 
+
+Effect of Prompt, LLM, and Mask Decoder. To evaluate the contribution of key components, we construct three variants of our model that respectively examine the impact of removing the prompt box, replacing the LLM backbone, and using different mask decoders. Without Prompt Box. Since our task emphasizes controllable outputs, it is required to receive users’ prompt and then capture desired results. This ensures that the output space aligns with user intent. As shown in Table VII (“w/o Prompt”), the performance degrades when the prompt box is removed. This suggests that, in the absence of explicit spatial guidance, the model resorts to global semantic modeling, generating general descriptions and masks that may include irrelevant background objects or miss user-intended targets. In practice, multiple prompt boxes can be employed to generate diverse outputs and enrich the output space; however, this lies beyond the scope of the current study. Using Different LLMs. We evaluated the impact of replacing the Vicuna-7B backbone with OPT-2.7B [64], and report the results in Table VII (“Using Different LLMs”). When replacing Vicuna-7B with OPT-2.7B, we observe a performance drop across all metrics, indicating that stronger language modeling capabilities enhance semantic understanding in our framework. Furthermore, as shown in Table I, Our model, whether equipped with Vicuna-7B or OPT-2.7B, consistently outperforms the MA-LMM baseline (which also uses Vicuna-7B) on the caption generation task. We attribute these gains to the synergistic effect between our scene-graph guided temporal semantic modeling and the integration of multimodal outputs. Using Different Mask Decoders. To assess the impact of the SAM2 pretrained model in our framework, we replace it with Mask2Former, the same mask decoder used by the baseline methods. As shown in Table III and Table VII, our model equipped with Mask2Former still outperforms the baselines OVFormer and OW-VISCap, which also adopt Mask2Former. Although the performance decreases compared to that using SAM2, these results further demonstrate the effectiveness and generalizability of our framework. 
+
+F. Challenging Cases Visualization 
+
+We visualize several challenging and failure cases in Fig. 6 for detailed analysis, including occlusion, blurred motion, visual ambiguity, and long-term disappearance. As shown in Fig. 6(a) and (b), when the target undergoes occasional occlusion and motion blur, our method successfully produces accurate captions and corresponding masks. In Fig. 6(c), where the target exhibits highly similar visual features and temporarily disappears, our method erroneously segments a newly appearing rider upon the target’s return. We attribute this failure to interference caused by the high visual similarity between the original and newly appearing targets after the original object was lost. In Fig. 6(d), our method fails to segment the reappearing adult horse after a long-term disappearance. We believe this is due to the prolonged absence of the target, which overwrote the memory features maintained in the temporal buffer, thereby hindering effective re-identification and segmentation upon reappearance. We plan to address these limitations in future work. 
+
+G. Inference Speed and Model Parameters 
+
+In our SG-FSCFormer, the trainable modules include PTG-Former, and the MLDecoder, with their respective parameters and FLOPs detailed in Table VIII. Based on SAM2 and Vicuna-7B, our approach only adds PTGFormer (10.2M) and 10 (a) Occlusion (c) Visual Ambiguity (d)  Reappearance  (b) Rapid  Motion                                                                                                                                                                           
+
+> Aman in ablue jacket is riding his bicycle and striving to catch up with aman in ablack jacket riding abicycle ahead on the forest path .As he accelerates,
+> they nearly ride side by side before the black -jacketed rider surges forward again, reopening the gap .
+> The left elk lowers its head and charges fiercely at the right elk as they clash intensely on aresidential driveway .As the impact continues, the right elk is
+> forced to retreat sideways while the left elk presses forward .In front of agray house ,there is ared car and asilver SUV parked .
+> Aperson in ablack helmet stands beside ared motorcycle as arider in agreen helmet approaches on agreen motorcycle .The green -helmeted rider then
+> circles to the side of the red motorcycle ,showing adynamic shift in motion .
+> The little horse behind the adult horse ,struggling to stand firm .Then, the little horse began to take steps, following the adult horse movements within the
+> fence, showing awobbly yet lively gait .
+
+Fig. 6: Visualization of several challenging and failure cases, including heavy occlusion, motion blur, visual ambiguity, and long-term target disappearance. TABLE VIII: Parameters and FLOPs of the trainable modules in SG-FSCFormer. 
+
+Module PTGFormer MLDecoder Params 10.2M 85.7M FLOPs 1.8G 3.1G 
+
+TABLE IX: Inference speed (FPS) comparison.             
+
+> Method OVFormer SAM2 MA-LMM SMOTer VideoGLaMM Ours FPS 2.98 10.61 7.35 4.82 5.13 4.96
+
+MLDecoder (85.7M), and achieves 4.96 FPS tested on an A6000 GPU. Furthermore, we compare the inference speed of our method with OVFormer, SAM2, MA-LMM, SMOTer, and VideoGLaMM, which achieve 2.98, 10.61, 7.35, 4.82, and 5.13 FPS, respectively, as shown in Table IX. While the inference speed of our model is lower than unimodal generation approaches such as SAM2 for segmentation and MA-LMM for captioning, it outperforms SMOTer, which jointly generates bounding boxes and captions, and achieves inference speed comparable to VideoGLaMM. Overall, our approach introduces relatively few learnable parameters and delivers efficient inference, achieving a favorable balance between model complexity and effectiveness. 
+
+H. Limitations 
+
+Current video segmentation and captioning methods generate unimodal outputs, limiting the user’s ability to access rich multi-modal data. Additionally, the integration of video segmentation and captioning often results in oversimplification or omission of content that may be of interest to the user. In contrast, our SegCaptioning task leverages user prompts as guidance and incorporates temporal scene graph modeling, which effectively captures the contextual content of interest and collaboratively generates both video segmentation and contextual descriptions. However, our method relies on manually annotated alignment of masks and captions in two existing video datasets. Scaling this method to larger datasets (e.g., at an Internet scale) remains challenging due to the scarcity of annotated data and high labeling costs. Future work will explore human-supervised semi-automated annotation pipelines and weakly supervised pretraining to overcome this limitation. Additionally, as illustrated in Fig. 6(c) and (d), our method may struggle with targets that exhibit high visual similarity or remain absent from the scene for extended periods. We plan to mitigate these issues by optimizing the memory features maintained in the temporal buffer, enabling more robust long-range modeling and improved target discrimination. VI. C ONCLUSION 
+
+This paper introduces a novel research task, “Controllable Video Segmentation and Captioning”, establishing it as the in-augural controllable video multimodal interpretation challenge and offering valuable insights to inform future research endeav-ors. To tackle this task, we propose an innovative framework, “Scene Graph-guided Fine-grained SegCaptioning Transformer”, which incorporates a PTGFormer to effectively translate a simple user prompt into prompt-specific graphs, meticulously aligned with user intent. Furthermore, the proposed Mask-linguistic Decoder explicitly enforces alignment between each 11 
+
+mask and its corresponding caption tokens, implementing fine-grained alignment to generate precise multimodal outputs that enhance user comprehension of video content. Extensive empirical evaluations on two benchmark datasets substantiate the efficacy of our method, demonstrating its capacity to accurately capture user intent and generate robust multimodal outputs tailored to user needs. REFERENCES [1] B. He, H. Li, Y. K. Jang, M. Jia, X. Cao, A. Shah, A. Shrivastava, and S.-N. Lim, “Ma-lmm: Memory-augmented large multimodal model for long-term video understanding,” in CVPR , 2024, pp. 13 504–13 514. [2] E. Song, W. Chai, G. Wang, Y. Zhang, H. Zhou, F. Wu, H. Chi, X. Guo, T. Ye, Y. Zhang et al. , “Moviechat: From dense token to sparse memory for long video understanding,” in CVPR , 2024, pp. 18 221–18 232. [3] S. Li, K. Yang, H. Shi, J. Zhang, J. Lin, Z. Teng, and Z. Li, “Bi-mapper: Holistic bev semantic mapping for autonomous driving,” IEEE Robotics and Automation Letters , 2023. [4] J. Lin, J. Chen, K. Peng, X. He, Z. Li, R. Stiefelhagen, and K. Yang, “Echotrack: Auditory referring multi-object tracking for autonomous driving,” arXiv preprint arXiv:2402.18302 , 2024. [5] J. Lin et al. , “Click-pixel cognition fusion network with balanced cut for interactive image segmentation,” IEEE Trans. Image Process. , vol. 33, pp. 177–190, 2023. [6] X. Zhang, K. Yang, J. Lin, J. Yuan, Z. Li, and S. Li, “Pvpuformer: Probabilistic visual prompt unified transformer for interactive image segmentation,” IEEE Transactions on Image Processing , 2024. [7] S. Reddy et al. , “First contact: Unsupervised human-machine co-adaptation via mutual information maximization,” arXiv preprint arXiv:2205.12381 , 2022. [8] F. Yang, W. Chen, K. Yang, H. Lin, D. Luo, C. Tang, Z. Li, and Y. Wang, “Learning granularity-aware affordances from human-object interaction for tool-based functional dexterous grasping,” IEEE Transactions on Neural Networks and Learning Systems , 2025. [9] M. Xia, X. Zhang, L. Weng, Y. Xu et al. , “Multi-stage feature constraints learning for age estimation,” IEEE Transactions on Information Forensics and Security , vol. 15, pp. 2417–2428, 2020. [10] H. Fang, A. Liu, J. Wan, S. Escalera, C. Zhao, X. Zhang, S. Z. Li, and Z. Lei, “Surveillance face anti-spoofing,” IEEE Transactions on Information Forensics and Security , 2023. [11] J. Qi, Y. Gao, Y. Hu, X. Wang, X. Liu, X. Bai, S. Belongie, A. Yuille, P. H. Torr, and S. Bai, “Occluded video instance segmentation: A benchmark,” 
+
+IJCV , vol. 130, no. 8, pp. 2022–2039, 2022. [12] J. Wu, Q. Liu, Y. Jiang, S. Bai, A. Yuille, and X. Bai, “In defense of online models for video instance segmentation,” in ECCV . Springer, 2022, pp. 588–605. [13] Z. Zhu, X. Feng, D. Chen, J. Yuan, C. Qiao, and G. Hua, “Exploring pre-trained text-to-video diffusion models for referring video object segmentation,” ECCV , 2024. [14] J. Qiu, G. Yang, J. Lei, Z. Feng, and R. Liang, “Visual-guided query with temporal interaction for video object segementation,” in 2024 IEEE International Conference on Multimedia and Expo (ICME) . IEEE, 2024, pp. 1–6. [15] Y. Li, S. Zhou, Z. Qin, and L. Wang, “Visual-linguistic feature alignment with semantic and kinematic guidance for referring multi-object tracking,” 
+
+IEEE Transactions on Multimedia , 2025. [16] Y. Zhao et al. , “Real-time online video detection with temporal smoothing transformers,” in ECCV . Springer, 2022, pp. 485–502. [17] S. Chen, P. Sun, E. Xie, C. Ge, J. Wu, L. Ma, J. Shen, and P. Luo, “Watch only once: An end-to-end video action detection framework,” in 
+
+ICCV , 2021, pp. 8178–8187. [18] B. Wang, L. Ma, W. Zhang, W. Jiang, J. Wang, and W. Liu, “Controllable video captioning with pos sequence guidance based on gated fusion network,” in ICCV , 2019, pp. 2641–2650. [19] F. Liu, X. Ren, X. Wu, B. Yang, S. Ge, Y. Zou, and X. Sun, “O2na: An object-oriented non-autoregressive approach for controllable video captioning,” arXiv preprint arXiv:2108.02359 , 2021. [20] X. Zhang, J. Yuan, H. Zhang, G. Zhong, Y. Zang, J. Lin, and Z. Li, “Sgdiff: Scene graph guided diffusion model for image collaborative segcaptioning,” in AAAI , 2025, pp. 10 257–10 265. [21] A. Choudhuri et al. , “Ow-viscaptor: Abstractors for open-world video instance segmentation and captioning,” in NeurIPS , 2024. [22] S. Ren, L. Yao, S. Li, X. Sun, and L. Hou, “Timechat: A time-sensitive multimodal large language model for long video understanding,” in 
+
+CVPR , 2024, pp. 14 313–14 323. [23] X. Zhou, A. Arnab, S. Buch, S. Yan, A. Myers, X. Xiong, A. Nagrani, and C. Schmid, “Streaming dense video captioning,” in CVPR , 2024, pp. 18 243–18 252. [24] X. Zhou, A. Arnab, C. Sun, and C. Schmid, “Dense video object captioning from disjoint supervision,” in ICLR , 2025. [25] T. Nitta et al. , “Fine-grained length controllable video captioning with ordinal embeddings,” arXiv preprint arXiv:2408.15447 , 2024. [26] Y. Yuan, L. Ma, J. Wang, and W. Zhu, “Controllable video captioning with an exemplar sentence,” in ACM MM , 2020, pp. 1085–1093. [27] L. Yao, Y. Zhang, Z. Wang, X. Hou, T. Ge, Y. Jiang, X. Sun, and Q. Jin, “Edit as you wish: Video caption editing with multi-grained user control,” in ACM MM , 2024, pp. 1924–1933. [28] C. Teng, Y. Ma, G. Li, Y. Qi, L. Qing, and Q. Huang, “Sovc: Subject-oriented video captioning,” arXiv preprint arXiv:2312.13330 , 2023. [29] S. He and H. Ding, “Decoupling static and hierarchical motion perception for referring video segmentation,” in CVPR , 2024, pp. 13 332–13 341. [30] M. Li, S. Li, X. Zhang, and L. Zhang, “Univs: Unified and universal video segmentation with prompts as queries,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , 2024, pp. 3227–3238. [31] B. Miao, M. Bennamoun, Y. Gao, M. Shah, and A. Mian, “Temporally consistent referring video object segmentation with hybrid memory,” 
+
+IEEE Transactions on Circuits and Systems for Video Technology , vol. 34, no. 11, pp. 11 373–11 385, 2024. [32] D.-A. Huang et al. , “Minvis: A minimal video instance segmentation framework without video-based training,” NeurIPS , vol. 35, pp. 31 265– 31 277, 2022. [33] T. Zhang, X. Tian, Y. Zhou, S. Ji, X. Wang, X. Tao, Y. Zhang, P. Wan, Z. Wang, and Y. Wu, “Dvis++: Improved decoupled framework for universal video segmentation,” IEEE Transactions on Pattern Analysis and Machine Intelligence , 2025. [34] P. Guo, T. Huang, P. He, X. Liu, T. Xiao, Z. Chen, and W. Zhang, “Openvis: Open-vocabulary video instance segmentation,” arXiv preprint arXiv:2305.16835 , 2023. [35] H. Wang, C. Yan, S. Wang, X. Jiang, X. Tang, Y. Hu, W. Xie, and E. Gavves, “Towards open-vocabulary video instance segmentation,” in 
+
+ICCV , 2023, pp. 4057–4066. [36] H. Fang, P. Wu, Y. Li, X. Zhang, and X. Lu, “Unified embedding alignment for open-vocabulary video instance segmentation,” ECCV ,2024. [37] P. Guo, Z. Zhao, J. Gao, C. Wu, T. He, Z. Zhang, T. Xiao, and W. Zhang, “Videosam: Open-world video segmentation,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 11 155–11 161. [38] A. Radford et al. , “Learning transferable visual models from natural language supervision,” in International conference on machine learning .PMLR, 2021, pp. 8748–8763. [39] J. Wu, Y. Jiang, P. Sun, Z. Yuan, and P. Luo, “Language as queries for referring video object segmentation,” in CVPR , 2022, pp. 4974–4984. [40] C. Xiao, Q. Cao, Y. Zhong, X. Zhang, T. Wang, C. Yang, and L. Lan, “Temporal-enhanced multimodal transformer for referring multi-object tracking and segmentation,” arXiv preprint arXiv:2410.13437 , 2024. [41] Z. Yang, J. Wang, X. Ye, Y. Tang, K. Chen, H. Zhao, and P. H. Torr, “Language-aware vision transformer for referring segmentation,” IEEE Transactions on Pattern Analysis and Machine Intelligence , 2024. [42] J. Mei, A. Piergiovanni, J.-N. Hwang, and W. Li, “Slvp: self-supervised language-video pre-training for referring video object segmentation,” in 
+
+Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision , 2024, pp. 507–517. [43] J. Tang et al. , “Temporal collection and distribution for referring video object segmentation,” in ICCV , 2023, pp. 15 466–15 476. [44] G. Li, M. Gao, H. Liu, X. Zhen, and F. Zheng, “Learning cross-modal affinity for referring video object segmentation targeting limited samples,” in ICCV , 2023, pp. 2684–2693. [45] N. Ravi, V. Gabeur, Y.-T. Hu, R. Hu, C. Ryali, T. Ma, H. Khedr, R. R ¨adle, C. Rolland, L. Gustafson et al. , “Sam 2: Segment anything in images and videos,” in ICLR , 2025. [46] A. Kirillov, E. Mintun, N. Ravi, H. Mao, C. Rolland, L. Gustafson, T. Xiao, S. Whitehead, A. C. Berg, W.-Y. Lo et al. , “Segment anything,” in ICCV , 2023, pp. 4015–4026. [47] J. Li, D. Li, C. Xiong, and S. Hoi, “Blip: Bootstrapping language-image pre-training for unified vision-language understanding and generation,” in International conference on machine learning . PMLR, 2022, pp. 12 888–12 900. 12 
+
+[48] D. Zhu, J. Chen, X. Shen, X. Li, and M. Elhoseiny, “Minigpt-4: Enhancing vision-language understanding with advanced large language models,” 
+
+arXiv preprint arXiv:2304.10592 , 2023. [49] M. Maaz, H. Rasheed, S. Khan, and F. S. Khan, “Video-chatgpt: Towards detailed video understanding via large vision and language models,” arXiv preprint arXiv:2306.05424 , 2023. [50] X. Lai, Z. Tian, Y. Chen, Y. Li, Y. Yuan, S. Liu, and J. Jia, “Lisa: Reasoning segmentation via large language model,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition ,2024, pp. 9579–9589. [51] Y. Li, Q. Li, H. Wang, X. Ma, J. Yao, S. Dong, H. Fan, and L. Zhang, “Beyond mot: Semantic multi-object tracking,” in ECCV . Springer, 2024, pp. 276–293. [52] S. Munasinghe, H. Gani, W. Zhu, J. Cao, E. Xing, F. S. Khan, and S. Khan, “Videoglamm: A large multimodal model for pixel-level visual grounding in videos,” in Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2025, pp. 19 036–19 046. [53] R. Zellers, M. Yatskar, S. Thomson, and Y. Choi, “Neural motifs: Scene graph parsing with global context,” in CVPR , 2018, pp. 5831–5840. [54] W.-L. Chiang, Z. Li, Z. Lin, Y. Sheng, Z. Wu, H. Zhang, L. Zheng, S. Zhuang, Y. Zhuang, J. E. Gonzalez et al. , “Vicuna: An open-source chatbot impressing gpt-4 with 90%* chatgpt quality,” See https://vicuna. lmsys. org (accessed 14 April 2023) , vol. 2, no. 3, p. 6, 2023. [55] J. Luo, Y. Li, Y. Pan, T. Yao, J. Feng, H. Chao, and T. Mei, “Semantic-conditional diffusion networks for image captioning,” in CVPR , 2023, pp. 23 359–23 368. [56] P. Anderson, B. Fernando, M. Johnson, and S. Gould, “Spice: Semantic propositional image caption evaluation,” in ECCV . Springer, 2016, pp. 382–398. [57] R. Vedantam et al. , “Cider: Consensus-based image description evalua-tion,” in CVPR , 2015, pp. 4566–4575. [58] F. Perazzi, J. Pont-Tuset, B. McWilliams, L. Van Gool, M. Gross, and A. Sorkine-Hornung, “A benchmark dataset and evaluation methodology for video object segmentation,” in Proceedings of the IEEE conference on computer vision and pattern recognition , 2016, pp. 724–732. [59] Z. Liu, Y. Lin, Y. Cao, H. Hu, Y. Wei, Z. Zhang, S. Lin, and B. Guo, “Swin transformer: Hierarchical vision transformer using shifted windows,” in ICCV , 2021, pp. 10 012–10 022. [60] A. Yang, A. Nagrani, P. H. Seo, A. Miech, J. Pont-Tuset, I. Laptev, J. Sivic, and C. Schmid, “Vid2seq: Large-scale pretraining of a visual language model for dense video captioning,” in CVPR , 2023, pp. 10 714– 10 726. [61] C.-Y. Yang, H.-W. Huang, W. Chai, Z. Jiang, and J.-N. Hwang, “Samurai: Adapting segment anything model for zero-shot visual tracking with motion-aware memory,” arXiv preprint arXiv:2411.11922 , 2024. [62] L. Zhou et al. , “Towards automatic learning of procedures from web instructional videos,” in AAAI , 2018. [63] J. Wu, Y. Jiang, Q. Liu, Z. Yuan, X. Bai, and S. Bai, “General object foundation model for images and videos at scale,” in CVPR , 2024, pp. 3783–3795. [64] S. Zhang, S. Roller, N. Goyal, M. Artetxe, M. Chen, S. Chen, C. Dewan, M. Diab, X. Li, X. V. Lin et al. , “Opt: Open pre-trained transformer language models,” arXiv preprint arXiv:2205.01068 , 2022.

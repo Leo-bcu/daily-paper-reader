@@ -1,0 +1,375 @@
+Title: Robotic Agentic Platform for Intelligent Electric Vehicle Disassembly
+
+URL Source: https://arxiv.org/pdf/2603.18520v1
+
+Published Time: Fri, 20 Mar 2026 00:48:32 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Robotic Agentic Platform for Intelligent Electric Vehicle Disassembly 
+
+Zachary Allen ∗, Max Conway ∗, Lyle Antieau, Allen Ponraj, and Nikolaus Correll 
+
+Abstract — Electric vehicles (EV) create an urgent need for scalable battery recycling, yet disassembly of EV battery packs remains largely manual due to high design variability. We present our Robotic Agentic Platform for Intelligent Disassem-bly (RAPID), designed to investigate perception-driven manipu-lation, flexible automation, and AI-assisted robot programming in realistic recycling scenarios. The system integrates a gantry-mounted industrial manipulator, RGB-D perception, and an automated nut-running tool for fastener removal on a full-scale EV battery pack. An open-vocabulary object detection pipeline achieves 0.9757 mAP50, enabling reliable identification of screws, nuts, busbars, and other components. We exper-imentally evaluate (n=204) three one-shot fastener removal strategies: taught-in poses (97% success rate, 24min duration), one-shot vision execution (57%, 29min), and visual servoing (83%, 36min), comparing success rate and dissassembly time for the battery’s top cover fasteners. To support flexible interaction, we introduce agentic AI specifications for robotic disassembly tasks, allowing LLM agents to translate high-level instructions into robot actions through structured tool interfaces and ROS services. We evaluate SmolAgents with GPT-4o-mini and Qwen 3.5 9B/4B on edge hardware. Tool-based interfaces achieve 100% task completion, while automatic ROS service discovery shows 43.3% failure rates, highlighting the need for structured robot APIs for reliable LLM-driven control. This open-source platform enables systematic investiga-tion of human–robot collaboration, agentic robot programming, and increasingly autonomous disassembly workflows, providing a practical foundation for research toward scalable robotic battery recycling. 
+
+I. INTRODUCTION The growing adoption of electric vehicles (EVs) poses a significant challenge for recycling their batteries [1], which contain high-value materials that can often be recovered at rates exceeding 90% [2]. Modern EV batteries can reach voltages up to 800V, creating serious safety hazards such as electric shock and difficult-to-extinguish thermal runaways. Manual disassembly is therefore laborious and dull, dirty and dangerous, making it a prime target for automation. At the same time, economic pressures are rising. Conventional batteries use lithium, nickel, and cobalt (LNC), but newer mass-market lithium iron-phosphate (LFP) batteries have raw material costs less than a quarter of LNC, increasing the need for cost-efficient disassembly solutions. Shredding batteries into a “black mass” for metallurgical recovery is a common recycling approach [3]. However, shredding entire batteries—including aluminum frames, cop-per busbars, and steel screws lowers economic value [4], and accelerates wear on shredding equipment. These limi-tations have increased interest in autonomous disassembly techniques. 
+
+> All authors are with the Department of Computer Science, University of Colorado, Boulder. The * indicates equal contribution.
+
+Fig. 1: Hyundai Ioniq5 EV battery being dismantled by the RAPID system Fully autonomous battery disassembly requires complex robotic systems capable of a wide range of operations, including screwing, cutting, and prying. Existing approaches for hybrid batteries employ multiple robots with special-ized tools [5]–[8].To reduce system complexity, human-robot collaborative approaches where robots handle repetitive screwing while humans manage tasks dexterous tasks have been proposed [9], [10]. Given the diversity of EV battery designs and disassembly tasks, we advocate a human-robot collaborative approach that incrementally augments human disassembly stations, combining automation for repetitive operations with flexible human oversight. Here, we are particularly interested in so-lutions that can easily deal with different battery geometries and visual appearances, and that can be configured with very little specialized training. 
+
+A. Contributions 
+
+This paper presents the following contributions:  
+
+> •
+
+A human-robot collaborative research platform (RAPID) for full-size EV battery disassembly.  
+
+> •
+
+An open-world perception pipeline to identify screws, nuts, busbars, and other battery components.  
+
+> •
+
+Evaluation of multiple fastener removal strategies, in-cluding taught-in poses, vision-guided execution, and visual servoing.  
+
+> •
+
+Introduction of agentic AI specifications that allow large language models (LLMs) to translate high-level instructions into structured robot actions, supporting interactive human collaboration and local deployment on edge hardware. 
+
+B. Related work 
+
+The majority of work on battery recycling is on the much smaller category of hybrid battery packs, typically small 
+
+> arXiv:2603.18520v1 [cs.RO] 19 Mar 2026
+
+enough to fit in the area underneath the trunk, [5], [8]– [10], not on the emerging class of full-size EV battery packs that often span the entire chassis of the car, and operate at lower voltages 48V compared to the 400-800V range in EV-LIBs. These larger batteries exceed the workspace even of large industrial arms. The disassembly problem of packs that consists of multiple modules , should also not be confused with the disassembly of individual modules into cells [11]. In addition to performing specific tasks of the disassembly process [6], [7], robotic disassembly requires task and motion planning. [12] investigates a task planning framework for the complete disassembly of an Audi e-tron hybrid battery pack. Here, the planner is hard coding disassembly logic such as removing all visible screws before attempting the next step. In [13], a hierarchical planner is employed to disassemble a wooden toybox and an electronic hard-drive with empha-sis on human-robot collaboration. Large Language Models (LLM) can also be used to interactively create a plan together with a human user. Here, LLMs can leverage common-sense knowledge about disassembly and also directly issue high-level commands to a robot’s sensors and actuators [14]. In particular, LLMs can be used interactively to let a user refine a robotic disassembly plan [15]. In [16], an Agentic AI framework has been presented that facilitates interactions between an LLM and sensors and actuators controlled by the Robot Operating System (ROS2). In addition to using the LLM to generate high-level plans, they also show using the LLM to detect anomalies during the execution of classical Finite State Machines (FSM), thereby potentially making robots more robust. Finally, [17] presents a techno-economic analysis of the battery disassembly process, computing cost savings larger than 40% when using one Universal Robot arm to support dismantling of the Mitsubishi Outlander hybrid battery. II. SYSTEM OVERVIEW The RAPID system consist of a Universal Robot UR16e, a customized nut-runner (AlloyPower ARW801 with custom Ethernet interface), and a Parker linear gantry. Figure 1 shows the lab prototype with a Hyundai Ioniq5 full-size EV battery. The end-effector is equipped with an Intel Realsense D435i. Images are processed via Yolo World [18] and motion planning is performed using MoveIt! 2 [19]. The overall operation is orchestrated using an agentic AI framework SmolAgents [20]. Figure 2 shows an overview of the system. 
+
+Fig. 2: Integration of conventional automation systems, open-world vision systems, motion planning and Agentic AI. 
+
+A. Electric Vehicle Battery: Hyundai Ioniq5 
+
+The Hyundai Ioniq5 is a full-size LNC EV battery that is 2.12m in length, 1.22m wide, weighs approximately 450kg, has a capacity of 77.4kWh, and operates at 800V. We have chosen this battery as it can be reversibly assembled and disassembled. Compared with hybrid or plug-in batteries, this kind of battery requires a much larger workspace and additional safety precautions due to the high voltage, but has significantly higher techno-economic benefits due to the increased amount of high-value materials. We have performed a complete manual disassembly of the battery to obtain an estimate of manual disassembly time using two untrained workers and a third person for time keeping, who assisted in some of the tasks. We report and calculate the total time required for all individual steps, not including breaks, and normalize them by “man-hour” and “man-seconds”. Times were recorded after performing one complete disassembly and reassembly with the same team, somewhat reducing the effect of learning. Prior to disassembly, we have discharged the battery using an We-basto/Aeronvironment AV-900 Heavy Duty Dual Channel Cycling battery cycler to 0V. We identified 12 individual subtasks, which are listed in Table I. In this paper, we exclusively address tasks involving unscrewing that are integral to all tasks except 3 and 12. 
+
+B. Robotic System 
+
+RAPID has been dimensioned to service full-size EV batteries and consists of a T-slot arch spanning 2.5m in width, a Parker-Hannifin linear axis (2.1m) and a collaborative Universal Robots 16e 6-DoF robotic arm with a payload of 16 kg. Both the Intel RealSense D435 and the nut-runner are mounted using a custom, 3D-printed assembly shown in Figure 3. Here, the camera is mounted slightly offset so that the nut-runner does not interfere with its field of view. The nut-runner is mounted so that its torque axis is perpendicular to the last axis of the robot, preventing reaction forces from being absorbed by the wrist. The total system cost around $80,000. The UR16e provides a socket interface to send URScript commands. We have created custom scripts that allow us to move the robot toward a screw location in force control mode. Once the robot makes contact, the nut-runner is activated. As the nut-runner removes the screw, the robot automatically moves upward as it maintains contact via a constant downward force. The nut-runner is equipped with a button that allows for regulating the nut-runner speed by modulating a pulse-width modulated (PWM) signal. We have replicated the built-in circuitry in order to control the nut-runner via an Ethernet connection. The control architecture is shown in Figure 3. The gantry system can be controlled by sending commands via another socket connection. It is equipped with an abso-lute encoder, which allows precise control with millimeter accuracy. The overall system is controlled by MoveIt! [19], which implements path planning and collision avoidance. TABLE I: Battery Disassembly Task Breakdown 
+
+Task Description Time (s) Workers Man-seconds Tools 1 Remove 8 large screws on top cover 120 2 240 Large nutrunner 2 Remove 70 screws and nuts holding top cover 501 2 1002 Nutrunner (high torque) 3 Remove cover plate 27 2 54 None 4 Remove two busbars to break battery voltage into two 100 2 200 Nutrunner (high torque) 5 Remove two large cables connecting across battery 173 2 346 Nutrunner (high torque) 6 Remove 6+1 large busbars 190 2 380 Nutrunner (high torque) 7 Remove 3 busbars from battery controller 136 2 272 Nutrunner (high torque) 8 Remove 8 wire harnesses 420 2 840 Small screwdriver, flathead 9 Take out 24 small bus bars (battery module interconnects) 456 2 912 Nutrunner, small screwdriver 10 Take out first layer of screws holding in battery modules (80 screws) 960 2 1920 Nutrunner (high torque) 11 Take out second layer of M14 screws 307 2 614 Nutrunner (high torque) M14 12 Remove 32 battery modules 343 3 1029 Crowbar   
+
+> Robot PC (ROS2 + agent) Seeed XIAO RP2040 + W5500 Ethernet Module Tool interface NPN-Driven Mosfet Motor Driver (PWM) (BC550B + CSD19534KCS) W1600 Hall Effect Current Sensor Nutrunner (motor + gearbox) 3.3V LDO (LD33V) (12V →3.3V) 12V Tool Battery
+> ROBOT / CONTROL DOMAIN
+> (earth-referenced)
+> TOOL / BATTERY DOMAIN
+> (floating with battery)
+> enable + PWM
+> 12V motor power
+> 3.3V rail
+> analog
+> signal
+> ethernet (TCP/UDP)
+
+Fig. 3: Left: Custom end-effector for the UR16e that holds a nut-runner and a Intel RealSense D435 in place. The nut-runner has been retrofitted with an Arduino-based interface board to control speed and measure current via Ethernet. Right: Block diagram of the Ethernet-based nutrunner control system. 
+
+Fig. 4: Industrial workflow for setup (orange) and execution (green). Left: Relevant battery parts are labeled with text (1) and trained (2). All part locations and disassembly sequence are stored in JSON description (3) and right. Middle: Exe-cution starts with a full scan, registration of parts (A), and uses agentic AI to execute the plan together with a human co-worker (B). Right: Sample JSON data structure. III. AUTONOMOUS DISASSEMBLY We envision the following industrial workflow consisting of a setup and an execution phase. The workflow is illustrated in Figure 4. The resulting data structure contains YoloWorld labels and uses nesting to indicate tasks in the group Ts =
+
+{ts, 1, . . . , t s,n }, the set of disassembly sub-tasks that are associated with step s ∈ S , a set containing all consecutive assembly steps. For example, task s=2 in Table I contains 70 sub-tasks, and Figure 4 shows a JSON representation of two of these. Here, we assume that all tasks within a group 
+
+Ts can be performed interchangeably, i.e. don’t have any precedence constraints, whereas the order of elements in S
+
+informs the order in which disassembly has to proceed. Once a model to recognize individual battery elements has been trained, it can be used to identify part locations as shown in Figure 2A. Here, false positives need to be removed interactively by the user, whereas false negatives will need to be added by teaching their positions manually by moving the arm to the appropriate location. A user study on creating disassembly plans using natural language is beyond the scope of this paper, and we assume the disassembly plan to be complete for the remainder of this paper. 
+
+A. Planning 
+
+We formulate the sequencing of disassembly tasks s ∈ S 
+
+as a Traveling Salesman Problem (TSP) defined over task poses in SE (3) . Here, task poses are either camera locations for performing a scan or poses where unscrewing operations take place. Let ts, 0 represent the robot home configuration and ts,i = ( ps,i , q s,i ) ∈ SE (3) where ps,i ∈ R3 is the Carte-sian position and qs,i ∈ H is a unit quaternion representing orientation. The augmented node set is Vs = {ts, 0} ∪ T .We construct a weight matrix Ws,ij ∈ R≥0, i, j ∈ Vs
+
+where each entry represents the Euclidean distance between task poses ts,i and ts,j . Note that Ws,ij can be computed offline as the set of tasks T is the same for each battery of the same type. The TSP decision variables are xs,ij ∈{0, 1}, i, j ∈ V with xs,ij = 1 if the robot moves directly from ts,i to ts,j . The optimization problem is 
+
+min 
+
+> xs,ij
+
+X
+
+> i∈V
+
+X
+
+> j∈V
+
+Ws,ij xs,ij ,
+
+and standard subtour elimination constraints ensuring a sin-gle Hamiltonian circuit. This formulation decouples global task sequencing from local motion planning while incor-porating realistic joint-space motion costs into the routing objective and can be solved using Google’s OR tools [21]. We are using this solution to generate optimal orderings for each task sequence Ts.
+
+B. Analytical Inverse Kinematics 
+
+Inverse kinematics (IK) and path planning are non-trivial in a gantry-based system, as poses that are close in Cartesian space can be far apart in joint space when the linear axis is involved. Standard iterative solvers such as KDL, TracIK, and PICK-IK in MoveIt! return a single, seed-dependent solution per call when applied to a redundant system and fail occasionaly. For a 6+1-DoF manipulator, this is insufficient: a single call cannot enumerate the qualitatively different configurations that arise from varying the gantry position or selecting a different elbow/shoulder family, leading to low solver success rates. Extending to multiple random seeds improves coverage but incurs significant per-call overhead. We instead implement a closed-form solver that exploits the UR16e’s spherical wrist to decouple position and orienta-tion subproblems and explicitly enumerates all kinematic families using a multi-objective cost function that encodes joint distance dJ (qc, qk) = 
+
+qP7 
+
+> i=1
+
+wi(qc,i − qk,i )2, where 
+
+w1 = 0 .1 (gantry) and w2–7 = 1 .0 (arm joints), penalizing large joint-space motions while permitting gantry travel, a proximity penalty pP = 1 /d ee , where dee is the Euclidean distance between the wrist and gantry plate, and a geometric penalty pA = 1 /A △, where A△ is the area of the triangle formed by the gantry plate, wrist, and forearm links. Small triangle areas correspond to near-singular, collapsed arm con-figurations and serve as a geometric proxy for manipulability. We additionally compute the Yoshikawa manipulability index [22] μ = pdet( JJ T ), where J ∈ R6×7 is the geometric Jacobian, for each planned configuration. While 
+
+μ is not directly incorporated into the cost function, it is recorded as a diagnostic metric to quantify the dexterity of the selected configuration. We observe empirically that the area penalty pA correlates with manipulability, as collapsed arm triangles coincide with near-singular Jacobians. To produce predictable, human-safe motions in the collab-orative workspace, we consider a constrained end-effector path planner enforcing a rectangular corridor between the start and goal poses. 
+
+C. Vision 
+
+To detect battery components, we finetune YoloWorld [18] on a manually labeled dataset collected from our robot using the Intel RealSense 435i with arbitrary orientations. Our dataset contains 563 annotated images with class instances: 345 Bolts, 465 Bus Bars, 630 Interior Screws, 462 Nuts, 1175 Orange Covers, 697 Screws, and 840 Screw Holes. We apply the bounding box from the Yolo model to the RGBD image to get the 3D pointcloud of the detection, which is then transformed into the robot’s base frame. Each 3D detection is stored in a kD-Tree to enable efficient retrieval and lookup of detected objects. At every time-step a new set of detections is generated, for each of these detections we compute the intersection over union (IoU) of the new detection with nearby prior detections in our kD-Tree, if this IoU is above a use specified threshold τ we consider it to be the same object and merge the two point clouds. Our vision system can be queried at anytime to retrieve a set of objects O = {(Li, C i, B i, P i)} | i ∈ [0 , N ] Where 
+
+Li is the label of the object using text, Ci ∈ [xi, y i, z i] is the centroid of the object Bi ∈ [xi, 1, y i, 1, z i, 1xi, 2, y i, 2, z i, 2]
+
+is the bounding box containing the object, and Pi ∈ (0 , 1) 
+
+is the probability that the object is present as produced by YoloWorld [18]. Here, using text as an identifier, unlike class ids favors seamless integration with a text-based agentic AI framework. 
+
+D. Fastener Removal 
+
+We implement and evaluate three approaches to Fastener removal: (1) taught-in poses, where the robot is manually placed so that the nut-runner attaches to the screw/nut, (2) using locations obtained by vision and stored in memory, and (3) memory-based locations in conjunction with visual servoing. To remove screws from the taught-in poses, the operator manually moves the arm to each screw to create a set of task poses in Ts. To remove screws from the KD-tree memory, the vision system is queried to obtain the set of centroids for each detection C = {Ci} | Ci ∈ [xi, y i, z i] i ∈
+
+[0 , N ]. We then compute the task pose for each centroid as ⃗z =
+
+
+
+00
+
+−1
+
+⃗ y =
+
+
+
+−xi
+
+−yi
+
+0
+
+ 1
+
+−xi −yi 0⃗ x =⃗ y ×⃗z
+
+∥⃗y ×⃗z∥
+
+ts,i =
+
+⃗x⃗ y⃗ z C i
+
+0 0 0 1
+
+
+
+TS = { ts,i | Ci ∈ S }
+
+This has the effect of making the end effector contact the screw while pointing towards the center of the robot workspace. After solving for an optimal sequence using TSP, for each 
+
+tsi ∈ Ts we use MoveIt to plan 1cm above the task pose. From there, we engage our nut runner and apply 10N of downward force to remove each screw using the UR16e’s built-in force controller. To engage with the screw/nut, we are taking advantage of the play in the nut-runner extension assembly, which leads to a basic form of spiraling pattern [23]. This play is exaggerated with a longer extension and lessened with a shorter extension, impacting the spiral radius. To test visual servoing for fastener removal, we take an additional alignment step based on the RGB channels of the RealSense. After we move above each task pose, we compute the expected pixel location of the end effector by transforming the end effector origin into the camera frame via camera Hee and projecting it using the camera intrinsics 
+
+cx, c y , f x, f y .
+
+EE =camera Hee × 0 0 0 1Ttarget =
+
+"fx EE x 
+
+> EE z
+
++ cx
+
+fy EE y 
+
+> EE z
+
++ cy
+
+#
+
+=
+
+uee 
+
+vee 
+
+
+
+From there, we compute the center of the detected object’s bounding box also in pixel space BB . We can then normalize our pixels via 
+
+BB =
+
+ubb 
+
+vbb 
+
+
+
+s =
+
+(ubb − cx)/f x
+
+(vbb − cy )/f y
+
+
+
+s∗ =
+
+(uee − cx)/f x
+
+(vee − cy )/f y
+
+
+
+We then compute the error as how far the bounding box is from our end effector in normalized pixel space 
+
+e = s − s∗
+
+From the error, we can compute a depth estimate Z as the median of all the points in the depth channel in the bounding box. From there, the translation-only interaction matrix is given by [24]: 
+
+L =
+
+" −1 
+
+> Z
+
+0 s∗
+
+> x
+> Z
+
+0 −1
+
+> Zs∗
+> y
+> Z
+
+#
+
+Finally, given our gain λ, we can calculate our control signal as 
+
+vc = −λL †e
+
+By iteratively calculating and applying the linear velocity vc,we can align the screw with our end effector before applying our downward force. 
+
+E. Agentic AI 
+
+We employ SmolAgents [20] to connect language models with robotic capabilities through structured tool calls. The agent is evaluated with GPT-4o mini as well as locally deployed Qwen 3.5 models (4B and 9B parameters) running on an NVIDIA Jetson Thor platform. Robot functionality is exposed either via a ROS-based Model Context Protocol (MCP) server or through manually defined tools that wrap higher-level robot skills; the complete system prompt and tool configuration are provided in the project repository. IV. RESULTS 
+
+A. Planning 
+
+The solver is evaluated using 21 candidate gantry positions with offset from the current position in 0.1 m increments across ±1.0 m, clamped to the actuator travel limits and applying 8 random arm seed positions, yielding up to 168 candidates per target pose. Solutions are filtered by joint limits, a minimum end-effector clearance of 0.65 m from the gantry plate, and a triangle-area validity check on the wrist–forearm–gantry triangle to reject near-singular config-urations. Results of our implementation inclduding success rate (SR) and planning time compared with naive KDL are shown in Table II Here, weights for the cost function have been evaluated by an ablation study, resulting in a trade-off between success rate and manipulability that is beyond the scope of this paper.             
+
+> IK Method Candidates SR (%) ↑Avg. Plan Time (s) ↓
+> KDL, 1 seed 125.7 1.47 KDL, 50 random seeds ≤50 73.0 10.46 Analytical (ours) ≤168 99.3 0.31
+
+TABLE II: IK solver comparison over 1 000 random goal poses with a 20 s planning budget. Unconstrained RRT freely explores the joint space to find any collision-free path. This is fast (avg. 0.51 s) and nearly always succeeds (99.4%), but the resulting trajecto-ries are indirect: the sampler may swing the arm through unpredictable arcs that, while collision-free with the static environment model, can bring the end-effector close to battery components on the table or pass through regions that are difficult for a nearby human worker to anticipate. The corridor constraint addresses this by requiring the end-effector to remain inside a tight box aligned with the start-to-goal direction vector throughout the motion. This produces geometrically straight, legible paths that are 29% shorter in end-effector travel (1.26 m vs. 1.78 m) and avoid lateral excursions over the work surface. The cost is a ∼93 ×
+
+increase in average planning time (47.4 s vs. 0.51 s), as the constrained sampler must find a feasible path within a narrow spatial tube, and a 6% drop in success rate (93.4% vs. 99.4%) as some goals cannot be reached while keeping the end-effector inside the box. 
+
+B. Vision 
+
+We train and evaluate an “open world” vision model YoloWorldx [18] and a conventional class-based model Yolov11L [25] to validate that AgenticAI-friendly open-world models do not compromise accuracy, precision and recall. Results are reported in Table III, and show that open-world and class-based systems have comparable and sometimes better performance. The confusion matrix for YoloWorld is shown in Figure 5.          
+
+> YoloWorldX [18] Yolov11L [25] mAP0.5 0.9757 0.9708 mAP50-95 0.7625 0.7336 Precision 0.9206 0.9359
+> Recall 0.9673 0.9244
+
+TABLE III: Object recognition performance of an LLM-ready open-world ready model (left) vs. class-based vision system (right). Our model achieves approximately 97% recall, requiring users to manually enter only about 3% of the missed parts. The system produces fewer than 8% false positives, which must be removed during post-processing. 
+
+C. Fastener Removal 
+
+We ran fastener removal for the three configurations: thought-in positions as a baseline, using positions obtained by vision during an initial scan, and using the scanning prior with a visual servoing step. For teaching a position, we position the nut-runner on the screw/nut. As the assembly contains some play, we validate each position by moving up and running the fastener routine. Fig. 5: Confusion matrix for YoloWorld on test set containing 18 Bolts, 27 BusBars, 85 InteriorScrews, 40 Nuts, 48 Orange Covers, 69 Screw, and 71 Screw Holes         
+
+> Taught-in Poses 1-shot vision Visual Servo Avg Time (min) 24.09 28.70 36.29 Success rate 97.06% 57.35% 82.84%
+
+TABLE IV: Success rate for different removal strategies (n=204). As expected, engaging with the screw based on a pose obtained via vision has a lower success rate than using a taught-in position. While visual servoing can somewhat compensate for this by correcting the pose estimate once the robot is close, it further slows down disassembly. Taught-in poses produce no false positives, whereas the vision-based methods occasionally attempt to remove non-existent fasteners or repeat removals due to duplicate detections. Ad-ditionally, the visual servo implementation introduces extra computational overhead from motion planning and repeated inverse kinematics evaluations. We also evaluate the impact of the length of the nut-runner extension using a short (2.5in) and a long extension (6in) end effector for screw removal, showing a significantly higher success rate with the longer extension. The 2.5in extension does not have the length required to generate an effective spiral and/or end-effector compliance, resulting in a significantly worse removal success rate (47.49%) compared to the 6in extension (97.06%). Note that the numbers presented here are single-shot trials, not including retrials, which require accurate detection of failure [26]. 
+
+D. Agentic AI 
+
+All experiments in this section were conducted on the physical system, with real robot movement and part removal attempts. The Qwen 3.5 models (4B and 9B) run locally on the NVIDIA Jetson Thor, while GPT-4o-mini is accessed via API. We first evaluate a simple motion task: “ Move the robot 0.2m (forward/backward). ” In the MCP condition, the agent discovers available capabilities through a ROS2 MCP server that exposes 39 generic services, and an additional targeted service /plan_to_pose_relative . The agent must identify and invoke the correct service from this set. In the Tool condition, the same ROS2 service is wrapped as an explicit SmolAgents tool, removing the discovery step entirely. We run n = 20 trials per model per mode (10 forward, 10 backward) across all three LLM backends, and compare the number of reasoning steps, input and output token counts, and wall-clock time to task completion. A trial is considered successful if the robot executes the commanded 0.2m displacement in the correct direction. Results are shown in Fig. 6. With the MCP server, only Qwen 3.5 9B executed all 20 trials correctly. GPT-4o-mini failed once and Qwen 3.5 4B failed six times. Failures typically involve the model erroneously concluding task completion, sometimes even without attempting executions. MCP results also exhibit high variance, as the agent explores different subsets of the 39 available services across trials. Notably, the locally-deployed Qwen 3.5 9B matched or exceeded the cloud-based GPT-4o-mini in reliability, supporting the viability of fully offline operation. With the explicit tool interface, all three models completed all 20 trials correctly. All metrics improved substantially: input tokens dropped by an order of magnitude, and the GPT-4o-mini API cost fell from $0 .24 
+
+(MCP) to $0 .04 (Tool) across the 20 trials. To evaluate complex reasoning, we prompt the agent: “remove all the remaining parts from the top cover. ” This requires the agent to query the JSON representation, identify all parts with the field is_removed set to False , execute a sequence of physical removal operations via the robot, and update each record to True . In all task instances, 5 of 68 parts remained to be removed. Both MCP and tool agents use the same inventory query tools; the only difference is how the physical removal action is exposed as a discoverable ROS2 service description in the MCP condition, or as an explicit SmolAgents tool in the Tool condition. Results are shown in Figure 7. Complex task reasoning performance differed sharply be-tween MCP and Tool modes. Across 10 trials per model per mode (30 total per mode), the MCP approach produced 13 failures (43.3%) while the Tool method produced none (0%). Critically, 11 of the 13 MCP failures (36.7% of all MCP trials) were false-success cases in which the agent marked all 5 screws as removed in the JSON inventory even though physical removal did not occur (e.g., 0/5 or 1/5 actually removed). Because the only difference between modes was how the removal action was exposed — inventory manage-ment tools were identical —these failures are attributable to the added complexity of the MCP interface itself. Failure rates varied by model. Qwen 3.5 4B failed in 7/10 MCP trials, all false-success cases where 0/5 or 1/5 screws were physically removed despite 5/5 being recorded. Qwen 3.5 9B failed in 4/10 trials with the same pattern: 0/5 removed, 5/5 recorded. GPT-4o-mini had only 2/10 failures, and these were qualitatively different—all 5 screws were suc-Qwen 3.5 4 B Qwen 3.5 9 B ChatGPT 4o-mini               
+
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> steps
+> p=0.225 p=0.457 p=3.2e-06
+> Number of Steps
+> Approach
+> MCP
+> Tools
+> Qwen 3.5 4 B Qwen 3.5 9 B ChatGPT 4o-mini
+> 10 4
+> 10 5
+> input_tokens (log scale)
+> p=2.9e-06 p=6.3e-08 p=6.3e-08
+> Input Tokens
+> Qwen 3.5 4 B Qwen 3.5 9 B ChatGPT 4o-mini
+> 1000
+> 2000
+> 3000
+> 4000
+> 5000
+> output_tokens
+> p=9.7e-04 p=0.156 p=1.1e-07
+> Output Tokens
+> Qwen 3.5 4 B Qwen 3.5 9 B ChatGPT 4o-mini
+> 0
+> 200
+> 400
+> 600
+> 800
+> time_s
+> p=1.7e-06 p=2.4e-05 p=1.3e-07
+> Time (s)
+
+Fig. 6: Metrics across three LLM back-ends for agentic execution of simple robot-motion commands “Move the robot 0.2m forward/backward” via MCP (orange) and an explicit SmolAgents tool (blue). Boxes: Q1/median/Q3; whiskers: 1.5 IQR; circles: outliers; dots: individual trials ( n = 20 ). Qwen 3.5 4 B Qwen 3.5 9 B ChatGPT 4o-mini               
+
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> steps
+> p=0.875 p=0.296 p=0.875
+> Number of Steps
+> Approach
+> MCP
+> Tools
+> Qwen 3.5 4 B Qwen 3.5 9 B ChatGPT 4o-mini
+> 10 5
+> input_tokens (log scale)
+> p=0.290 p=0.041 p=0.151
+> Input Tokens
+> Qwen 3.5 4 B Qwen 3.5 9 B ChatGPT 4o-mini
+> 2000
+> 4000
+> 6000
+> output_tokens
+> p=1.000 p=0.705 p=0.112
+> Output Tokens
+> Qwen 3.5 4 B Qwen 3.5 9 B ChatGPT 4o-mini
+> 200
+> 400
+> 600
+> 800
+> time_s
+> p=0.070 p=0.880 p=0.041
+> Time (s)
+
+Fig. 7: Metrics across three LLM back-ends for agentic execution of the complex screw-removal task (identify 5 of 68 remaining parts from the database, remove them, and update status) via MCP (orange) and an explicit SmolAgents tool (blue). Boxes: Q1/median/Q3; whiskers: 1.5 IQR; circles: outliers; dots: individual trials ( n = 10 per approach). Although performance looks similar, MCP has a 43.3% failure rate vs. 0% for the tool-based approach. cessfully removed, but 0/5 were tracked correctly in JSON, representing a tracking failure rather than a physical-removal failure. With explicit Tools, all three models achieved 5/5 removal with correct tracking across all 30 trials. The total API cost for GPT-4o-mini across 10 MCP trials was approximately $0 .21 compared to $0 .07 for 10 Tool trials, reflecting the substantially higher token consumption of the MCP approach. When comparing execution time, successful Tool trials were generally faster because the agent batched all five removals into a single code block, whereas MCP agents tend to call services individually with re-discovery overhead between calls. However, MCP timing results are skewed toward shorter durations because failed trials where the agent skipped physical removal complete faster than successful ones. Overall, the tool-based archi-tecture produced both higher task success rates and lower execution times for successful cases. V. DISCUSSION Consistent with [8], we observe that robots operate sig-nificantly slower than human workers (22 min vs. 17 min), although we run the robot well below its maximum speed. A success rate of 97% would be sufficient for industrial deployment, pending validation that taught-in relative poses are robust to registration of the battery body. We anticipate improvements by using current sensing to detect engagement of the nut-runner and retrying if necessary, enhancing visual servoing and force control, and extending the agentic AI framework toward vision-language models to handle com-plex error conditions, such as missing or deteriorated screws. While planning is often considered solved, a 6+1 DoF system, planning still occasionally fails, consumes time, and does not always provide legible paths to human operators. Legibility is critical for both safety and efficent collaboration. Using corridor constraints produces predictable, straight end-effector motions, improving legibility at the cost of longer planning times. Our object detection models perform well on RGB data, but depth sensing struggles with reflective surfaces, such as the black sheet-metal battery cover and internal plastic com-ponents. Active infrared emission from the RealSense sensor leads to duplicate detections, which could be mitigated using recent depth-from-stereo machine learning approaches [27]. Taught-in poses primarily fail due to end-effector slack, preventing 100% success. Visual servoing improves accu-racy, but exhibits different failure modes due to poor depth estimates, which produce control signals that either overshoot or undershoot, preventing convergence within the allowed iterations. In the future, we plan to investigate sensor fusion methods that allow off-line pose estimates that are compara-ble to taught-in ones. Agentic AI performance improves significantly when rele-vant services are provided as explicit “tools” to SmolAgents. Tools are not limited to robot operations—they can also de-fine human-robot interactions, such as requesting a human to remove the battery cover or perform tasks beyond the robot’s capabilities. MCP-based plans have higher failure rates, whereas no failures were observed when tools were explicitly defined. Therefore, selecting the right task abstractions is a key challenge for agentic AI programming of industrial robots, a solution that presents a significant opportunity to broaden participation in automation and increase resilience due to the ease of repurposing. VI. CONCLUSIONS We have presented a human-robot collaborative research platform for the disassembly of full-size electric vehicle batteries, emphasizing versatility through unscrewing opera-tions, which account for 10 of the 12 steps in disassembling a state-of-the-art 800V EV battery. The system is designed to be programmed using agentic AI, and we demonstrated two representative coding tasks that we evaluate in detail: executing basic robot motions and analyzing or altering task process memory. We observed that weaker models may prematurely mark tasks as complete, causing discrepancies between the world model and reality; defining appropriate agentic AI tools mitigates this issue. Future work will extend the platform to perform full disassembly sequences with human-in-the-loop support, including handling parts that the robot cannot manipulate and assisting with tool changes. We also plan to incorporate a mobile manipulator to perform screw removal, tool exchange, and transport of small com-ponents, creating a flexible automation system that can be programmed via natural language. This approach lays the foundation for a resilient, adaptable manufacturing system. All design files and code are made available open-source to support further research and development. REFERENCES [1] A. Beaudet, F. Larouche, K. Amouzegar, P. Bouchard, and K. Zaghib, “Key challenges and opportunities for recycling electric vehicle battery materials,” Sustainability , vol. 12, no. 14, p. 5837, 2020. [2] A. Ali, M. Al Bahrani, S. Ahmed, M. T. Islam, S. A. Qadir, and M. Shahid, “Sustainable recycling of end-of-life electric vehicle batter-ies: Ev battery recycling frameworks in china and the usa,” Recycling ,vol. 10, no. 2, p. 68, 2025. [3] M. d. M. Cerrillo-Gonzalez, M. Villen-Guzman, C. Vereda-Alonso, J. M. Rodriguez-Maroto, and J. M. Paz-Garcia, “Towards sustainable lithium-ion battery recycling: Advancements in circular hydrometal-lurgy,” Processes , vol. 12, no. 7, p. 1485, 2024. [4] M. Choux, S. W. Pripp, F. Kvalnes, and M. Hellstr¨ om, “To shred or to disassemble–a techno-economic assessment of automated disassembly vs. shredding in lithium-ion battery module recycling,” Resources, Conservation and Recycling , vol. 203, p. 107430, 2024. [5] A. Al Assadi, T. G¨ otz, A. Gebhardt, O. Mannuß, B. Meese, J. Wanner, S. Singha, L. Halt, P. Birke, and A. Sauer, “Automated disassembly of battery systems to battery modules,” Procedia CIRP , vol. 122, pp. 25– 30, 2024. [6] J. Huang, Q. Huang, Y. Zeng, M. Tan, Z. Peng, H. Song, X. Ao, and D. Pham, “Robotic disassembly of snap-fit plug connectors in end-of-life electric vehicle batteries,” Robotics and Computer-Integrated Manufacturing , vol. 98, p. 103183, 2026. [7] M. Tan, J. Huang, X. Jiang, Y. Fang, Q. Liu, and D. Pham, “Robotic removal and collection of screws in collaborative disassembly of end-of-life electric vehicle batteries,” Biomimetics , vol. 10, no. 8, p. 553, 2025. [8] M. Qu, D. T. Pham, F. Altumi, A. Gbadebo, N. Hartono, K. Jiang, M. Kerin, F. Lan, M. Micheli, S. Xu, et al. , “Robotic disassembly platform for disassembly of a plug-in hybrid electric vehicle battery: a case study,” Automation , vol. 5, no. 2, pp. 50–67, 2024. [9] W. H. Chen, K. Wegener, and F. Dietrich, “A robot assistant for unscrewing in hybrid human-robot disassembly,” in 2014 IEEE In-ternational Conference on Robotics and Biomimetics (ROBIO 2014) ,pp. 536–541, IEEE, 2014. [10] K. Wegener, W. H. Chen, F. Dietrich, K. Dr¨ oder, and S. Kara, “Robot assisted disassembly for the recycling of electric vehicle batteries,” 
+
+Procedia Cirp , vol. 29, pp. 716–721, 2015. [11] I. Kay, S. Farhad, A. Mahajan, R. Esmaeeli, and S. R. Hashemi, “Robotic disassembly of electric vehicles’ battery modules for recy-cling,” Energies , vol. 15, no. 13, p. 4856, 2022. [12] M. Choux, E. Marti Bigorra, and I. Tyapin, “Task planner for robotic disassembly of electric vehicle battery pack,” Metals , vol. 11, no. 3, p. 387, 2021. [13] M.-L. Lee, W. Liu, S. Behdad, X. Liang, and M. Zheng, “Robot-assisted disassembly sequence planning with real-time human motion prediction,” IEEE Transactions on Systems, Man, and Cybernetics: Systems , vol. 53, no. 1, pp. 438–450, 2022. [14] E. K. Raptis, A. C. Kapoutsis, and E. B. Kosmatopoulos, “Agentic llm-based robotic systems for real-world applications: a review on their agenticness and ethics,” Frontiers in Robotics and AI , vol. 12, p. 1605405, 2025. [15] C. Lynch, A. Wahid, J. Tompson, T. Ding, J. Betker, R. Baruch, T. Armstrong, and P. Florence, “Interactive language: Talking to robots in real time,” IEEE Robotics and Automation Letters , 2023. [16] K. Rachwał, M. Majek, B. Boczek, K. Dabrowski, P. Liberadzki, A. Dabrowski, and M. Ganzha, “Rai: Flexible agent framework for embodied ai,” in International Conference on Practical Applications of Agents and Multi-Agent Systems , pp. 195–206, Springer, 2025. [17] J. Hathaway, C. A. Contreras, M. E. Asif, R. Stolkin, and A. Raste-garpanah, “Technoeconomic assessment of electric vehicle battery disassembly–challenges and opportunities from a robotics perspec-tive,” IEEE Access , 2024. [18] T. Cheng, L. Song, Y. Ge, W. Liu, X. Wang, and Y. Shan, “Yolo-world: Real-time open-vocabulary object detection,” arXiv preprint arXiv:2401.17270 , 2024. [19] D. Coleman, I. Sucan, S. Chitta, and N. Correll, “Reducing the barrier to entry of complex robotic software: a moveit! case study,” arXiv preprint arXiv:1404.3785 , 2014. [20] A. Roucher, A. V. del Moral, T. Wolf, L. von Werra, and E. Kau-nism¨ aki, “‘smolagents‘: a smol library to build great agentic systems..” 
+
+https://github.com/huggingface/smolagents , 2025. [21] T. Cuvelier, F. Didier, V. Furnon, S. Gay, S. Mohajeri, and L. Perron, “Or-tools’ vehicle routing solver: A generic constraint-programming solver with heuristic search for routing problems,” in 24e congr` es annuel de la soci´ et´ e franc ¸aise de recherche op´ erationnelle et d’aide `a la d´ ecision , 2023. [22] T. Yoshikawa, “Manipulability of robotic mechanisms,” The Interna-tional Journal of Robotics Research , vol. 4, no. 2, pp. 3–9, 1985. [23] J. Watson, A. Miller, and N. Correll, “Autonomous industrial assembly using force, torque, and rgb-d sensing,” Advanced Robotics , vol. 34, no. 7-8, pp. 546–559, 2020. [24] F. Chaumette and S. Hutchinson, “Visual servo control. i. basic approaches,” IEEE robotics & automation magazine , vol. 13, no. 4, pp. 82–90, 2006. [25] G. Jocher and J. Qiu, “Ultralytics yolo11,” 2024. [26] J. Watson and N. Correll, “Optimal decision making in robotic assem-bly and other trial-and-error tasks,” in 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , pp. 10074– 10081, IEEE, 2023. [27] A. Abdelsalam, M. Mansour, J. Porras, and A. Happonen, “Depth ac-curacy analysis of the zed 2i stereo camera in an indoor environment,” 
+
+Robotics and Autonomous Systems , vol. 179, p. 104753, 2024. 
+
+ACKNOWLEDGMENT This work has been supported by the Advanced Research Projects Agency-Energy (ARPA-E) CIRCULAR Program under cooperative agreement number DE-AR0001966. Cor-rell and Conway are with Realtime Manufacturing, Inc., a company that has an interest in the work presented here.

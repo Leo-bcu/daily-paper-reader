@@ -1,0 +1,736 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-03-24T20:28:00.247739+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 2,
+    "deep_divecandidates": 6,
+    "deep_cap": 7,
+    "deep_selected": 6,
+    "quick_candidates": 21,
+    "quick_skim_target": 12,
+    "quick_selected": 12
+  },
+  "deep_dive": [
+    {
+      "id": "2603.17528v1",
+      "title": "MM-OVSeg:Multimodal Optical-SAR Fusion for Open-Vocabulary Segmentation in Remote Sensing",
+      "abstract": "Open-vocabulary segmentation enables pixel-level recognition from an open set of textual categories, allowing generalization beyond fixed classes. Despite great potential in remote sensing, progress in this area remains largely limited to clear-sky optical data and struggles under cloudy or haze-contaminated conditions. We present MM-OVSeg, a multimodal Optical-SAR fusion framework for resilient open-vocabulary segmentation under adverse weather conditions. MM-OVSeg leverages the complementary strengths of the two modalities--optical imagery provides rich spectral semantics, while synthetic aperture radar (SAR) offers cloud-penetrating structural cues. To address the cross-modal domain gap and the limited dense prediction capability of current vision-language models, we propose two key designs: a cross-modal unification process for multi-sensor representation alignment, and a dual-encoder fusion module that integrates hierarchical features from multiple vision foundation models for text-aligned multimodal segmentation. Extensive experiments demonstrate that MM-OVSeg achieves superior robustness and generalization across diverse cloud conditions. The source dataset and code are available here.",
+      "authors": [
+        "Yimin Wei",
+        "Aoran Xiao",
+        "Hongruixuan Chen",
+        "Junshi Xia",
+        "Naoto Yokoya"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-18T09:34:23+00:00",
+      "link": "https://arxiv.org/pdf/2603.17528v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "multimodal Optical-SAR fusion for open-vocabulary segmentation",
+      "llm_evidence_cn": "用于开放词汇分割的多模态光学-SAR融合",
+      "llm_evidence": "用于开放词汇分割的多模态光学-SAR融合",
+      "canonical_evidence": "用于开放词汇分割的多模态光学-SAR融合",
+      "llm_tldr_en": "A multimodal fusion framework combining optical and SAR data for resilient open-vocabulary segmentation.",
+      "llm_tldr_cn": "一种结合光学和SAR数据的多模态融合框架，用于鲁棒的开放词汇分割。",
+      "llm_tldr": "一种结合光学和SAR数据的多模态融合框架，用于鲁棒的开放词汇分割。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "multimodal fusion strategies for instance segmentation",
+      "matched_requirement_id": "req-14",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.20887v1",
+      "title": "Scene Graph-guided SegCaptioning Transformer with Fine-grained Alignment for Controllable Video Segmentation and Captioning",
+      "abstract": "Recent advancements in multimodal large models have significantly bridged the representation gap between diverse modalities, catalyzing the evolution of video multimodal interpretation, which enhances users' understanding of video content by generating correlated modalities. However, most existing video multimodal interpretation methods primarily concentrate on global comprehension with limited user interaction. To address this, we propose a novel task, Controllable Video Segmentation and Captioning (SegCaptioning), which empowers users to provide specific prompts, such as a bounding box around an object of interest, to simultaneously generate correlated masks and captions that precisely embody user intent. An innovative framework Scene Graph-guided Fine-grained SegCaptioning Transformer (SG-FSCFormer) is designed that integrates a Prompt-guided Temporal Graph Former to effectively captures and represents user intent through an adaptive prompt adaptor, ensuring that the generated content well aligns with the user's requirements. Furthermore, our model introduces a Fine-grained Mask-linguistic Decoder to collaboratively predict high-quality caption-mask pairs using a Multi-entity Contrastive loss, as well as provide fine-grained alignment between each mask and its corresponding caption tokens, thereby enhancing users' comprehension of videos. Comprehensive experiments conducted on two benchmark datasets demonstrate that SG-FSCFormer achieves remarkable performance, effectively capturing user intent and generating precise multimodal outputs tailored to user specifications. Our code is available at https://github.com/XuZhang1211/SG-FSCFormer.",
+      "authors": [
+        "Xu Zhang",
+        "Jin Yuan",
+        "BinHong Yang",
+        "Xuan Liu",
+        "Qianjun Zhang",
+        "Yuyi Wang",
+        "Zhiyong Li",
+        "Hanwang Zhang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-21T17:26:01+00:00",
+      "link": "https://arxiv.org/pdf/2603.20887v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "multimodal video segmentation and captioning",
+      "llm_evidence_cn": "多模态视频分割与字幕生成",
+      "llm_evidence": "多模态视频分割与字幕生成",
+      "canonical_evidence": "多模态视频分割与字幕生成",
+      "llm_tldr_en": "Proposes a controllable video segmentation and captioning task using multimodal transformers.",
+      "llm_tldr_cn": "提出一种可控视频分割与字幕生成任务，利用多模态Transformer生成掩码和描述。",
+      "llm_tldr": "提出一种可控视频分割与字幕生成任务，利用多模态Transformer生成掩码和描述。",
+      "llm_tags": [
+        "query:mmseg:composite"
+      ],
+      "matched_query_tag": "query:mmseg:composite",
+      "matched_query_text": "Papers central to 关于实例分割的多模态网络搜索规划, especially work that connects or combines: instance segmentation neural networks; multimodal deep learning architectures; cross-modal feature fusion for segmentation; state of the art multimodal instance segmentation networks; multimodal fusion strategies for instance segmentation; deep learning architectures for multimodal image segmentation.",
+      "matched_requirement_id": "req-composite-mmseg",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.17753v1",
+      "title": "PC-CrossDiff: Point-Cluster Dual-Level Cross-Modal Differential Attention for Unified 3D Referring and Segmentation",
+      "abstract": "3D Visual Grounding (3DVG) aims to localize the referent of natural language referring expressions through two core tasks: Referring Expression Comprehension (3DREC) and Segmentation (3DRES). While existing methods achieve high accuracy in simple, single-object scenes, they suffer from severe performance degradation in complex, multi-object scenes that are common in real-world settings, hindering practical deployment. Existing methods face two key challenges in complex, multi-object scenes: inadequate parsing of implicit localization cues critical for disambiguating visually similar objects, and ineffective suppression of dynamic spatial interference from co-occurring objects, resulting in degraded grounding accuracy. To address these challenges, we propose PC-CrossDiff, a unified dual-task framework with a dual-level cross-modal differential attention architecture for 3DREC and 3DRES. Specifically, the framework introduces: (i) Point-Level Differential Attention (PLDA) modules that apply bidirectional differential attention between text and point clouds, adaptively extracting implicit localization cues via learnable weights to improve discriminative representation; (ii) Cluster-Level Differential Attention (CLDA) modules that establish a hierarchical attention mechanism to adaptively enhance localization-relevant spatial relationships while suppressing ambiguous or irrelevant spatial relations through a localization-aware differential attention block. Our method achieves state-of-the-art performance on the ScanRefer, NR3D, and SR3D benchmarks. Notably, on the Implicit subsets of ScanRefer, it improves the Overall@0.50 score by +10.16% for the 3DREC task, highlighting its strong ability to parse implicit spatial cues.",
+      "authors": [
+        "Wenbin Tan",
+        "Jiawen Lin",
+        "Fangyong Wang",
+        "Yuan Xie",
+        "Yong Xie",
+        "Yachao Zhang",
+        "Yanyun Qu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-18T14:16:48+00:00",
+      "link": "https://arxiv.org/pdf/2603.17753v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "unified 3D referring and segmentation with cross-modal attention",
+      "llm_evidence_cn": "具有跨模态注意力的统一3D指代与分割",
+      "llm_evidence": "具有跨模态注意力的统一3D指代与分割",
+      "canonical_evidence": "具有跨模态注意力的统一3D指代与分割",
+      "llm_tldr_en": "Introduces a dual-level cross-modal differential attention mechanism for 3D referring expression segmentation.",
+      "llm_tldr_cn": "引入双层跨模态微分注意力机制，用于解决复杂场景下的3D指代分割任务。",
+      "llm_tldr": "引入双层跨模态微分注意力机制，用于解决复杂场景下的3D指代分割任务。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "state of the art multimodal instance segmentation networks",
+      "matched_requirement_id": "req-13",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.21386v1",
+      "title": "Mitigating Objectness Bias and Region-to-Text Misalignment for Open-Vocabulary Panoptic Segmentation",
+      "abstract": "Open-vocabulary panoptic segmentation remains hindered by two coupled issues: (i) mask selection bias, where objectness heads trained on closed vocabularies suppress masks of categories not observed in training, and (ii) limited regional understanding in vision-language models such as CLIP, which were optimized for global image classification rather than localized segmentation. We introduce OVRCOAT, a simple, modular framework that tackles both. First, a CLIP-conditioned objectness adjustment (COAT) updates background/foreground probabilities, preserving high-quality masks for out-of-vocabulary objects. Second, an open-vocabulary mask-to-text refinement (OVR) strengthens CLIP's region-level alignment to improve classification of both seen and unseen classes with markedly lower memory cost than prior fine-tuning schemes. The two components combine to jointly improve objectness estimation and mask recognition, yielding consistent panoptic gains. Despite its simplicity, OVRCOAT sets a new state of the art on ADE20K (+5.5% PQ) and delivers clear gains on Mapillary Vistas and Cityscapes (+7.1% and +3% PQ, respectively). The code is available at: https://github.com/nickormushev/OVRCOAT",
+      "authors": [
+        "Nikolay Kormushev",
+        "Josip Šarić",
+        "Matej Kristan"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-22T20:11:52+00:00",
+      "link": "https://arxiv.org/pdf/2603.21386v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "open-vocabulary panoptic segmentation using vision-language models and mask refinement",
+      "llm_evidence_cn": "使用视觉语言模型和掩码细化的开放词汇全景分割",
+      "llm_evidence": "使用视觉语言模型和掩码细化的开放词汇全景分割",
+      "canonical_evidence": "使用视觉语言模型和掩码细化的开放词汇全景分割",
+      "llm_tldr_en": "Addresses bias and alignment in open-vocabulary panoptic segmentation using a modular CLIP-based framework.",
+      "llm_tldr_cn": "使用基于CLIP的模块化框架解决开放词汇全景分割中的偏差和对齐问题。",
+      "llm_tldr": "使用基于CLIP的模块化框架解决开放词汇全景分割中的偏差和对齐问题。",
+      "llm_tags": [
+        "query:mmseg:composite"
+      ],
+      "matched_query_tag": "query:mmseg:composite",
+      "matched_query_text": "Papers central to 关于实例分割的多模态网络搜索规划, especially work that connects or combines: instance segmentation neural networks; multimodal deep learning architectures; cross-modal feature fusion for segmentation; state of the art multimodal instance segmentation networks; multimodal fusion strategies for instance segmentation; deep learning architectures for multimodal image segmentation.",
+      "matched_requirement_id": "req-composite-mmseg",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.17845v1",
+      "title": "Revisiting foundation models for cell instance segmentation",
+      "abstract": "Cell segmentation is a fundamental task in microscopy image analysis. Several foundation models for cell segmentation have been introduced, virtually all of them are extensions of Segment Anything Model (SAM), improving it for microscopy data. Recently, SAM2 and SAM3 have been published, further improving and extending the capabilities of general-purpose segmentation foundation models. Here, we comprehensively evaluate foundation models for cell segmentation (CellPoseSAM, CellSAM, $μ$SAM) and for general-purpose segmentation (SAM, SAM2, SAM3) on a diverse set of (light) microscopy datasets, for tasks including cell, nucleus and organoid segmentation. Furthermore, we introduce a new instance segmentation strategy called automatic prompt generation (APG) that can be used to further improve SAM-based microscopy foundation models. APG consistently improves segmentation results for $μ$SAM, which is used as the base model, and is competitive with the state-of-the-art model CellPoseSAM. Moreover, our work provides important lessons for adaptation strategies of SAM-style models to microscopy and provides a strategy for creating even more powerful microscopy foundation models. Our code is publicly available at https://github.com/computational-cell-analytics/micro-sam.",
+      "authors": [
+        "Anwai Archit",
+        "Constantin Pape"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-18T15:34:42+00:00",
+      "link": "https://arxiv.org/pdf/2603.17845v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "foundation models for cell instance segmentation",
+      "llm_evidence_cn": "细胞实例分割的基础模型",
+      "llm_evidence": "细胞实例分割的基础模型",
+      "canonical_evidence": "细胞实例分割的基础模型",
+      "llm_tldr_en": "Evaluates and improves foundation models like SAM for specialized cell instance segmentation tasks.",
+      "llm_tldr_cn": "评估并改进了 SAM 等基础模型，用于专门的细胞实例分割任务。",
+      "llm_tldr": "评估并改进了 SAM 等基础模型，用于专门的细胞实例分割任务。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "instance segmentation neural networks",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.18739v1",
+      "title": "EdgeCrafter: Compact ViTs for Edge Dense Prediction via Task-Specialized Distillation",
+      "abstract": "Deploying high-performance dense prediction models on resource-constrained edge devices remains challenging due to strict limits on computation and memory. In practice, lightweight systems for object detection, instance segmentation, and pose estimation are still dominated by CNN-based architectures such as YOLO, while compact Vision Transformers (ViTs) often struggle to achieve similarly strong accuracy efficiency tradeoff, even with large scale pretraining. We argue that this gap is largely due to insufficient task specific representation learning in small scale ViTs, rather than an inherent mismatch between ViTs and edge dense prediction. To address this issue, we introduce EdgeCrafter, a unified compact ViT framework for edge dense prediction centered on ECDet, a detection model built from a distilled compact backbone and an edge-friendly encoder decoder design. On the COCO dataset, ECDet-S achieves 51.7 AP with fewer than 10M parameters using only COCO annotations. For instance segmentation, ECInsSeg achieves performance comparable to RF-DETR while using substantially fewer parameters. For pose estimation, ECPose-X reaches 74.8 AP, significantly outperforming YOLO26Pose-X (71.6 AP) despite the latter's reliance on extensive Objects365 pretraining. These results show that compact ViTs, when paired with task-specialized distillation and edge-aware design, can be a practical and competitive option for edge dense prediction. Code is available at: https://intellindust-ai-lab.github.io/projects/EdgeCrafter/",
+      "authors": [
+        "Longfei Liu",
+        "Yongjie Hou",
+        "Yang Li",
+        "Qirui Wang",
+        "Youyang Sha",
+        "Yongjun Yu",
+        "Yinzhi Wang",
+        "Peizhe Ru",
+        "Xuanlong Yu",
+        "Xi Shen"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-19T10:39:51+00:00",
+      "link": "https://arxiv.org/pdf/2603.18739v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "compact ViTs for instance segmentation on edge devices",
+      "llm_evidence_cn": "用于边缘设备实例分割的紧凑型ViT",
+      "llm_evidence": "用于边缘设备实例分割的紧凑型ViT",
+      "canonical_evidence": "用于边缘设备实例分割的紧凑型ViT",
+      "llm_tldr_en": "Introduces EdgeCrafter, a compact ViT framework for efficient edge dense prediction tasks like instance segmentation.",
+      "llm_tldr_cn": "推出EdgeCrafter，一种用于边缘实例分割等密集预测任务的紧凑型ViT框架。",
+      "llm_tldr": "推出EdgeCrafter，一种用于边缘实例分割等密集预测任务的紧凑型ViT框架。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "instance segmentation neural networks",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2603.15403v1",
+      "title": "Pointing-Based Object Recognition",
+      "abstract": "This paper presents a comprehensive pipeline for recognizing objects targeted by human pointing gestures using RGB images. As human-robot interaction moves toward more intuitive interfaces, the ability to identify targets of non-verbal communication becomes crucial. Our proposed system integrates several existing state-of-the-art methods, including object detection, body pose estimation, monocular depth estimation, and vision-language models. We evaluate the impact of 3D spatial information reconstructed from a single image and the utility of image captioning models in correcting classification errors. Experimental results on a custom dataset show that incorporating depth information significantly improves target identification, especially in complex scenes with overlapping objects. The modularity of the approach allows for deployment in environments where specialized depth sensors are unavailable.",
+      "authors": [
+        "Lukáš Hajdúch",
+        "Viktor Kocur"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-16T15:16:53+00:00",
+      "link": "https://arxiv.org/pdf/2603.15403v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "incorporating depth information significantly improves target identification in complex scenes",
+      "llm_evidence_cn": "结合深度信息显著提高了复杂场景中的目标识别",
+      "llm_evidence": "结合深度信息显著提高了复杂场景中的目标识别",
+      "canonical_evidence": "结合深度信息显著提高了复杂场景中的目标识别",
+      "llm_tldr_en": "Integrates monocular depth and RGB for pointing-based object recognition, showing depth improves accuracy.",
+      "llm_tldr_cn": "结合单目深度和RGB进行指向性物体识别，证明了深度信息能提高准确性。",
+      "llm_tldr": "结合单目深度和RGB进行指向性物体识别，证明了深度信息能提高准确性。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "depth information for segmentation",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.16653v1",
+      "title": "HeBA: Heterogeneous Bottleneck Adapters for Robust Vision-Language Models",
+      "abstract": "Adapting large-scale Vision-Language Models (VLMs) like CLIP to downstream tasks often suffers from a \"one-size-fits-all\" architectural approach, where visual and textual tokens are processed uniformly by wide, generic adapters. We argue that this homogeneity ignores the distinct structural nature of the modalities -- spatial locality in images versus semantic density in text. To address this, we propose HeBA (Heterogeneous Bottleneck Adapter), a unified architectural framework that introduces modality-specific structural inductive biases. HeBA departs from conventional designs through three key architectural innovations: (1) Heterogeneity: It processes visual tokens via 2D depthwise-separable convolutions to preserve spatial correlations, while distinctively processing text tokens via dense linear projections to capture semantic relationships; (2) Bottleneck Regularization: Unlike standard expanding adapters, HeBA employs a compression bottleneck (D -> D/4) that explicitly forces the model to learn compact, robust features and acts as a structural regularizer; and (3) Active Gradient Initialization: We challenge the restrictive zero-initialization paradigm, utilizing a Kaiming initialization strategy that ensures sufficient initial gradient flow to accelerate convergence without compromising the frozen backbone's pre-trained knowledge. Extensive experiments demonstrate that HeBA's architecturally specialized design achieves superior stability and accuracy, establishing a new state-of-the-art on 11 few-shot benchmarks. Code is available at https://github.com/Jahid12012021/VLM-HeBA.",
+      "authors": [
+        "Md Jahidul Islam"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-17T15:23:04+00:00",
+      "link": "https://arxiv.org/pdf/2603.16653v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "cross-modal feature learning with modality-specific structural biases",
+      "llm_evidence_cn": "具有模态特定结构偏差的跨模态特征学习",
+      "llm_evidence": "具有模态特定结构偏差的跨模态特征学习",
+      "canonical_evidence": "具有模态特定结构偏差的跨模态特征学习",
+      "llm_tldr_en": "Proposes heterogeneous adapters to handle distinct structural natures of visual and textual modalities.",
+      "llm_tldr_cn": "提出异构适配器框架，利用模态特定的结构归纳偏置优化跨模态特征学习。",
+      "llm_tldr": "提出异构适配器框架，利用模态特定的结构归纳偏置优化跨模态特征学习。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "cross-modal feature fusion for segmentation",
+      "matched_requirement_id": "req-12",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.17605v1",
+      "title": "ReLaGS: Relational Language Gaussian Splatting",
+      "abstract": "Achieving unified 3D perception and reasoning across tasks such as segmentation, retrieval, and relation understanding remains challenging, as existing methods are either object-centric or rely on costly training for inter-object reasoning. We present a novel framework that constructs a hierarchical language-distilled Gaussian scene and its 3D semantic scene graph without scene-specific training. A Gaussian pruning mechanism refines scene geometry, while a robust multi-view language alignment strategy aggregates noisy 2D features into accurate 3D object embeddings. On top of this hierarchy, we build an open-vocabulary 3D scene graph with Vision Language derived annotations and Graph Neural Network-based relational reasoning. Our approach enables efficient and scalable open-vocabulary 3D reasoning by jointly modeling hierarchical semantics and inter/intra-object relationships, validated across tasks including open-vocabulary segmentation, scene graph generation, and relation-guided retrieval. Project page: https://dfki-av.github.io/ReLaGS/",
+      "authors": [
+        "Yaxu Xie",
+        "Abdalla Arafa",
+        "Alireza Javanmardi",
+        "Christen Millerdurai",
+        "Jia Cheng Hu",
+        "Shaoxiang Wang",
+        "Alain Pagani",
+        "Didier Stricker"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-18T11:18:23+00:00",
+      "link": "https://arxiv.org/pdf/2603.17605v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "3D perception and segmentation using language-distilled Gaussian scenes",
+      "llm_evidence_cn": "使用语言蒸馏高斯场景的3D感知和分割",
+      "llm_evidence": "使用语言蒸馏高斯场景的3D感知和分割",
+      "canonical_evidence": "使用语言蒸馏高斯场景的3D感知和分割",
+      "llm_tldr_en": "Constructs a hierarchical language-distilled Gaussian scene for open-vocabulary 3D perception and segmentation.",
+      "llm_tldr_cn": "构建分层语言蒸馏高斯场景，实现开放词汇的3D感知与分割。",
+      "llm_tldr": "构建分层语言蒸馏高斯场景，实现开放词汇的3D感知与分割。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "multimodal deep learning architectures",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.16788v1",
+      "title": "Preserving Vertical Structure in 3D-to-2D Projection for Permafrost Thaw Mapping",
+      "abstract": "Forecasting permafrost thaw from aerial lidar requires projecting 3D point cloud features onto 2D prediction grids, yet naive aggregation methods destroy the vertical structure critical in forest environments where ground, understory, and canopy carry distinct information about subsurface conditions. We propose a projection decoder with learned height embeddings that enable height-dependent feature transformations, allowing the network to differentiate ground-level signals from canopy returns. Combined with stratified sampling that ensures all forest strata remain represented, our approach preserves the vertical information critical for predicting subsurface conditions. Our approach pairs this decoder with a Point Transformer V3 encoder to predict dense thaw depth maps from drone-collected lidar over boreal forest in interior Alaska. Experiments demonstrate that z-stratified projection outperforms standard averaging-based methods, particularly in areas with complex vertical vegetation structure. Our method enables scalable, high-resolution monitoring of permafrost degradation from readily deployable UAV platforms.",
+      "authors": [
+        "Justin McMillen",
+        "Robert Van Alphen",
+        "Taha Sadeghi Chorsi",
+        "Jason Shabaga",
+        "Mel Rodgers",
+        "Rocco Malservisi",
+        "Timothy Dixon",
+        "Yasin Yilmaz"
+      ],
+      "primary_category": "eess.IV",
+      "categories": [
+        "eess.IV"
+      ],
+      "published": "2026-03-17T17:01:13+00:00",
+      "link": "https://arxiv.org/pdf/2603.16788v1",
+      "tags": [
+        "keyword:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "learned height embeddings for 3D-to-2D projection in segmentation",
+      "llm_evidence_cn": "分割中3D到2D投影的学习高度嵌入",
+      "llm_evidence": "分割中3D到2D投影的学习高度嵌入",
+      "canonical_evidence": "分割中3D到2D投影的学习高度嵌入",
+      "llm_tldr_en": "Uses learned height embeddings to preserve vertical structure in 3D-to-2D projection for mapping.",
+      "llm_tldr_cn": "在3D到2D投影中使用学习的高度嵌入来保留垂直结构信息。",
+      "llm_tldr": "在3D到2D投影中使用学习的高度嵌入来保留垂直结构信息。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "depth information for segmentation",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.18520v1",
+      "title": "Robotic Agentic Platform for Intelligent Electric Vehicle Disassembly",
+      "abstract": "Electric vehicles (EV) create an urgent need for scalable battery recycling, yet disassembly of EV battery packs remains largely manual due to high design variability. We present our Robotic Agentic Platform for Intelligent Disassembly (RAPID), designed to investigate perception-driven manipulation, flexible automation, and AI-assisted robot programming in realistic recycling scenarios. The system integrates a gantry-mounted industrial manipulator, RGB-D perception, and an automated nut-running tool for fastener removal on a full-scale EV battery pack. An open-vocabulary object detection pipeline achieves 0.9757 mAP50, enabling reliable identification of screws, nuts, busbars, and other components. We experimentally evaluate (n=204) three one-shot fastener removal strategies: taught-in poses (97% success rate, 24 min duration), one-shot vision execution (57%, 29 min), and visual servoing (83%, 36 min), comparing success rate and disassembly time for the battery's top cover fasteners. To support flexible interaction, we introduce agentic AI specifications for robotic disassembly tasks, allowing LLM agents to translate high-level instructions into robot actions through structured tool interfaces and ROS services. We evaluate SmolAgents with GPT-4o-mini and Qwen 3.5 9B/4B on edge hardware. Tool-based interfaces achieve 100% task completion, while automatic ROS service discovery shows 43.3% failure rates, highlighting the need for structured robot APIs for reliable LLM-driven control. This open-source platform enables systematic investigation of human-robot collaboration, agentic robot programming, and increasingly autonomous disassembly workflows, providing a practical foundation for research toward scalable robotic battery recycling.",
+      "authors": [
+        "Zachary Allen",
+        "Max Conway",
+        "Lyle Antieau",
+        "Allen Ponraj",
+        "Nikolaus Correll"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-03-19T06:03:51+00:00",
+      "link": "https://arxiv.org/pdf/2603.18520v1",
+      "tags": [
+        "keyword:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "RGB-D perception for object detection in robotic disassembly",
+      "llm_evidence_cn": "机器人拆解中用于目标检测的RGB-D感知",
+      "llm_evidence": "机器人拆解中用于目标检测的RGB-D感知",
+      "canonical_evidence": "机器人拆解中用于目标检测的RGB-D感知",
+      "llm_tldr_en": "Integrates RGB-D perception and open-vocabulary detection for robotic electric vehicle battery disassembly.",
+      "llm_tldr_cn": "集成RGB-D感知和开放词汇检测，用于电动汽车电池的机器人自动化拆解。",
+      "llm_tldr": "集成RGB-D感知和开放词汇检测，用于电动汽车电池的机器人自动化拆解。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "RGB-D multimodal data",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.17347v1",
+      "title": "Beyond Forced Modality Balance: Intrinsic Information Budgets for Multimodal Learning",
+      "abstract": "Multimodal models often converge to a dominant-modality solution, in which a stronger, faster-converging modality overshadows weaker ones. This modality imbalance causes suboptimal performance. Existing methods attempt to balance different modalities by reweighting gradients or losses. However, they overlook the fact that each modality has finite information capacity. In this work, we propose IIBalance, a multimodal learning framework that aligns the modality contributions with Intrinsic Information Budgets (IIB). We propose a task-grounded estimator of each modality's IIB, transforming its capacity into a global prior over modality contributions. Anchored by the highest-budget modality, we design a prototype-based relative alignment mechanism that corrects semantic drift only when weaker modalities deviate from their budgeted potential, rather than forcing imitation. During inference, we propose a probabilistic gating module that integrates the global budgets with sample-level uncertainty to generate calibrated fusion weights. Experiments on three representative benchmarks demonstrate that IIBalance consistently outperforms state-of-the-art balancing methods and achieves better utilization of complementary modality cues. Our code is available at: https://github.com/XiongZechang/IIBalance.",
+      "authors": [
+        "Zechang Xiong",
+        "Da Li",
+        "Kexin Tang",
+        "Pengyuan Li",
+        "Wenkang Kong",
+        "Yulan Hu"
+      ],
+      "primary_category": "cs.MM",
+      "categories": [
+        "cs.MM"
+      ],
+      "published": "2026-03-18T04:19:45+00:00",
+      "link": "https://arxiv.org/pdf/2603.17347v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "multimodal learning framework for modality balance",
+      "llm_evidence_cn": "模态平衡的多模态学习框架",
+      "llm_evidence": "模态平衡的多模态学习框架",
+      "canonical_evidence": "模态平衡的多模态学习框架",
+      "llm_tldr_en": "IIBalance aligns modality contributions with intrinsic information budgets to prevent dominant-modality bias.",
+      "llm_tldr_cn": "IIBalance 将模态贡献与内在信息预算对齐，以防止主导模态偏差。",
+      "llm_tldr": "IIBalance 将模态贡献与内在信息预算对齐，以防止主导模态偏差。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "multimodal deep learning architectures",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.19684v1",
+      "title": "TSegAgent: Zero-Shot Tooth Segmentation via Geometry-Aware Vision-Language Agents",
+      "abstract": "Automatic tooth segmentation and identification from intra-oral scanned 3D models are fundamental problems in digital dentistry, yet most existing approaches rely on task-specific 3D neural networks trained with densely annotated datasets, resulting in high annotation cost and limited generalization to scans from unseen sources. Thus, we propose TSegAgent, which addresses these challenges by reformulating dental analysis as a zero-shot geometric reasoning problem rather than a purely data-driven recognition task. The key idea is to combine the representational capacity of general-purpose foundation models with explicit geometric inductive biases derived from dental anatomy. Instead of learning dental-specific features, the proposed framework leverages multi-view visual abstraction and geometry-grounded reasoning to infer tooth instances and identities without task-specific training. By explicitly encoding structural constraints such as dental arch organization and volumetric relationships, the method reduces uncertainty in ambiguous cases and mitigates overfitting to particular shape distributions. Experimental results demonstrate that this reasoning-oriented formulation enables accurate and reliable tooth segmentation and identification with low computational and annotation cost, while exhibiting strong generalization across diverse and previously unseen dental scans.",
+      "authors": [
+        "Shaojie Zhuang",
+        "Lu Yin",
+        "Guangshun Wei",
+        "Yunpeng Li",
+        "Xilu Wang",
+        "Yuanfeng Zhou"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-20T06:32:16+00:00",
+      "link": "https://arxiv.org/pdf/2603.19684v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "zero-shot tooth segmentation via vision-language agents and 3D models",
+      "llm_evidence_cn": "通过视觉语言代理和3D模型的零样本牙齿分割",
+      "llm_evidence": "通过视觉语言代理和3D模型的零样本牙齿分割",
+      "canonical_evidence": "通过视觉语言代理和3D模型的零样本牙齿分割",
+      "llm_tldr_en": "Uses vision-language agents and geometric reasoning for zero-shot 3D tooth segmentation.",
+      "llm_tldr_cn": "利用视觉语言代理和几何推理实现零样本3D牙齿分割。",
+      "llm_tldr": "利用视觉语言代理和几何推理实现零样本3D牙齿分割。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "multimodal deep learning architectures",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.17492v1",
+      "title": "UAV-CB: A Complex-Background RGB-T Dataset and Local Frequency Bridge Network for UAV Detection",
+      "abstract": "Detecting Unmanned Aerial Vehicles (UAVs) in low-altitude environments is essential for perception and defense systems but remains highly challenging due to complex backgrounds, camouflage, and multimodal interference. In real-world scenarios, UAVs are frequently visually blended with surrounding structures such as buildings, vegetation, and power lines, resulting in low contrast, weak boundaries, and strong confusion with cluttered background textures. Existing UAV detection datasets, though diverse, are not specifically designed to capture these camouflage and complex-background challenges, which limits progress toward robust real-world perception. To fill this gap, we construct UAV-CB, a new RGB-T UAV detection dataset deliberately curated to emphasize complex low-altitude backgrounds and camouflage characteristics. Furthermore, we propose the Local Frequency Bridge Network (LFBNet), which models features in localized frequency space to bridge both the frequency-spatial fusion gap and the cross-modality discrepancy gap in RGB-T fusion. Extensive experiments on UAV-CB and public benchmarks demonstrate that LFBNet achieves state-of-the-art detection performance and strong robustness under camouflaged and cluttered conditions, offering a frequency-aware perspective on multimodal UAV perception in real-world applications.",
+      "authors": [
+        "Shenghui Huang",
+        "Menghao Hu",
+        "Longkun Zou",
+        "Hongyu Chi",
+        "Zekai Li",
+        "Feng Gao",
+        "Fan Yang",
+        "Qingyao Wu",
+        "Ke Chen"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-18T08:55:35+00:00",
+      "link": "https://arxiv.org/pdf/2603.17492v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "RGB-T multimodal dataset and local frequency bridge network",
+      "llm_evidence_cn": "RGB-T多模态数据集和局部频率桥接网络",
+      "llm_evidence": "RGB-T多模态数据集和局部频率桥接网络",
+      "canonical_evidence": "RGB-T多模态数据集和局部频率桥接网络",
+      "llm_tldr_en": "Develops an RGB-T dataset and a fusion network for UAV detection in complex backgrounds.",
+      "llm_tldr_cn": "开发了RGB-T数据集和融合网络，用于复杂背景下的无人机检测。",
+      "llm_tldr": "开发了RGB-T数据集和融合网络，用于复杂背景下的无人机检测。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "multimodal fusion strategies for instance segmentation",
+      "matched_requirement_id": "req-14",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.19802v1",
+      "title": "Evaluating Vision Foundation Models for Pixel and Object Classification in Microscopy",
+      "abstract": "Deep learning underlies most modern approaches and tools in computer vision, including biomedical imaging. However, for interactive semantic segmentation (often called pixel classification in this context) and interactive object-level classification (object classification), feature-based shallow learning remains widely used. This is due to the diversity of data in this domain, the lack of large pretraining datasets, and the need for computational and label efficiency. In contrast, state-of-the-art tools for many other vision tasks in microscopy - most notably cellular instance segmentation - already rely on deep learning and have recently benefited substantially from vision foundation models (VFMs), particularly SAM. Here, we investigate whether VFMs can also improve pixel and object classification compared to current approaches. To this end, we evaluate several VFMs, including general-purpose models (SAM, SAM2, DINOv3) and domain-specific ones ($μ$SAM, PathoSAM), in combination with shallow learning and attentive probing on five diverse and challenging datasets. Our results demonstrate consistent improvements over hand-crafted features and provide a clear pathway toward practical improvements. Furthermore, our study establishes a benchmark for VFMs in microscopy and informs future developments in this area.",
+      "authors": [
+        "Carolin Teuber",
+        "Anwai Archit",
+        "Tobias Boothe",
+        "Peter Ditte",
+        "Jochen Rink",
+        "Constantin Pape"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-20T09:40:41+00:00",
+      "link": "https://arxiv.org/pdf/2603.19802v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "cellular instance segmentation using vision foundation models",
+      "llm_evidence_cn": "使用视觉基础模型的细胞实例分割",
+      "llm_evidence": "使用视觉基础模型的细胞实例分割",
+      "canonical_evidence": "使用视觉基础模型的细胞实例分割",
+      "llm_tldr_en": "This paper evaluates vision foundation models like SAM for pixel and object classification in microscopy.",
+      "llm_tldr_cn": "本文评估了 SAM 等视觉基础模型在显微镜图像像素和对象分类中的应用。",
+      "llm_tldr": "本文评估了 SAM 等视觉基础模型在显微镜图像像素和对象分类中的应用。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "instance segmentation neural networks",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.17519v1",
+      "title": "UniSem: Generalizable Semantic 3D Reconstruction from Sparse Unposed Images",
+      "abstract": "Semantic-aware 3D reconstruction from sparse, unposed images remains challenging for feed-forward 3D Gaussian Splatting (3DGS). Existing methods often predict an over-complete set of Gaussian primitives under sparse-view supervision, leading to unstable geometry and inferior depth quality. Meanwhile, they rely solely on 2D segmenter features for semantic lifting, which provides weak 3D-level and limited generalizable supervision, resulting in incomplete 3D semantics in novel scenes. To address these issues, we propose UniSem, a unified framework that jointly improves depth accuracy and semantic generalization via two key components. First, Error-aware Gaussian Dropout (EGD) performs error-guided capacity control by suppressing redundancy-prone Gaussians using rendering error cues, producing meaningful, geometrically stable Gaussian representations for improved depth estimation. Second, we introduce a Mix-training Curriculum (MTC) that progressively blends 2D segmenter-lifted semantics with the model's own emergent 3D semantic priors, implemented with object-level prototype alignment to enhance semantic coherence and completeness. Extensive experiments on ScanNet and Replica show that UniSem achieves superior performance in depth prediction and open-vocabulary 3D segmentation across varying numbers of input views. Notably, with 16-view inputs, UniSem reduces depth Rel by 15.2% and improves open-vocabulary segmentation mAcc by 3.7% over strong baselines.",
+      "authors": [
+        "Guibiao Liao",
+        "Qian Ren",
+        "Kaimin Liao",
+        "Hua Wang",
+        "Zhi Chen",
+        "Luchao Wang",
+        "Yaohua Tang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-18T09:26:25+00:00",
+      "link": "https://arxiv.org/pdf/2603.17519v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "jointly improves depth accuracy and semantic generalization via 2D segmenter features",
+      "llm_evidence_cn": "通过2D分割器特征共同提高深度准确性和语义泛化",
+      "llm_evidence": "通过2D分割器特征共同提高深度准确性和语义泛化",
+      "canonical_evidence": "通过2D分割器特征共同提高深度准确性和语义泛化",
+      "llm_tldr_en": "A framework for semantic 3D reconstruction that improves depth and semantic lifting from sparse images.",
+      "llm_tldr_cn": "一种语义3D重建框架，通过稀疏图像改进了深度和语义提升。",
+      "llm_tldr": "一种语义3D重建框架，通过稀疏图像改进了深度和语义提升。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "cross-modal feature fusion for segmentation",
+      "matched_requirement_id": "req-12",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.20148v1",
+      "title": "Can Large Multimodal Models Inspect Buildings? A Hierarchical Benchmark for Structural Pathology Reasoning",
+      "abstract": "Automated building facade inspection is a critical component of urban resilience and smart city maintenance. Traditionally, this field has relied on specialized discriminative models (e.g., YOLO, Mask R-CNN) that excel at pixel-level localization but are constrained to passive perception and worse generization without the visual understandng to interpret structural topology. Large Multimodal Models (LMMs) promise a paradigm shift toward active reasoning, yet their application in such high-stakes engineering domains lacks rigorous evaluation standards. To bridge this gap, we introduce a human-in-the-loop semi-automated annotation framework, leveraging expert-proposal verification to unify 12 fragmented datasets into a standardized, hierarchical ontology. Building on this foundation, we present \\textit{DefectBench}, the first multi-dimensional benchmark designed to interrogate LMMs beyond basic semantic recognition. \\textit{DefectBench} evaluates 18 state-of-the-art (SOTA) LMMs across three escalating cognitive dimensions: Semantic Perception, Spatial Localization, and Generative Geometry Segmentation. Extensive experiments reveal that while current LMMs demonstrate exceptional topological awareness and semantic understanding (effectively diagnosing \"what\" and \"how\"), they exhibit significant deficiencies in metric localization precision (\"where\"). Crucially, however, we validate the viability of zero-shot generative segmentation, showing that general-purpose foundation models can rival specialized supervised networks without domain-specific training. This work provides both a rigorous benchmarking standard and a high-quality open-source database, establishing a new baseline for the advancement of autonomous AI agents in civil engineering.",
+      "authors": [
+        "Hui Zhong",
+        "Yichun Gao",
+        "Luyan Liu",
+        "Hai Yang",
+        "Wang Wang",
+        "Haowei Zhang",
+        "Xinhu Zheng"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-20T17:24:46+00:00",
+      "link": "https://arxiv.org/pdf/2603.20148v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Large Multimodal Models for structural pathology reasoning and pixel-level localization",
+      "llm_evidence_cn": "用于结构病理推理和像素级定位的大型多模态模型",
+      "llm_evidence": "用于结构病理推理和像素级定位的大型多模态模型",
+      "canonical_evidence": "用于结构病理推理和像素级定位的大型多模态模型",
+      "llm_tldr_en": "Evaluates Large Multimodal Models for building inspection, comparing them to discriminative segmentation models.",
+      "llm_tldr_cn": "评估用于建筑检查的大型多模态模型，并将其与判别式分割模型进行比较。",
+      "llm_tldr": "评估用于建筑检查的大型多模态模型，并将其与判别式分割模型进行比较。",
+      "llm_tags": [
+        "query:mmseg:composite"
+      ],
+      "matched_query_tag": "query:mmseg:composite",
+      "matched_query_text": "Papers central to 关于实例分割的多模态网络搜索规划, especially work that connects or combines: instance segmentation neural networks; multimodal deep learning architectures; cross-modal feature fusion for segmentation; state of the art multimodal instance segmentation networks; multimodal fusion strategies for instance segmentation; deep learning architectures for multimodal image segmentation.",
+      "matched_requirement_id": "req-composite-mmseg",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.18671v1",
+      "title": "Towards High-Quality Image Segmentation: Improving Topology Accuracy by Penalizing Neighbor Pixels",
+      "abstract": "Standard deep learning models for image segmentation cannot guarantee topology accuracy, failing to preserve the correct number of connected components or structures. This, in turn, affects the quality of the segmentations and compromises the reliability of the subsequent quantification analyses. Previous works have proposed to enhance topology accuracy with specialized frameworks, architectures, and loss functions. However, these methods are often cumbersome to integrate into existing training pipelines, they are computationally very expensive, or they are restricted to structures with tubular morphology. We present SCNP, an efficient method that improves topology accuracy by penalizing the logits with their poorest-classified neighbor, forcing the model to improve the prediction at the pixels' neighbors before allowing it to improve the pixels themselves. We show the effectiveness of SCNP across 13 datasets, covering different structure morphologies and image modalities, and integrate it into three frameworks for semantic and instance segmentation. Additionally, we show that SCNP can be integrated into several loss functions, making them improve topology accuracy. Our code can be found at https://jmlipman.github.io/SCNP-SameClassNeighborPenalization.",
+      "authors": [
+        "Juan Miguel Valverde",
+        "Dim P. Papadopoulos",
+        "Rasmus Larsen",
+        "Anders Bjorholm Dahl"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-19T09:33:12+00:00",
+      "link": "https://arxiv.org/pdf/2603.18671v1",
+      "tags": [
+        "keyword:MMSeg",
+        "keyword:RGB-D",
+        "query:MMSeg",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "improving topology accuracy in image segmentation",
+      "llm_evidence_cn": "提高图像分割中的拓扑准确性",
+      "llm_evidence": "提高图像分割中的拓扑准确性",
+      "canonical_evidence": "提高图像分割中的拓扑准确性",
+      "llm_tldr_en": "Introduces a method to improve segmentation quality by penalizing neighbor pixels to ensure topology accuracy.",
+      "llm_tldr_cn": "引入了一种通过惩罚相邻像素来确保拓扑准确性，从而提高分割质量的方法。",
+      "llm_tldr": "引入了一种通过惩罚相邻像素来确保拓扑准确性，从而提高分割质量的方法。",
+      "llm_tags": [
+        "query:mmseg"
+      ],
+      "matched_query_tag": "query:mmseg",
+      "matched_query_text": "instance segmentation neural networks",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

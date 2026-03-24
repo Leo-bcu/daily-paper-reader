@@ -1,0 +1,599 @@
+Title: Beyond Forced Modality Balance: Intrinsic Information Budgets for Multimodal Learning
+
+URL Source: https://arxiv.org/pdf/2603.17347v1
+
+Published Time: Thu, 19 Mar 2026 00:44:21 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Beyond Forced Modality Balance: Intrinsic Information Budgets for Multimodal Learning 
+
+Zechang Xiong ∗1, Da Li ∗1, Kexin Tang †1, Pengyuan Li 2, Wenkang Kong 2, Yulan Hu ‡1 
+
+> 1
+
+Amap, Alibaba Group, Beijing, China  
+
+> 2
+
+Beijing Jiaotong University, Beijing, China {jerryhusing, lida.ucas}@gmail.com, jixuan.tkx@alibaba-inc.com, {pengyuanli, wenkang.kong}@bjtu.edu.cn, huyulan@alibaba-inc.com 
+
+Abstract —Multimodal models often converge to a dominant-modality solution, in which a stronger, faster-converging modality overshadows weaker ones. This modality imbalance causes subop-timal performance. Existing methods attempt to balance different modalities by reweighting gradients or losses. However, they overlook the fact that each modality has finite information capac-ity. In this work, we propose IIBalance, a multimodal learning framework that aligns the modality contributions with Intrinsic Information Budgets (IIB). We propose a task-grounded estima-tor of each modality’s IIB, transforming its capacity into a global prior over modality contributions. Anchored by the highest-budget modality, we design a prototype-based relative alignment mechanism that corrects semantic drift only when weaker modal-ities deviate from their budgeted potential, rather than forcing imitation. During inference, we propose a probabilistic gating module that integrates the global budgets with sample-level uncertainty to generate calibrated fusion weights. Experiments on three representative benchmarks demonstrate that IIBalance consistently outperforms state-of-the-art balancing methods and achieves better utilization of complementary modality cues. Our code is available at: https://github.com/XiongZechang/IIBalance. 
+
+Index Terms —Multimodal Learning; Imbalanced Multimodal Representation; Prototypical Network 
+
+I. I NTRODUCTION 
+
+Multimodal learning is expected to exploit complemen-tary information across modalities. [1]. When one modality becomes unreliable due to noise or adverse environmental conditions, the others are expected to provide complementary evidence, enabling multimodal models to achieve robust per-ception in complex scenarios. However, modern end-to-end training fails to achieve this ideal state [2], [3]. Empirical studies reveal that multimodal models suffer from modality imbalance, where a dominant modality converges faster and suppresses the learning of weaker modalities, causing the model to overrely on a single stream and underutilize comple-mentary cues [4]. Such behaviors are consistent with shortcut learning effects observed in unimodal networks [5] and re-sult in impaired generalization performance under distribution shifts or when modalities are absent [6]. To alleviate these problems, existing balancing methods mainly encourage modalities to learn at similar rates or con-
+
+∗ Contributed equally. 
+
+† Project leader. 
+
+‡ Corresponding author. Vision Audio Vision Audio    
+
+> Absolute Balance: Equalized Contributions Relative Balance: IIB-aligned Contributions
+> Over fi tting / Noise
+> Under-utilized Vision Contribution Vision Contribution Audio Contribution Audio Contribution
+> Vision Audio Vision Audio
+
+Fig. 1: Absolute vs. relative modality balancing. Left: 
+
+absolute balance enforces equal contribution across modalities, which can under-utilize high-capacity modalities while push-ing low-capacity modalities to overfit residual noise. Right: 
+
+Relative balance allocates each modality’s contribution in accordance with its Intrinsic Information Budget (IIB) ,encouraging capacity-aware utilization. tribute comparably through gradient, loss, or fusion reweight-ing [2], [4]. First, the discriminative information carried by different modalities is inherently unequal. In many perception tasks, visual signals provide richer, more directly task-relevant cues than audio or auxiliary streams. Enforcing equal contribu-tions from different modalities may result in multimodal mod-els relying on low-information-density modalities to fit residu-als not covered by high-information-density modalities, which could introduce interference instead of achieving beneficial modal complementarity [7]. As illustrated in Fig. 1, enforcing absolute balance tends to suppress high-capacity modalities and push low-capacity modalities to fit residual noise. In addition, the information differences between modalities are sample-specific. For example, visual signals may degrade in low light, while audio can become unreliable in noisy scenes, and a single global balancing rule cannot capture this dynamic inversion of modality reliability [8]. These observations suggest that multimodal learning should shift from a pursuit of absolute balance between modalities to a relative balance. It is essential to consider the information-carrying capacity of different modalities and employ flexible fusion strategies to enable multimodal models to achieve optimal performance across diverse scenarios. In this view, an effective balance mechanism should not force modalities to contribute equally. Instead, it should align each modality’s 
+
+> arXiv:2603.17347v1 [cs.MM] 18 Mar 2026
+
+contribution with its intrinsic information quality, modeled as a modality-specific prior, while still allowing adaptive, sample-specific reweighting [2]. Motivated by these insights, we propose IIBalance , abudget-aware balancing principle that treats modality contribu-tions as bounded resources, so that weak modalities are guided to saturate their own capacity instead of imitating the dominant modality. Specifically, we explicitly formalize relative bal-ancing through an Intrinsic Information Budget (IIB), which provides a dataset-level prior that quantifies task-relevant information each modality can reliably contribute. Building on the IIB, we design a prototype-guided relative alignment mechanism that enables the model to adaptively learn from different modalities, in which the strong modality serves as an adaptive reference that guides weaker modalities only when they underuse their estimated budget. This limits overfitting from excessive cross-modal supervision. From a Bayesian-inspired viewpoint, we propose an uncertainty-aware dynamic fusion strategy that treats IIB as a prior and combines it with sample-level predictive uncertainty as a likelihood proxy to obtain calibrated fusion weights. This prior–likelihood formu-lation is consistent with uncertainty-aware multimodal fusion [9], [10]. The resulting fusion weights adhere to the IIB prior but are adjusted by sample-level uncertainty, up-weighting low-uncertainty modalities, down-weighting uncertain ones, and reverting to the prior when the evidence becomes unreli-able. Our contributions can be summarized as follows: 1) We introduce Intrinsic Information Budget, a dataset-level prior for capacity-aware relative modality balance. 2) We develop an IIB-guided framework with prototype-guided alignment for training and uncertainty-aware adaptive fusion for inference. 3) Extensive experiments on three audio-visual benchmarks validate the effectiveness of the proposed method. II. R ELATED WORK 
+
+A. Uncertainty-Aware Fusion 
+
+Uncertainty-aware fusion improves robustness by estimating modality reliability and adapting fusion weights [9]. Early methods handle unseen degradations by uncertainty-scaled predictions combined with probabilistic fusion rules [10]. More recent approaches perform confidence-aware, sample-adaptive fusion via gating or dynamic selection, aiming to trust the informative modality/features for each instance [11], [12]. Our method follows the uncertainty-aware fusion principle but further constrains reliability weighting with a global, modality-specific capacity prior, ensuring that instance-wise reweighting does not demand more from a weak modality than it can stably contribute. 
+
+B. Imbalanced Multimodal Learning 
+
+Recent studies have identified modality competition un-der optimization imbalance as a key source of multimodal performance gaps, as dominant modalities learn faster and gradually suppress weaker ones [1], [13]. Existing methods can be roughly grouped by how they mitigate imbalance. The first group directly modifies optimization signals, e.g., through gradient-level modulation to boost under-optimized modalities [2], [14] or objective shaping to reduce representation bias in fine-grained settings [15]. The second group changes the training paradigm to reduce cross-modal interference, for instance, by alternating unimodal adaptation while maintaining shared cross-modal knowledge [16]. The third group targets fine-grained imbalance by estimating per-sample modality contribution and enhancing low-contributing modalities [4], [17]. In contrast to purely dynamics-driven rebalancing, we emphasize respecting each modality’s inherent capacity and avoiding forced equal contribution when a modality cannot reliably support it. III. P RELIMINARIES 
+
+A. Multimodal Learning Formalization 
+
+We consider a supervised multimodal classification with M input modalities. The training set is D =
+
+{(x(i)1 , . . . , x (i) 
+
+> M
+
+, y (i))}Ni=1 , where x(i) 
+
+> m
+
+∈ X m denotes the input of modality m and y(i) ∈ {1, . . . , C } is the label. For each modality m, an encoder gm : Xm → Rd produces a representation z(i) 
+
+> m
+
+= gm(x(i) 
+
+> m
+
+), and a unimodal classifier 
+
+fm : Rd → ∆C−1 outputs pm(· | x(i) 
+
+> m
+
+) = fm(z(i) 
+
+> m
+
+). In end-to-end training, gradients from the fused loss are backpropagated through all modality encoders simultaneously, which often leads to a dominant-modality solution, where one modality with faster convergence or stronger signal overwhelms the others and prevents weaker modalities from learning informa-tive representations. Our goal is to design a training scheme that respects the intrinsic capacity of each modality while still exploiting their complementarity. 
+
+B. Intrinsic Information Budget 
+
+Different modalities often have asymmetric capacities and noise levels; forcing equal contribution may amplify unre-liable signals and impact the performance of downstream tasks. Modal balance is meaningful only when each modality provides a comparable amount of task-related information to downstream tasks. Therefore, we introduce a dataset-level prior, called the Intrinsic Information Budget (IIB) , to quantify each modality’s reliable information capacity and use it as a reference for relative balancing. To estimate each modality’s intrinsic task-relevant capacity, we compute the IIB prior in a straightforward and verifiable manner. For each modality m ∈ { 1, . . . , M }, we first train the unimodal encoder–classifier pair (gm, f m) on modality-specific inputs 
+
+x(i) 
+
+> m
+
+until convergence. Let pm(· | x(i) 
+
+> m
+
+) = fm(gm(x(i) 
+
+> m
+
+)) ∈
+
+∆C−1 denote the predictive distribution over C classes for sample (x(i)1 , . . . , x (i) 
+
+> M
+
+, y (i)). We use the Shannon entropy normalized by log C, H(p) = − 1log C
+
+PCc=1 pc log pc ∈ [0 , 1] ,as a measure of predictive uncertainty. We then define a normalized signal-confidence proxy Bm as the dataset-level expected negative entropy: 
+
+Bm = E(x1,...,x M ,y )∼D 
+
+ 1 − H  pm(· | xm)  , (1) Image 
+
+> Audio
+> Encoder  Encoder
+> Classifier
+> Classifier
+
+Offline IIB Estimation      
+
+> Entropy & Average
+> pm(·| xm)
+> pm(·| xm)
+> softmax
+> β= [ βv,βa]
+
+Stage I: Prototype-guided Relative Alignment (PRA) 
+
+Stage II: Uncertainty-aware Bayesian Fusion      
+
+> Class Prototype
+> Push
+> EMA
+> Update
+> Unimodal Cross-Entropy
+> Unimodal Cross-Entropy
+> PRA Loss
+> IIB prior
+> Unimodal Classifier
+> Global Avg Pool
+> Unimodal C lassifier
+> Global Avg Pool
+> Entropy
+> Entropy
+> Gating Net
+> Gating Net
+
+X
+
+X 
+
+> IIB prior
+
+# +
+
+> Classifier
+> Classifier
+> Classifier
+
+Fig. 2: Overview of IIBalance . An intrinsic information budget prior is estimated from unimodal prediction entropy. Stage I 
+
+learns unimodal features with prototype-guided relative alignment. Stage II conducts uncertainty-aware Bayesian fusion using entropy-conditioned gating. Here, ⊗ denotes element-wise multiplication and ⊕ denotes element-wise addition. which in practice is approximated by the empirical average over training samples. Intuitively, a larger Bm indicates that modality m produces more confident predictions on average and thus possesses higher intrinsic discriminative capacity. We convert {Bm} into a relative budget prior via a softmax-style normalization with temperature τ > 0:
+
+βm = exp  Bm/τ PMk=1 exp  Bk/τ  , m = 1 , . . . , M. (2) The vector β = [ β1, . . . , β M ] serves as a dataset-level prior over modality contributions and will be used in both the alignment regularization and the fusion stage. We refer to the 
+
+anchor modality as the modality with the highest budget, that is m∗ = arg max m βm. In practice, we estimate {Bm} and 
+
+β once from the pretrained unimodal classifiers and keep this IIB prior fixed during subsequent multimodal training. IV. M ETHOD 
+
+A. Overview 
+
+Given a training sample (x(i)1 , . . . , x (i) 
+
+> M
+
+, y (i)), we first obtain the unimodal representation z(i) 
+
+> m
+
+= gm(x(i) 
+
+> m
+
+) and the predictive distribution pm(· | x(i) 
+
+> m
+
+) = fm(z(i) 
+
+> m
+
+) as defined in Section III. As shown in Fig. 2, IIBalance consists of two coupled stages to normalize the outputs of these encoders and compute sample-adaptive fusion weights. Stage I focuses on relative alignment in representation. We select an anchor modality m∗ according to the IIB prior β, maintain class prototypes from this anchor modality, and align weaker modalities to the anchor prototypes using a prototype-based contrastive loss whose strength is controlled by the budget gap βm∗ − βm. Stage II performs uncertainty-aware Bayesian fusion. We design a lightweight gating network that, for each sample, fuses the global prior β
+
+with sample-level signals derived from per-modality predictive uncertainty and pooled features to produce normalized fusion weights. The fused representation is used to make the final prediction. In the inference phase, we use the learned encoders and gating network to compute fusion weights and obtain predictions from the fused branch. 
+
+B. Prototype-guided Relative Alignment 
+
+Rather than forcing weaker modalities to mimic representa-tion of stronger modalities, we encourage weaker modalities to align with class prototypes computed from the anchor modality. This preserves each modality’s unique characteristics while correcting semantic drift. 
+
+a) Anchor prototypes: For the anchor modality m∗, we maintain a set of class prototypes {P m∗ 
+
+> c
+
+}Cc=1 , with P m∗ 
+
+> c
+
+∈ Rd,updated online by an exponential moving average (EMA). Let 
+
+B denote the current mini-batch and Bc = {i ∈ B : y(i) = c}
+
+the indices of samples from class c. The prototype is updated in the following manner: 
+
+P m∗ 
+
+> c
+
+← ρ P m∗ 
+
+> c
+
++ (1 − ρ) Mean  {z(i) 
+
+> m∗
+
+: i ∈ B c}, (3) where ρ ∈ [0 , 1) is the EMA momentum and the mean is taken over anchor-modality features in the current mini-batch (or an optional memory buffer). Both P m∗ 
+
+> c
+
+and z(i) 
+
+> m∗
+
+lie in Rd, so their inner product is well defined. 
+
+b) Prototype-guided Relative Alignment (PRA): For a non-anchor modality m̸ = m∗, let z(i) 
+
+> m
+
+∈ Rd be the modality feature for the i-th sample and y(i) its label. We define a prototype contrastive loss that pulls z(i) 
+
+> m
+
+towards its class prototype P m∗ 
+
+> y(i)
+
+and pushes it away from other class prototypes: 
+
+Lm 
+
+> PRA
+
+= − 1
+
+|B| 
+
+X
+
+> i∈B
+
+log exp  z(i) 
+
+> m
+
+·P m∗
+
+> y(i)
+
+/τ p
+
+PCc=1 exp  z(i) 
+
+> m
+
+·P m∗ 
+
+> c
+
+/τ p
+
+ , (4) where τp > 0 is a temperature for prototype contrast. The dot products z(i) 
+
+> m
+
+· P m∗ 
+
+> c
+
+are scalars, and the loss is the standard cross-entropy over the C prototypes for modality m.
+
+c) Budget-gap controlled alignment strength: The align-ment degree for a weak modality is determined by its budget gap relative to the anchor: 
+
+λm = ReLU  βm∗ − βm
+
+, m̸ = m∗. (5) Thus, the modalities with a budget close to the anchor’s receive little alignment pressure, while those modalities with a low budget are more strongly encouraged to align towards class centers instead of raw anchor features. 
+
+d) Stage I Training objective: Stage I combines uni-modal supervision with prototype-guided relative alignment for non-anchor modalities. For a mini-batch B, the objective is formalized as: 
+
+LI = 1
+
+|B| 
+
+X
+
+> i∈B
+> M
+
+X
+
+> m=1
+
+LCE 
+
+ fm(z(i) 
+
+> m
+
+), y (i) + X
+
+> m̸=m∗
+
+λm Lm
+
+> PRA
+
+,
+
+(6) where LCE is the cross-entropy loss for the unimodal classifier 
+
+fm. The overall Stage I loss is a scalar, and the hyperparame-ters ρ, τp, and λm are fixed during training once the IIB prior 
+
+β is computed. 
+
+C. Uncertainty-aware Bayesian Fusion Stage I provides a global relative balancing by aligning modality contributions to the dataset-level IIB prior. How-ever, multimodal reliability is often sample-specific: even a strong modality can be corrupted for some instances, and a weak modality can be informative for others. Thus, global alignment alone cannot determine how much each modality should be trusted per sample. Therefore, we introduce Stage II 
+
+to compute sample-adaptive fusion weights that respect the global IIB prior while down-weighting unreliable modalities based on uncertainty. After the unimodal encoders and anchor prototypes are regularized in Stage I , Stage II yields sample-adaptive fusion weights by integrating the global IIB prior β
+
+with sample-level signals based on predictive uncertainty and feature statistics. 
+
+a) Sample-level uncertainty and dynamic signals: For the i-th sample with modality m, we measure predictive uncertainty by the normalized entropy: 
+
+u(i) 
+
+> m
+
+= H pm(· | x(i) 
+
+> m
+
+), (7) where H(·) is the entropy defined in Section III. It captures how uncertain modality m is about the i-th sample and reflects both data and model uncertainty. In addition, we extract simple pooled statistics from each modality feature, denoted 
+
+Pool( z(i) 
+
+> m
+
+) ∈ Rdp . We use global average pooling here. We form the input to the gating network as: 
+
+ϕ(i) =  u(i)1 , . . . , u (i) 
+
+> M
+
+; Pool( z(i)1 ), . . . , Pool( z(i) 
+
+> M
+
+) , (8) and let G : Rdg → RM be a lightweight network that maps 
+
+ϕ(i) to per-modality logits Gm(ϕ(i)).
+
+b) Bayesian-inspired weight computation: We compute an unnormalized fusion score for modality m as: 
+
+α(i) 
+
+> m
+
+= βm
+
+|{z} 
+
+> prior
+
+· exp   − u(i)
+
+> m
+
+| {z }
+
+> likelihood proxy
+
+· σ Gm(ϕ(i))| {z }
+
+> calibration
+
+, (9) where σ(·) is the sigmoid activation. Here βm encodes the global intrinsic capacity of modality m, exp( −u(i) 
+
+> m
+
+) down-weights locally uncertain evidence, and σ(Gm(ϕ(i))) provides a learned, sample-dependent calibration factor. This factoriza-tion is Bayesian-inspired in the sense that it treats βm as a prior over modality reliability and the remaining terms as a data-dependent likelihood proxy. We normalize {α(i) 
+
+> m
+
+}Mm=1 to obtain fusion weights and compute the fused representation as: 
+
+˜w(i) 
+
+> m
+
+= α(i)
+
+> m
+
+PMk=1 α(i)
+
+> k
+
+, Z(i)fused =
+
+> M
+
+X
+
+> m=1
+
+˜w(i) 
+
+> m
+
+z(i) 
+
+> m
+
+. (10) Each ˜w(i) 
+
+> m
+
+is non-negative and sums to one across modalities, so Z(i)fused is a convex combination of modality features in Rd.
+
+c) Stage II Training objective: The objective combines a cross-entropy term on the fused representation and a weighted unimodal auxiliary term that encourages unimodal correctness in proportion to their contribution. It is defined as: 
+
+LII = 1
+
+|B| 
+
+X
+
+> i∈B
+
+LCE 
+
+ ffuse (Z(i)fused ), y (i)
+
++ γ 1
+
+|B| 
+
+X
+
+> i∈B
+> M
+
+X
+
+> m=1
+
+˜w(i) 
+
+> m
+
+LCE 
+
+ fm(z(i) 
+
+> m
+
+), y (i),
+
+(11) where B denotes a mini-batch, γ ≥ 0 balances the auxiliary unimodal term and ffuse (·) is the fused classifier. 
+
+D. Overall Training Objective and Dynamic Scheduling 
+
+We optimize Stage I and Stage II with a lightweight curriculum that prioritizes representation/alignment at early epochs and gradually shifts focus to fusion refinement. Let 
+
+t denote the current epoch and T the total number of epochs. We adopt a linear annealing schedule defined as: 
+
+λ(t) = λstart 
+
+
+
+1 − tT
+
+
+
+, (12) where λstart ∈ [0 , 1] sets the initial emphasis on Stage I. This design stabilizes training by first learning discriminative unimodal features and prototype-guided alignment, then fine-tuning the uncertainty-aware fusion once the representations become reliable. The overall objective is expressed as: 
+
+L = λ(t)LI +  1 − λ(t)LII , (13) During inference, we use the learned encoders and gating network to compute ˜w(i) 
+
+> m
+
+, form Z(i)fused , and predict with the fused classifier ffuse (Z(i)fused ).V. E XPERIMENTS 
+
+A. Benchmarks 
+
+We evaluate IIBalance on three standard multimodal bench-marks: Kinetics-Sounds [18], a large-scale audiovisual action dataset with about 19K clips from 34 classes; CREMA-D [19], an audio-visual emotion dataset with 7,442 clips from 91 ac-tors; and AVE [20], which contains 4,143 aligned audiovisual segments across 28 events and is commonly used to evaluate sample-adaptive fusion. We adopt accuracy as the evaluation metric. To evaluate the impact of input in different modalities on results, we introduced multimodal accuracy Acc m for multimodal inputs, alongside unimodal accuracy Acc a and 
+
+Acc v to evaluate audio and video inputs, respectively. TABLE I: Results on Kinetics-Sounds, CREMA-D, and AVE. Acc m: multimodal accuracy, Acc a: audio accuracy, Acc v : video accuracy. Optimal results are shown in bold . The suboptimal results are indicated by the underline.                                                                                                                                       
+
+> Method Kinetics-Sounds CREMA-D AVE
+> Acc mAcc aAcc vAvg Acc mAcc aAcc vAvg Acc mAcc aAcc vAvg Joint training 64.61 52.03 35.47 50.70 70.83 61.96 38.58 57.12 69.65 63.93 24.63 52.74 MSLR 65.91 50.92 42.30 53.04 71.51 63.04 41.13 58.56 68.91 61.19 24.63 51.58 G-Blending 68.90 52.11 41.35 54.12 73.41 62.42 65.37 67.07 71.80 60.64 39.51 57.32 OGM-GE 66.79 51.09 37.86 51.91 71.14 61.29 39.27 57.23 69.12 62.45 27.39 52.99 Greedy 65.32 50.58 35.97 50.62 69.31 62.49 38.23 56.68 69.66 60.76 38.70 56.37 PMR 65.70 52.47 34.52 50.90 75.54 63.04 71.24 69.27 70.89 63.18 35.57 56.55 AGM 66.17 51.31 34.83 50.77 77.86 63.34 37.54 59.58 71.04 62.44 40.96 58.15 MMPareto 70.13 56.40 53.05 59.86 78.53 67.38 70.26 72.06 75.81 64.34 45.39 61.85 GGDM 75.92 61.41 59.01 65.45 87.10 66.83 79.97 77.97 77.10 66.34 46.64 63.36 IIBalance (Ours) 76.04 61.32 60.17 65.84 86.45 68.53 80.55 78.51 78.23 67.50 48.11 64.61
+
+B. Baselines 
+
+We compare IIBalance with competitive multimodal bal-ancing and fusion baselines that cover three mainstream direc-tions. For optimizer- and gradient-based balancing, we selected MSLR [21], G-Blending [1], OGM-GE [2], AGM [14], greedy learning mitigation [3], and GGDM [22] for comparison. For prototype-guided rebalancing, we compare IIBalance with PMR [4], which is most relevant to our prototype alignment. For multi-objective unimodal assistance, we adopted MM-Pareto [7]. Overall, these baselines span optimization control, structured prototype guidance, and objective coordination, providing a compact and comprehensive evaluation. 
+
+C. Implementation Details 
+
+We follow the audiovisual preprocessing approach adopted in previous studies [23]. Visual frames are sampled at 16 fps and resized to 224 × 224 . Audio signals are resampled to 16 kHz and converted into log-Mel spectrograms with a 25 ms window and a 10 ms hop. For Kinetics-Sounds and AVE, we use the ResNet-18 [24] as the visual backbone and a 1D CNN audio encoder following common settings in audiovisual research [1]. For CREMA-D, we adopt MobileNetV2 [25] for face-centric visual inputs and an RNN-based audio en-coder [19]. We train for 50 epochs using Adam with a learning rate of 1×10 −4 and batch size 32. The IIB prior β is estimated offline from unimodal performances and kept fixed during training. We set the temperature τ = 0 .07 and the prototype similarity temperature τp = 0 .5.
+
+D. Main Results 
+
+As shown in Table I, IIBalance achieves the best per-formance across three benchmarks, outperforming both clas-sical balancing strategies and other competitive baselines. Our method yields clear gains in video-only accuracy while keeping audio-only performance competitive, indicating that it effectively boosts the weaker modality instead of overfitting it to residual noise. At the same time, the overall accuracy is improved on every benchmark, demonstrating that imposing an intrinsic information budget and performing sample-aware balancing leads to more effective multimodal fusion than heuristic gradient or loss re-weighting schemes. 
+
+E. Effectiveness of Different Components 
+
+TABLE II: Ablation of different components of IIBalance. We report Acc m as the evaluation metric.                
+
+> Method Kinetics-Sounds CREMA-D AVE IIBalance 76.04 86.45 78.23
+> w/o IIB prior 75.20 85.10 77.10 w/o Stage I (PRA) 73.30 82.40 74.80 w/o Stage II (fusion) 74.40 83.70 75.60
+
+Table II presents the contribution of the components of IIBalance. Removing the IIB prior and using a uniform budget leads to a consistent but moderate drop on all three datasets, indicating that the dataset-level intrinsic capacity estimate provides a useful prior even when the architecture is unchanged. Disabling Stage I and training the encoders only with unimodal cross-entropy causes the largest degrada-tion, especially on CREMA-D and AVE, which confirms that prototype-guided relative alignment is crucial for preventing dominant modalities from suppressing weaker ones. Removing 
+
+Stage II and replacing the uncertainty-aware fusion with a fixed fusion rule also harms performance, showing that dynamic, sample-level weighting further refines the benefit of balanced representations. 
+
+F. IIB Prior vs Averaged Fusion Weights 
+
+As shown in Fig. 3, we compare the intrinsic information budget prior with the empirically averaged fusion weights. Across all datasets, the average fusion weights closely follow the IIB prior, indicating that the learned fusion mechanism does not arbitrarily override the dataset-level modality capacity estimated by IIB. Instead, the prior provides a calibrated base-line that reflects the intrinsic discriminative strength of each modality. The small but consistent deviations between the prior and the averaged fusion weights suggest that the uncertainty-aware fusion performs mild sample-level adjustments even in the absence of explicit modality degradation. Kinetics-Sounds CREMA-D AVE   
+
+> 0.500
+> 0.525
+> 0.550
+> 0.575
+> 0.600
+> 0.625
+> 0.650
+> 0.675
+> 0.700
+> Weight
+> 0.62
+> 0.55
+> 0.60
+> 0.64
+> 0.58 0.59
+> IIB prior βm
+> Avg. fusion weight (clean)
+
+Fig. 3: Comparison between the IIB prior βm and the averaged fusion weights on Kinetics-Sounds, CREMA-D, and AVE. 
+
+G. Hyperparameter Sensitivity 
+
+We analyze the sensitivity of IIBalance to the temperature parameter τ and the unimodal-loss weight γ, depicted in Fig. 4. We found that IIBalance is insensitive to τ , with a broad optimum at moderate values and only mild drops at extremes. For γ, any non-zero weight consistently improves over remov-ing unimodal regularization, and performance varies smoothly with a shallow best region at intermediate values. The curves on both benchmarks show consistent trends, suggesting that IIBalance does not rely on heavy hyperparameter tuning. 0.025 0.050 0.075 0.100 
+
+> Temperature
+> 75.0
+> 77.5
+> 80.0
+> 82.5
+> 85.0
+> Top-1 accuracy (\%)
+> Kinetics-Sounds
+> CREMA-D
+
+(a) Effect of temperature τ .0.25 0.50 0.75 1.00  
+
+> Unimodal loss weight
+> 75.0
+> 77.5
+> 80.0
+> 82.5
+> 85.0
+> Top-1 accuracy (\%)
+> Kinetics-Sounds
+> CREMA-D
+
+(b) Effect of loss weight γ.
+
+Fig. 4: Hyperparameter sensitivity of IIBalance. VI. C ONCLUSION 
+
+In this work, we presented IIBalance, a relatively balanced multimodal learning framework that addresses the fundamental challenge of modality dominance in multimodal systems. Ex-tensive experiments demonstrate that our method consistently improves performance under imbalanced conditions, outper-forming existing balanced fusion techniques. We primarily validated its effectiveness based on audio–visual settings. In the future, we plan to learn and update budgets online with self-supervision and extend the framework to broader multimodal scenarios beyond audio–visual recognition. REFERENCES [1] Weiyao Wang, Du Tran, and Matt Feiszli, “What makes training multi-modal classification networks hard?,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2020. [2] Xiaokang Peng, Yake Wei, and et al., “Balanced multimodal learning via on-the-fly gradient modulation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2022. [3] Nan Wu, Stanisław Jastrz˛ ebski, Kyunghyun Cho, and et al., “Character-izing and overcoming the greedy nature of learning in multi-modal deep neural networks,” in Proceedings of the 39th International Conference on Machine Learning , 2022. [4] Yunfeng Fan, Wenchao Xu, Haozhao Wang, and et al., “PMR: Pro-totypical modal rebalance for multimodal learning,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition ,2023. [5] Robert Geirhos, Jörn-Henrik Jacobsen, Claudio Michaelis, and et al., “Shortcut learning in deep neural networks,” Nature Machine Intelli-gence , 2020. [6] Yi-Chun Lee, Yi-Hsuan Tsai, Wei-Chen Chiu, and et al., “Multimodal prompting with missing modalities for visual recognition,” in IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2023. [7] Yake Wei and Di Hu, “MMPareto: Boosting multimodal learning with innocent unimodal assistance,” in Proceedings of the 41st International Conference on Machine Learning , 2024. [8] Zongbo Han, Changqing Zhang, Huazhu Fu, and et al., “Trusted multi-view classification with dynamic evidential fusion,” in IEEE transactions on pattern analysis and machine intelligence , 2023. [9] Mahesh Subedar, Ranganath Krishnan, Paulo-López Meyer, and et al., “Uncertainty-aware audiovisual activity recognition using deep bayesian variational inference,” in Proceedings of the IEEE/CVF International Conference on Computer Vision , 2019. [10] Junjiao Tian, Wesley Cheung, Nathaniel Glaser, and et al., “Uno: Uncertainty-aware noisy-or multimodal fusion for unanticipated input degradation,” in Proceedings of the IEEE International Conference on Robotics and Automation , 2020. [11] Zongbo Han, Fan Yang, Junzhou Huang, and et al., “Multimodal dynamics: Dynamical fusion for trustworthy multimodal classification,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2022. [12] Qingyang Zhang, Haitao Wu, Changqing Zhang, and et al., “Provable dynamic fusion for low-quality multimodal data,” in Proceedings of the 40th International Conference on Machine Learning , 2023. [13] Yu Huang, Junyang Lin, Chang Zhou, and et al., “Modality competition: What makes joint training of multi-modal network fail in deep learning? (Provably),” in Proceedings of the 39th International Conference on Machine Learning , 2022. [14] Hong Li, Xingyu Li, Pengbo Hu, and et al., “Boosting multi-modal model performance with adaptive gradient modulation,” in Proceedings of the IEEE/CVF International Conference on Computer Vision , 2023. [15] Ruize Xu, Ruoxuan Feng, Shi-Xiong Zhang, and et al., “Mmcosine: Multi-modal cosine loss towards balanced audio-visual fine-grained learning,” IEEE International Conference on Acoustics, Speech and Signal Processing , 2023. [16] Xiaohui Zhang, Jaehong Yoon, Mohit Bansal, and et al., “Multimodal representation learning by alternating unimodal adaptation,” in Pro-ceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2024. [17] Yake Wei, Ruoxuan Feng, Zihe Wang, and et al., “Enhancing multimodal cooperation via sample-level modality valuation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition ,2024. [18] Will Kay, Joao Carreira, Karen Simonyan, and et al., “The kinetics human action video dataset,” in arXiv preprint arXiv:1705.06950 , 2017. [19] Huimin Cao, David G Cooper, Michael K Keutmann, Ruben C Gur, and et al., “Crema-d: Crowd-sourced emotional multimodal actors dataset,” 
+
+IEEE Transactions on Affective Computing , 2014. [20] Yapeng Tian, Jing Shi, Bochen Li, and et al., “Audio-visual event localization in unconstrained videos,” in Proceedings of the European Conference on Computer Vision , 2018. [21] Yiqun Yao and Rada Mihalcea, “Modality-specific learning rates for effective multimodal additive late-fusion,” in Findings of the Association for Computational Linguistics: ACL 2022 , 2022. [22] Disen Hu, Xun Jiang, Zhe Sun, and et al., “Geometric gradient diver-gence modulation for imbalanced multimodal learning,” in Proceedings of the 33rd ACM International Conference on Multimedia , 2025. [23] Relja Arandjelovic and Andrew Zisserman, “Look, listen and learn,” in 
+
+Proceedings of the IEEE International Conference on Computer Vision ,2017. [24] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and et al., “Deep residual learning for image recognition,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2016. [25] Mark Sandler, Andrew Howard, Menglong Zhu, and et al., “Mo-bilenetv2: Inverted residuals and linear bottlenecks,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition ,2018.
