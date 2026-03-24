@@ -25,3 +25,45 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
+  intent_profiles:
+    - tag: RGB-D
+      description: 帮我找到RGB-D多模态的实例分割相关的文章
+      enabled: true
+      keywords:
+        - keyword: RGB-D
+          keyword_cn: RGB-D多模态
+          query: RGB-D multimodal data
+        - keyword: instance segmentation
+          keyword_cn: 实例分割
+          query: instance segmentation algorithms
+        - keyword: depth map
+          keyword_cn: 深度图
+          query: depth information for segmentation
+        - keyword: multimodal fusion
+          keyword_cn: 多模态融合
+          query: RGB and depth fusion strategies
+        - keyword: cross-modal
+          keyword_cn: 跨模态
+          query: cross-modal feature learning
+      intent_queries:
+        - query: RGB D multimodal instance segmentation research papers
+          query_cn: RGB D多模态实例分割研究论文
+          enabled: true
+          source: manual
+          note: ''
+        - query: state of the art RGB D instance segmentation methods
+          query_cn: 最先进的RGB D实例分割方法
+          enabled: true
+          source: manual
+          note: ''
+        - query: deep learning for RGB D based instance segmentation
+          query_cn: 基于深度学习的RGB D实例分割
+          enabled: true
+          source: manual
+          note: ''
+        - query: fusion techniques for RGB D instance segmentation
+          query_cn: RGB D实例分割的融合技术
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-03-24T08:56:46.092Z'
