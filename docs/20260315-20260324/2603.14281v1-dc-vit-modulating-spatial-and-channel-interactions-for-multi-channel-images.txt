@@ -1,0 +1,324 @@
+Title: DC-ViT: Modulating Spatial and Channel Interactions for Multi-Channel Images
+
+URL Source: https://arxiv.org/pdf/2603.14281v1
+
+Published Time: Tue, 17 Mar 2026 02:14:27 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# DC-ViT: Modulating Spatial and Channel Interactions for Multi-Channel Images 
+
+Umar Marikkar, Syed Sameed Husain, Muhammad Awais, and Sara Atito 
+
+University of Surrey 
+
+Abstract. Training and evaluation in multi-channel imaging (MCI) re-mains challenging due to heterogeneous channel configurations arising from varying staining protocols, sensor types, and acquisition settings. This heterogeneity limits the applicability of fixed-channel encoders com-monly used in general computer vision. Recent Multi-Channel Vision Transformers (MC-ViTs) address this by enabling flexible channel in-puts, typically by jointly encoding patch tokens from all channels within a unified attention space. However, unrestricted token interactions across channels can lead to feature dilution, reducing the ability to preserve channel-specific semantics that are critical in MCI data. To address this, we propose Decoupled Vision Transformer (DC-ViT), which explicitly regulates information sharing using Decoupled Self-Attention (DSA), which decomposes token updates into two complementary pathways: spatial updates that model intra-channel structure, and channel-wise updates that adaptively integrate cross-channel information. This de-coupling mitigates informational collapse while allowing selective inter-channel interaction. To further exploit these enhanced channel-specific representations, we introduce Decoupled Aggregation (DAG), which al-lows the model to learn task-specific channel importances. Extensive experiments across three MCI benchmarks demonstrate consistent im-provements over existing MC-ViT approaches. 
+
+Keywords: Multi-Channel Imaging · Vision Transformers 
+
+## 1 Introduction 
+
+Training and evaluating vision encoders on Multi-Channel Imaging (MCI) data is fundamentally challenging due to variability in channel configurations across datasets. Unlike natural images, where three RGB channels are standardised, multi-channel images may contain an arbitrary number of channels whose se-mantics depend on the data acquisition process. This variability arises in diverse settings such as multi-channel microscopy, where different staining protocols produce distinct biological markers, and remote sensing, where sensor modali-ties and fusion strategies determine spectral composition. For instance, HPA [23] contains four channels, JUMP-CP [6] contains five, WTC-11 [24] contains three, and So2Sat [27] includes 18 channels over multiple spectral bands. This hetero-geneity makes it difficult to directly apply fixed-channel encoder designs that are standard in natural image modelling. 
+
+> arXiv:2603.14281v1 [cs.CV] 15 Mar 2026
+
+2 U. Marikkar et al. ChannelViT DiChaViT ChaMAEViT 
+
+> 50
+> 55
+> 60
+> 65
+> 70
+> 75
+> Average Score
+> MC-ViT Baseline
+> + DC-ViT
+
+Fig. 1: DC-ViT consistently improves existing MC-ViTs across MCI benchmarks. y-axis is the average scrore over CHAMMI, JUMP-CP and So2Sat downstream tasks. 
+
+Fig. 2: Schematic of DC-ViT. Channels build strong low-level representations independently, and are then introduced to cross-channel interactions. DSA(sp) and DSA(sp+ch) denote DC-ViT blocks (Eq. (4)) with l / ∈ M and l ∈ M in Eq. (5), respec-tively. 
+
+To accommodate variable channel configurations, Multi-Channel Vision Trans-formers (MC-ViTs) have emerged as the dominant architecture to train on multi-channel datasets [2,3,17,22]. These models are designed to be channel-adaptive, enabling them to process images with a flexible number of input channels within a unified framework. Following the Vision Transformer (ViT) paradigm [13], each channel is independently partitioned into respective patch tokens, after which all tokens are concatenated into a single sequence and processed jointly by shared self-attention layers. This long sequence formulation allows information to be exchanged freely across spatial locations and channels throughout the encoder architecture. Under this long-sequence formulation, prior work explores mechanisms to mitigate feature homogenisation across channels. This is achieved either by in-troducing channel-specific tokens [2, 3], or token diversification losses [22], or a combination of both, and demonstrates that this increased inter-channel diver-sity generally improves downstream performance. However, despite these modifi-cations, the underlying attention mechanism remains fully shared. Consequently, spatial and channel-wise interactions are entangled, limiting explicit control over how cross-channel information is incorporated. This unstructured token mixing dilutes channel-specific information within the encoder, thereby limiting the representation capability of MC-ViTs as MCI channels often encode distinct concepts. Yet, complete isolation is also undesir-able as certain channels benefit from complementary contextual signals provided by others [14, 19]. The objective is thus not to remove cross-channel interaction, but to regulate it. Motivated by this, we propose Decoupled Vision Transformer (DC-ViT), which explicitly regulates inter-channel interactions within the en-coder, while maintaining semantic diversity across channels in the learnt rep-resentations. DC-ViT is built upon two components, Decoupled Self-Attention (DSA) and Decoupled Aggregation (DAG), which together regulate inter-channel interaction during encoding and representation aggregation. DC-ViT 3
+
+To regulate inter-channel interactions, we introduce Decoupled Self-Attention (DSA), which factorises token updates into spatial and a channel-wise compo-nents. The spatial branch aggregates information across spatial locations within the same channel to reinforce channel-specific features, while the channel-wise branch adaptively integrates information across channels. This separation en-ables structured cross-channel interaction and reduces the complexity of fully joint attention. To further leverage channel-specific semantics in forming final representations, we propose Decoupled Aggregation (DAG), a hierarchical ag-gregation scheme that first produces channel-specific embeddings and then ag-gregates them to form the final representation. This design explicitly models channel contributions to downstream tasks, aligning the representation struc-ture with the heterogeneous nature of MCI datasets and their task formulations. Together, DC-ViT provides structured regulation of cross-channel informa-tion exchange, mitigating feature dilution while retaining beneficial context shar-ing. As shown in Fig. 1, across standard MCI benchmarks, DC-ViT consistently outperforms prior MC-ViT baselines. 
+
+## 2 Background and Related Work 
+
+Our work is motivated by the observation that channels in MCI datasets carry semantically distinct information which are not effectively encoded in existing MC-ViT architectures. Therefore, we first review evidence of channel hetero-geneity across MCI datasets, and then review existing MC-ViT architectures. 
+
+Channel Heterogeneity in MCI datasets. The semantic structure of channels in MCI datasets differs fundamentally from that of RGB images, where channels carry largely redundant information. For example, in immunofluores-cent (IF) microscopy, individual channels capture a specific aspect of cellular organisation or phenotype. Some channels mainly provide stable structural con-text, while others encode signals that vary with the biological condition of in-terest [19]. In the HPA dataset, the protein of interest is imaged together with reference markers for the Nucleus, Microtubules, and Endoplasmic Reticulum, which support the interpretation of protein localisation [23]. In JUMP-CP, DNA and ER channels largely convey positional information, whereas RNA, AGP, and Mitochondrial channels reflect morphology changes induced by perturba-tions [6, 10]. In WTC-11, the nucleus channel contains the primary biological signal, with membrane and protein channels providing additional context [24]. CM4AI-Bridge2AI adopts a similar staining scheme, combining target proteins with structural markers such as DAPI, anti-tubulin, and ER [9]. Similarly, semantic variation between channels is observed in satellite-based multi-channel imaging. In the So2Sat LCZ42 dataset, channels contain visible, near-infrared, and short-wave infrared bands, each encoding different physical properties of the Earth’s surface [27]. Some bands primarily capture stable ge-ometric or reflectance information, while others are more sensitive to surface materials or human activity. As in IF microscopy, these spectral channels are 4 U. Marikkar et al. 
+
+not interchangeable, and modelling approaches must account for their distinct roles. 
+
+Multi-Channel Vision Transformers. Vision encoders designed for multi-channel imaging (MCI) data have been explored across application domains including climate modelling [16, 20], cell microscopy [8, 12, 14], and satellite im-agery [27]. Recent work in this area largely falls under the class of multi-channel Vision Transformers (MC-ViTs), which extend standard Vision Transformers (ViTs) [13] to accommodate MCI data. Unlike vanilla ViTs, which embed spatial patches from all channels into a single token sequence, MC-ViTs tokenise spatial patches from each channel inde-pendently, producing channel-specific token embeddings with spatially aligned positional encodings. This design is first introduced in Climax [20], and later adopted for MCI benchmarks in ChAdaViT [3], which additionally incorporates learnable channel embeddings added to the token representations. Subsequent methods build on ChAdaViT by introducing different training strategies, such as hierarchical channel sampling in ChannelViT [2], diverse token regularisa-tion losses in DiChaViT [22], and masked image modelling [15] as an auxiliary objective in ChaMAEViT [21]. Despite these differences, existing MC-ViTs share a common encoding pro-tocol in which tokens from all channels are concatenated into a single long se-quence and processed jointly through self-attention. In contrast, we propose De-coupled Self-Attention, which explicitly separates channel-wise encoding from inter-channel interaction, with the aim of preserving channel-specific representa-tions while enabling efficient and controlled information sharing across channels. Furthermore, existing methods generate final representations via the cls token or by global attention pooling over all tokens, both of which fail to take into account the ‘channel importance’ of MCI datasets. We therefore propose Decou-pled Aggregation. 
+
+## 3 Methodology 
+
+This section presents the proposed Decoupled Vision Transformer (DC-ViT). We first describe the encoding protocol used in existing multi-channel Vision Transformers (MC-ViTs) in Sec. 3.1. We then introduce DC-ViT and detail its architectural components, including Decoupled Self-Attention and hierarchical pooling for multi-channel data Sec. 3.2. 
+
+3.1 Preliminaries: The MC-ViT encoding protocol 
+
+We describe the encoding protocol of existing MC-ViTs. Let an input MCI image be given as X ∈ RC×H×W , where C denotes the number of channels and H, W 
+
+are the spatial dimensions. Unlike traditional ViTs, MC-ViTs apply a shared patch embedding layer independently to each channel, resulting in an input feature representation of DC-ViT 5
+
+dimensions C × N × D, where N is the number of tokens per channel and D is the feature dimensionality. Auxiliary token embeddings (i.e.: channel and spatial positional embeddings) are added to this representation afterwards. Existing MC-ViTs flatten this representation along the channel dimension to yield the token representation x ∈ RCN ×D , where CN is the resulting sequence length. In practice, the overall sequence length is CN +Next , where Next denotes extra tokens (e.g., the cls token); for simplicity, we denote the MC-ViT sequence length as CN .We write the feature update of MC-ViTs as follows, and its schematic can be found in Fig. 3a. At encoder depth l, the next-layer representation is computed using a standard ViT update, 
+
+xl+1 = xl + MLP( xl + MSA( xl)) ∈ RCN ×D , (1) where MLP l is a two-layer feed-forward network with a GELU activation. MSA l(xl)
+
+denotes multi-head self-attention applied over the entire sequence as, 
+
+MSA l(xl) = WO (Attn( xl)) ∈ RCN ×D , (2) where WO is the output projection, and Attn is the computation of scaled dot-product attention, defined as, 
+
+Attn( xl) = Softmax 
+
+
+
+qlk⊤ 
+
+> l
+
+/√D
+
+
+
+vl, (3) where ql = WQ(xl), kl = WK (xl), and vl = WV (xl) are obtained from lin-ear projections. When applying Eq. (3) in MC-ViTs, the Softmax operation is computed along the full sequence dimension of length CN .Since attention is performed over the entire CN sequence, there is no ex-plicit constraint on token interactions: any token from any channel and spatial location may aggregate information from all other tokens. We find this to be a limitation of MC-ViTs, as unrestricted interactions can dilute channel-specific representations. However, completely avoiding inter-channel interactions is also undesirable, as certain channels provide contextual or reference information that aids the interpretation of others [19]. We observe this in preliminary experiments with independently encoded channels (see Tab. 4, M = {} ), where the absence of cross-channel interactions that yield diverse channel representations in fact leads to lower downstream performance. This indicates that while preserving channel-specific features is important, some level of inter-channel interaction remains necessary for MCI tasks, as channels often provide complementary information to one another. Therefore, to preserve feature diversity while enabling effective inter-channel interactions, we propose the Decoupled Vision Transformer (DC-ViT), which controls token interactions explicitly through its architectural design. We de-scribe DC-ViT in Sec. 3.2. 6 U. Marikkar et al.           
+
+> (a) (b) (c)
+> Fig. 3: (a) An MC-ViT layer. Self-attention is performed on a joint set of tokens from all channels. (b) A DC-ViT layer: Self-attention is performed across the set of tokens for a given channel, and across the set of tokens for a given spatial location. Channel attention (dashed path) is only performed when l∈ M , in which case αis a learnable scalar. If not, αis fixed to 0. (c) Decoupled Aggregation: Features are aggregated in a hierarchical setting; first spatially and then channel-wise. →: tensor reshaping operations.
+
+3.2 Decoupled Vision Transformer (DC-ViT) 
+
+Motivated by the observation that channels in MCI datasets encode semantically distinct information, while still being able to benefit from selective inter-channel information sharing, we introduce the Decoupled Vision Transformer (DC-ViT). DC-ViT is designed to preserve rich channel-specific representations while en-abling cross-channel interactions beneficial for downstream tasks. DC-ViT consists of two main components. Decoupled Self-Attention de-composes the N C -sequence self-attention into spatial ( N ) and channel-wise ( C)interactions, explicitly separating within-channel and cross-channel token inter-actions. Decoupled Aggregation aggregates features in a hierarchical manner, first within channels and then across channels, rather than from a unified pool of tokens. We describe Decoupled Self-Attention and Decoupled Aggregation in the following subsections. 
+
+Decoupled Self-Attention. Let us re-define the input set of patch embed-dings as x ∈ RC×N ×D where C denotes the number of channels, N is the number of tokens per channel, and D is the feature dimensionality. Unlike traditional MC-ViTs, the set of embeddings x is not flattened to a single channel-sequence dimension (i.e.: C × N → CN ). At depth l of an encoder of L layers, a DC-ViT block computes the out-put representation xl+1 from the input xl by decomposing self-attention into channel-wise and spatial components. Queries, keys, and values are obtained through shared linear projections and are used to compute attention indepen-dently across channels and across spatial locations. The resulting attention out-DC-ViT 7
+
+puts are combined using a learnable mixing weight αl, and the aggregated rep-resentation is then passed through shared output projections and an MLP, fol-lowing the standard ViT design. Channel attention is only applied at a subset of encoder layers M ⊆ L ,where L is the set of encoder layer indices, while spatial attention is applied at all layers. This introduces a channel interaction bottleneck in which the encoder first processes channels independently to capture low-level, channel-specific fea-tures, then undergoes selective inter-channel information exchange, and finally encodes channel-aware high-level features. This pattern, illustrated in Fig. 2, allows cross-channel dependencies to be learned without compromising channel-specific feature structure. Formally, given the representation xl at encoder depth l, a DC-ViT block computes the next-layer representation as, 
+
+xl+1 = xl + MLP( xl + DSA( xl)) ∈ RC×N ×D . (4) Here, DSA( xl) denotes Decoupled Self-Attention with selective channel interac-tion, and is defined as, 
+
+DSA( xl) = 
+
+
+
+WO (α · Attn ch (xl) + (1 − α) · Attn sp (xl)) , if l ∈ M ,WO (Attn sp (xl)) , if l / ∈ M ,
+
+(5) where WO is the output projection, and α is a learnable scalar for layer l ∈ M .When l / ∈ M , channel attention is omitted and the update reduces to a purely spatial attention operation. Unlike the MSA layer in Eq. (2), DSA explicitly sep-arates channel-wise and spatial token interactions, enabling selective modelling of cross-channel dependencies. Channel attention shares information across channels at a fixed spatial loca-tion and is only applied when l ∈ M . Attn ch is defined as, 
+
+Attn ch (xl) = Attn( xl,n )Nn=1 ∈ RC×N ×D , (6) where xl,n ∈ RC×D denotes the slice of xl at spatial index n. Similarly, spatial attention shares information across the N tokens of a given channel and is applied at all layers. Attn sp is defined as, 
+
+Attn sp (xl) = Attn( xl,c )Cc=1 ∈ RC×N ×D , (7) where xl,c ∈ RN ×D denotes the token sequence for channel c. In both cases, 
+
+Attn( ·) follows the standard scaled dot-product attention in Eq. (3). The schematic of a DC-ViT layer with selective Decoupled Self-Attention can be found in Fig. 3b. 
+
+Decoupled Aggregation. Existing MC-ViTs extract the final representation via the cls token or global attention pooling, viewing the set of data tokens as a single unified pool, regardless of the assigned channels. Given that via Decou-pled Self-Attention, individual channels may exhibit unique semantic concepts 8 U. Marikkar et al. 
+
+that may or may not be dependent on other channels, we implement Decoupled Aggregation (DAG). Here, a pooling operation is sequentially applied within-and-across channels, as opposed to pooling from a unified pool of features. We first define a pooling function, 
+
+g(·) : RN ×D 7 → RD , (8) which can be any function that reduces the output from a feature map to a single token representation. g(·) may be the extraction of latent tokens such as the cls 
+
+token, mean/max pooling, or an attention-based aggregation function [1, 5, 21]. Given the L’th layer representation of the encoder xL ∈ RC×N ×D , Decoupled Aggregation first performs spatial aggregation within each channel, followed by aggregation across channels. First, for each channel c, we apply a spatial pooling function gsp over the N tokens, 
+
+yspac,c = gsp (xL,c ), c = 1 , . . . , C.  (9) Stacking the resulting channel representations yields 
+
+yspac = [ yspac,c ]Cc=1 ∈ RC×D . (10) The final representation is then obtained by aggregating across channels using the channel pooling function gch ,
+
+z = gch (yspac ), z ∈ RD . (11) Together, DSA and DAG provide an encoding protocol that explicitly con-trols feature interactions across spatial and channel dimensions. This design allows DC-ViT to maintain channel-specific feature diversity while supporting effective inter-channel information exchange for downstream prediction. 
+
+## 4 Experiments 
+
+Datasets and Tasks. We conduct experiments on three standard bench-marks widely adopted in prior MC-ViT literature [17,21,22]: CHAMMI, JUMP-CP, and So2Sat. CHAMMI [8] is a microscopy benchmark that contains data from WTC-11 [24], HPA [25], and CP [4]. These sources provide images with varying channel counts (3, 4, and 5 fluorescent channels, respectively). The combined benchmark comprises approximately 220K images in total, including 100K training samples. CHAMMI defines nine downstream evaluation tasks, six of which are designed to assess out-of-distribution (OOD) generalisation. In line with existing MC-ViT works, we report the mean OOD performance on the WTC-11 and HPA subsets. The JUMP-CP dataset [7] contains multi-channel cellular images acquired under chemical perturbations, with each image consisting of 8 channels (5 fluo-rescent and 3 bright-field). The dataset is split into 127K training images, 45K validation images, and 45K test images. The downstream task is formulated as a DC-ViT 9
+
+multi-class classification problem with 161 categories, representing 160 distinct compound perturbations and one control condition. So2Sat [27] is a remote sensing benchmark constructed from satellite im-agery collected by Sentinel-1 and Sentinel-2, providing 8 radar channels and 10 multispectral channels, respectively. The dataset includes 352K training samples, along with 24K samples each for validation and testing. The task is posed as a 17-class classification problem, where each class corresponds to a specific land-cover or surface type, such as vegetation, paved regions, or buildings. For both JUMP-CP and So2Sat, we report results under the full channel count during inference, and partial channel counts during inference, following existing works. 
+
+Baseline comparisons. We evaluate DC-ViT under two settings: (i) the standalone performance of DC-ViT as an encoding protocol, and (ii) its gener-alisation to pre-trained encoders beyond training from scratch. For architecture comparison, we follow the standard evaluation protocol used in prior MC-ViT studies, where all models are fine-tuned from scratch. To iso-late the effect of the encoder architecture, all method-specific training strategies are kept fixed for a fair comparison. For each method, we replace the MC-ViT blocks (Fig. 3a, Eq. (1)) in the encoder backbone of each baseline with the DC-ViT blocks (Fig. 3b, Eq. (4)), and the pooling function with DAG (Fig. 3c, Eq. (11)). For supervised baselines, we compare against ChAdaViT [3], Chan-nelViT [2], and DiChaViT [22]. For hybrid self-supervised + supervised training, we compare with ChaMAEViT [21]. For ChaMAEViT, to isolate the effect of encoder architecture, we compare against its sampling configuration in which the same spatial locations are sampled across channels. This is due to DC-ViT oper-ating on a one-to-one correspondence between spatial locations across channels for inter-channel attention. We additionally evaluate the transfer learning performance of DC-ViT when initialised from pre-trained encoders and adapted to downstream MCI tasks. Experiments are conducted on microscopy datasets, where we pre-train two en-coders using iBOT [26] on HPAv23 [25] and JUMP-CP [6] single-channel single-cell images, respectively. During pre-training, the encoder learns independent representations for each channel. We perform single-channel pre-training as ex-isting studies show that this transfers effectively to MCI downstream tasks, particularly when the pre-training and fine-tuning channel configurations dif-fer [17, 18]. For fine-tuning, we adopt the same configuration as ChannelViT, using hierarchical channel sampling and latent channel tokens, while replacing the encoder blocks with DC-ViT. 
+
+Training and evaluation. Following existing work, we perform our exper-iments on ViT-S, with patch size 16 for CHAMMI and JUMP-CP, and patch size 8 for So2Sat. Closely following baselines, we set lr = 4 e−4 for JUMP-CP and So2Sat. For CHAMMI training, we set lr = 4 e−4 with ChaMAEViT and lr = 4 e−5
+
+for others. We set the effective batch sizes (over multi-GPU training) as 128 for JUMP-CP and So2Sat, and 64 for CHAMMI. The remaining hyper-parameters 10 U. Marikkar et al. 
+
+(e.g.: auxiliary loss weights, proxy temperatures) are identical to baselines. In all cases, linear lr scaling is applied where available GPU memory bandwidth is insufficient. 
+
+DC-ViT settings. For DSA, we set the channel-attention layer indices from Eq. (6) as M = {4, 6, 8} for all primary experiments, and the effect of different layer indices for M can be found in Tab. 4. We initialise the scalar channel-interaction weight to α = 0 .1 across all datasets. Although certain initialisations of α yield stronger metrics, we avoid tuning this parameter to prevent depen-dence on dataset-specific initialisation. Results for different α initialisations are reported in Tab. 5. For DAG, We set gsp to be an ABMIL aggregator, which dynamically assigns a scalar weighting for each feature [5]. Channel pooling func-tion gch is set as the max-pooling operator, over the channel ( C) dimension. We compare different choices for gsp and gch in Tab. 6. For additional results in Tab. 3, Tab. 4, Tab. 5, and Tab. 6, unless stated otherwise, we fix M = {4, 6, 8}, set α = 0 .1, use ABMIL for both gsp and gch .These values are the default configuration, except for the parameters explicitly varied for analysis. 
+
+## 5 Results 
+
+5.1 MCI benchmarks 
+
+We evaluate our method in two settings: (1) fine-tuning from scratch compared to existing MC-ViTs, and (2) fine-tuning from pre-trained checkpoints to assess the transfer learning capability of DC-ViT. 
+
+Architecture comparison. Tab. 1 reports downstream performance on MCI benchmarks compared to existing MC-ViTs. DC-ViT shows consistent improve-ments across nearly all metrics, including when self-supervision is used as an auxiliary objective (e.g., ChaMAEViT). However, we observe a degradation for ChAdaViT under partial-channel evaluation. Since ChAdaViT is trained without channel sampling, its performance already degrades when channels are missing. In our case, this effect is amplified because channel attention in DSA must com-pute the softmax over fewer channels than seen during training. Nevertheless, since channel sampling is employed in all succeeding methods, this issue is largely mitigated, and DC-ViT still achieves substantial improvements overall. 
+
+Generalisation to pre-trained models. Tab. 2 reports transfer learning performance on MCI benchmarks using different pre-trained encoder checkpoints under the ChannelViT training pipeline. DC-ViT consistently improves over vanilla ChannelViT under both pre-trained models, consistent with the gains observed when training from scratch. This indicates that DC-ViT transfers more effectively from pre-trained encoders than existing MC-ViTs. We attribute this to the fact that commonly used pre-trained models for MCI are largely channel-agnostic, as they are trained on single-channel inputs [17]. Introducing restricted DC-ViT 11 
+
+Table 1: Performance on MCI benchmarks w.r.t encoder architecture. All methods are trained from scratch. Method DC-ViT CHAMMI JUMP-CP So2Sat Avg. Full Partial Full Partial ChAdaViT ✗ 63.88 65.03 42.15 56.98 12.38                                       
+
+> ✓68.91 69.53 25.09 62.56 10.63 ChannelViT ✗64.90 67.51 56.49 61.03 46.16
+> ✓71.72 73.26 61.90 64.97 48.61 DiChaViT ✗69.68 69.19 57.98 63.36 47.76
+> ✓72.04 73.20 62.34 65.99 48.25 ChaMAEViT ✗73.13 85.23 66.85 65.14 50.01
+> ✓76.33 86.11 70.02 67.57 53.11
+
+Table 2: Transfer learning comparison on microscopy benchmarks. We adopt the ChannelViT training pipeline. DC-ViT CHAMMI JUMP-CP Avg. Full Partial Scratch ✗ 64.90 67.51 56.49 
+
+✓ 71.72 73.26 61.90 HPA ✗ 70.22 82.24 67.55 
+
+✓ 77.15 83.08 68.77 JUMP ✗ 70.01 75.84 62.95 
+
+✓ 73.29 78.72 65.20 
+
+Table 3: Ablation of DSA and DAG. Ab-sence of both components is equivalent to ChannelViT with attention pooling. Components CHAMMI JUMP-CP DSA DAG Avg. Full Partial                 
+
+> ✓✓71.72 73.26 61.90
+> ✓✗70.02 70.70 62.41
+> ✗✓63.46 67.03 56.42
+> ✗✗62.91 66.15 57.20
+
+inter-channel interactions during fine-tuning enables the model to incorporate cross-channel information while maintaining compatibility with the representa-tions learnt during single-channel pre-training. 
+
+5.2 Analysis 
+
+We analyse the contribution of each component and the sensitivity to its configu-ration. Specifically, we first examine the contribution of DSA and DAG through component ablation, and also discuss the computational efficiency of DC-ViT vs. the exisitng MC-ViT encoding protocol. We then study the sensitivity to the initialisation of α and the placement of inter-channel interaction blocks ( l ∈ M )within the encoder. Finally, we evaluate the generalisability to alternative pool-ing functions within the DAG hierarchical framework. 
+
+Contribution of DSA and DAG. We ablate the two main components of DC-ViT, Decoupled Self-Attention (DSA) and Decoupled Aggregation (DAG). 12 U. Marikkar et al. 1 2 3 4 5 6                     
+
+> C
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> GFLOPs
+> DSA (= {})
+> DSA (= {4, 6, 8})
+> DSA (=)
+> MSA
+> (a) 1246812 16
+> C
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Time (ms)
+> DSA (= {})
+> DSA (= {4, 6, 8})
+> DSA (=)
+> MSA (b)
+
+Fig. 4: (a) The calculated number of FLOPs for the attention computation (i.e.: query-key matrix multiplication, softmax calculation, and attention-value matrix multiplica-tion) for DSA in DC-ViT vs. traditional N C sequence MSA in MC-ViTs. We observe a linear increase in FLOPs for DSA vs. an exponential increase in FLOPs for MSA, per channel count. (b) Time taken for a single forward pass per sample of DC-ViT vs. MC-ViT encoder. For higher channel counts, DSA is much more efficient. 
+
+We first replace DSA with joint self-attention in MC-VITs. Under this set-ting, DAG is carried out by splitting feature tokens of individual channels (i.e.: 
+
+N C → N × C). Secondly, we keep DSA, but replace DAG with joint pooling of all features (i.e.: pooling directly from N C tokens) using the same pooling function. We finally ablate both components, which is equivalent to an MC-ViT (ChannelViT) with attention pooling as opposed to extracting the cls token. From Tab. 3, we observe that removing either DSA or DAG from the base-line configuration degrades downstream performance, with a larger drop ob-served when ablating DSA. When both components are removed, performance deteriorates substantially and is similar to ChannelViT, indicating that both components are necessary for strong performance. 
+
+Computational complexity. We evaluate computational complexity using two measures: (i) theoretical FLOPs of the attention component and (ii) runtime measured as the time for a single forward pass, across varying channel counts. We also consider different levels of inter-channel interaction: (1) M = {} , where attention operates only within channels; (2) M = {4, 6, 8}, where three layers contain inter-channel interactions; and (3) M = L, where all layers include inter-channel interactions. For FLOP computation, we consider only the query–key multiplication, soft-max, and attention–value multiplication, since projection layers and MLPs are identical between DSA and MSA. Fig. 4a shows the resulting FLOPs across channel counts. MSA scales quadratically with channels, whereas DSA increases near-linearly, following O(C2N 2) for MSA and O(CN 2 + N C 2) for DSA. With 
+
+C ≪ N , the N C 2 term becomes negligible. From Fig. 4b, DSA shows a small runtime overhead at low channel counts but remains stable as C increases, unlike MSA which grows rapidly. We find an additional overhead introduced with increasing |M| since layers with chan-DC-ViT 13 
+
+Table 4: Effect of channel attention layer in-dices M. {1} and {12} denote the first and fi-nal layers of the 12-layer encoder, respectively, and L = {1, . . . , 12 } denotes the set of all lay-ers. The top-3 values are highlighted. Layers ( M) CHAMMI JUMP-CP Avg. Full Partial                         
+
+> {}(none) 66.15 47.72 44.65
+> {1,2,3} 70.88 67.52 58.90
+> {1,3,5} 71.23 69.13 59.45
+> {5,6,7} 72.56 69.54 59.48
+> {4,6,8} 71.57 71.28 61.13
+> {8,10,12} 70.46 69.69 60.04
+> {10,11,12} 72.80 69.08 59.18
+> L(all) 69.49 71.36 60.92
+
+Table 5: Effect of α value.                            
+
+> αCHAMMI JUMP-CP So2Sat Avg. Full Partial Full Partial 0.00 72.09 71.80 61.23 65.16 48.46 0.10 71.57 71.28 61.13 65.76 48.41 0.25 71.46 72.52 61.37 65.10 49.05 0.50 69.27 71.64 61.45 65.51 49.14
+
+Table 6: Effect of pooling function.                       
+
+> gsp gch
+> CHAMMI JUMP-CP Avg. Full Partial
+> cls  mean 66.96 72.46 60.90
+> max 71.14 72.34 61.35
+> abmil 72.09 71.56 61.44
+> abmil  mean 65.43 73.01 61.52
+> max 71.72 73.26 61.90
+> abmil 71.57 71.28 61.13
+
+nel interaction call the attention kernel twice. As FlashAttention [11] is used by default, these calls are not parallelised and is therefore slow. We therefore im-plement channel-attention using the math kernel, though a small runtime buffer still remains. Nevertheless, for larger channel counts, DSA is significantly faster. 
+
+Choice of Channel Attention Layers M. Beyond the regularisation in-duced by restricting information flow in DC-ViT, selecting a subset of layers 
+
+M ⊆ L (where L denotes the full set of encoder layers) at which channel atten-tion is applied introduces an additional structural bottleneck. This bottleneck encourages earlier layers to build strong individual channel representations, and reduces computational cost, as shown in Fig. 4. To study the effect of channel attention placement, we evaluate multiple con-figurations by varying the location of M within the encoder while fixing |M| = 3 .Results are reported in Tab. 4, where we observe that applying channel attention in the early layers leads to reduced performance, while deferring it to later layers improves results. Performance also decreases when channel attention is applied only in the final layers. This is due to the pooling algorithm DAG favouring di-verse features as input, as enabling inter-channel interaction in the latter layers increases mutual information between channels. Hence, the best performance is obtained when inter-channel interactions are induced in the middle layers of the backbone (e.g., M = {4, 6, 8}). These results indicate that early layers benefit from independent low-level feature extraction. The information sharing in the intermediate layers generates channel-conditioned representations, where each channel is enhanced via auxil-iary information from other channels. Therefore, we restrict M to the middle 14 U. Marikkar et al. 
+
+layers to retain informative channel interactions while avoiding unnecessary com-putation elsewhere. 
+
+Initialisation of α. We study the effect of the initialisation of α in Tab. 5. On benchmarks such as CHAMMI, whose downstream tasks rely more heavily on standalone channels, lower initialisation values of α lead to better perfor-mance, suggesting that preserving independent channel representations is more beneficial than inducing inter-channel interactions. However, since α is learnable, it adapts during training according to the task. For instance, when initialised at 0.1 across all datasets, the final average values (over the set of M layers) converge to α = 0 .107 for CHAMMI, α = 0 .411 for JUMP-CP, and α = 0 .694 for So2Sat. The initialisation therefore acts mainly as a bias that steers α towards a preferred range and does not require strict dataset-specific tuning. Nevertheless, by initialising α closer to near-optimal val-ues per dataset, given that per-dataset parameter tuning is common practice in existing MC-ViT studies [21, 22], better performance can be achieved. 
+
+Dependence on pooling function. From Tab. 6, we observe that perfor-mance remains strong as long as channel importance is learned during the final aggregation stage, on datasets where channel importance is more relevant. This is evident when the mean operator is used as the channel aggregator for CHAMMI, where the metrics drop substantially. Using attention-based pooling instead of extracting the per-channel cls token yields slightly better results in some cases, but the improvement is not significant. Overall, the key remains adhering to the decoupled aggregation scheme. 
+
+## 6 Conclusion 
+
+In this work, we address the challenge of learning effective representations from MCI data, where heterogeneous channel configurations and distinct channel se-mantics make conventional fixed-channel encoders unsuitable. We introduce De-coupled Vision Transformer (DC-ViT), a framework that explicitly regulates cross-channel information exchange through Decoupled Self-Attention (DSA), and leverages learnt representations effectively for downstream tasks through De-coupled Aggregation (DAG). By separating spatial and channel-wise interactions during encoding and hierarchically aggregating channel representations, DC-ViT preserves channel-specific semantics while enabling beneficial contextual infor-mation sharing. Extensive experiments across multiple MCI benchmarks show that incorporating DC-ViT consistently improves the performance of existing MC-ViT architectures. These results indicate that explicitly structuring inter-channel interactions is critical for effectively modelling the heterogeneous and semantically diverse nature of MCI data. Overall, DC-ViT provides a simple yet effective architectural modification that better captures the inherent character-istics of multi-channel imaging datasets, leading to more robust and informative representations for downstream tasks. DC-ViT 15 
+
+## References 
+
+1. Assran, M., Bardes, A., Fan, D., Garrido, Q., Howes, R., Muckley, M., Rizvi, A., Roberts, C., Sinha, K., Zholus, A., et al.: V-jepa 2: Self-supervised video models enable understanding, prediction and planning. arXiv preprint arXiv:2506.09985 (2025) 8 2. Bao, Y., Sivanandan, S., Karaletsos, T.: Channel vision transformers: An image is worth 1 x 16 x 16 words. In: The Twelfth International Conference on Learning Representations (2024) 2, 4, 9, 17 3. Bourriez, N., Bendidi, I., Cohen, E., Watkinson, G., Sanchez, M., Bollot, G., Gen-ovesio, A.: Chada-vit: Channel adaptive attention for joint representation learning of heterogeneous microscopy images. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 11556–11565 (2024) 2, 4, 9, 17 4. Bray, M.A., Singh, S., Han, H., Davis, C.T., Borgeson, B., Hartland, C., Kost-Alimova, M., Gustafsdottir, S.M., Gibson, C.C., Carpenter, A.E.: Cell painting, a high-content image-based assay for morphological profiling using multiplexed fluorescent dyes. Nature protocols 11 (9), 1757–1774 (2016) 8 5. Carbonneau, M.A., Cheplygina, V., Granger, E., Gagnon, G.: Multiple instance learning: A survey of problem characteristics and applications. Pattern recognition 
+
+77 , 329–353 (2018) 8, 10 6. Chandrasekaran, S.N., Ackerman, J., Alix, E., Ando, D.M., Arevalo, J., Bennion, M., Boisseau, N., Borowa, A., Boyd, J.D., Brino, L., et al.: Jump cell paint-ing dataset: morphological impact of 136,000 chemical and genetic perturbations. BioRxiv pp. 2023–03 (2023) 1, 3, 9 7. Chandrasekaran, S.N., Cimini, B.A., Goodale, A., Miller, L., Kost-Alimova, M., Jamali, N., Doench, J.G., Fritchman, B., Skepner, A., Melanson, M., et al.: Three million images and morphological profiles of cells treated with matched chemical and genetic perturbations. Nature Methods 21 (6), 1114–1121 (2024) 8 8. Chen, Z.S., Pham, C., Wang, S., Doron, M., Moshkov, N., Plummer, B., Caicedo, J.C.: Chammi: A benchmark for channel-adaptive models in microscopy imaging. Advances in Neural Information Processing Systems 36 , 19700–19713 (2023) 4, 8 9. Clark, T., Mohan, J., Schaffer, L., Obernier, K., Al Manir, S., Churas, C.P., Dail-amy, A., Doctor, Y., Forget, A., Hansen, J.N., et al.: Cell maps for artificial intel-ligence: Ai-ready maps of human cell architecture from disease-relevant cell lines. bioRxiv (2024) 3 10. von Coburg, E., Wedler, M., Muino, J.M., Wolff, C., Körber, N., Dunst, S., Liu, S.: Cell painting plus: expanding the multiplexing capacity of cell painting-based phe-notypic profiling using iterative staining-elution cycles. Nature Communications 
+
+16 (1), 3857 (2025) 3 11. Dao, T., Fu, D., Ermon, S., Rudra, A., Ré, C.: Flashattention: Fast and memory-efficient exact attention with io-awareness. Advances in neural information pro-cessing systems 35 , 16344–16359 (2022) 13 12. Doron, M., Moutakanni, T., Chen, Z.S., Moshkov, N., Caron, M., Touvron, H., Bojanowski, P., Pernice, W.M., Caicedo, J.C.: Unbiased single-cell morphology with self-supervised vision transformers. bioRxiv (2023) 4 13. Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., Dehghani, M., Minderer, M., Heigold, G., Gelly, S., Uszkoreit, J., Houlsby, N.: An image is worth 16x16 words: Transformers for image recognition at scale. In: International Conference on Learning Representations (2021) 2, 4 16 U. Marikkar et al. 14. Gupta, A., Wefers, Z., Kahnert, K., Hansen, J.N., Leineweber, W., Cesnik, A., Lu, D., Axelsson, U., Ballllosera Navarro, F., Karaletsos, T., et al.: Subcell: Vision foundation models for microscopy capture single-cell biology. bioRxiv pp. 2024–12 (2024) 2, 4 15. He, K., Chen, X., Xie, S., Li, Y., Dollár, P., Girshick, R.: Masked autoencoders are scalable vision learners. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 16000–16009 (2022) 4 16. Herruzo, P., Gruca, A., Lliso, L., Calbet, X., Rípodas, P., Hochreiter, S., Kopp, M., Kreil, D.P.: High-resolution multi-channel weather forecasting – first insights on transfer learning from the weather4cast competitions 2021. In: 2021 IEEE In-ternational Conference on Big Data (Big Data). pp. 5750–5757 (2021) 4 17. Lian, W., Lindblad, J., Micke, P., Sladoje, N.: Isolated channel vision transform-ers: From single-channel pretraining to multi-channel finetuning. arXiv preprint arXiv:2503.09826 (2025) 2, 8, 9, 10 18. Lorenci, A.V.D., Yi, S.E., Moutakanni, T., Bojanowski, P., camille couprie, Caicedo, J.C., Pernice, W.M.A.: Scaling channel-invariant self-supervised learn-ing (2025) 9 19. Marikkar, U., Husain, S.S., Awais, M., Atito, S.: C3r: Channel conditioned cell representations for unified evaluation in microscopy imaging. arXiv preprint arXiv:2505.18745 (2025) 2, 3, 5 20. Nguyen, T., Brandstetter, J., Kapoor, A., Gupta, J.K., Grover, A.: Climax: A foundation model for weather and climate. arXiv preprint arXiv:2301.10343 (2023) 421. Pham, C., Caicedo, J.C., Plummer, B.A.: Cha-maevit: Unifying channel-aware masked autoencoders and multi-channel vision transformers for improved cross-channel learning. In: Advances in Neural Information Processing Systems (NeurIPS) (2025) 4, 8, 9, 14, 17, 19 22. Pham, C., Plummer, B.: Enhancing feature diversity boosts channel-adaptive vi-sion transformers. Advances in Neural Information Processing Systems 37 , 89782– 89805 (2024) 2, 4, 8, 9, 14, 17 23. Thul, P.J., Åkesson, L., Wiking, M., Mahdessian, D., Geladaki, A., Ait Blal, H., Alm, T., Asplund, A., Björk, L., Breckels, L.M., et al.: A subcellular map of the human proteome. Science 356 (6340), eaal3321 (2017) 1, 3 24. Viana, M.P., Chen, J., Knijnenburg, T.A., Vasan, R., Yan, C., Arakaki, J.E., Bailey, M., Berry, B., Borensztejn, A., Brown, E.M., et al.: Integrated intracellular orga-nization and its variations in human ips cells. Nature 613 (7943), 345–354 (2023) 1, 3, 8 25. Winsnes, C., Lundberg, E., Maggie, Culliton, P., Le, T., UAxelsson, Ouyang, W.: Human protein atlas - single cell classification. https://kaggle.com/competitions/ hpa-single-cell-image-classification (2021), kaggle 8, 9 26. Zhou, J., Wei, C., Wang, H., Shen, W., Xie, C., Yuille, A., Kong, T.: ibot: Image bert pre-training with online tokenizer. arXiv preprint arXiv:2111.07832 (2021) 9 27. Zhu, X.X., Hu, J., Qiu, C., Shi, Y., Kang, J., Mou, L., Bagheri, H., Häberle, M., Hua, Y., Huang, R., Hughes, L., Li, H., Sun, Y., Zhang, G., Han, S., Schmitt, M., Wang, Y.: So2sat lcz42: A benchmark dataset for global local climate zones classification (2019), https://arxiv.org/abs/1912.12171 1, 3, 4, 9 DC-ViT 17 
+
+## Appendices 
+
+Overview 
+
+In this appendix, we first provide the required implementation details needed to reproduce our work. We also provide access to the model and training code within the supplementary material. We then provide additional results which supplement the original results in the main paper. 
+
+## A Further implementation details 
+
+A.1 Hyperparameter settings 
+
+We use the reported values in existing work for all baseline comparisons [21,22]. For training, except for the learning rate, we faithfully follow the recommended hyper-parameter settings in existing works [21, 22]. This means, whenever DC-ViT is applied to an existing method, the hyper-parameters of that training setting remain the same as the comparative study, with learning rate adjustments made to validation sets. However, unlike previous works, we perform training with automatic mixed-precision set to FP16 to reduce training time. For comparisons against fully supervised baselines (ChAdaViT [3], Chan-nelViT [2], DiChaViT [22]), we train the models for 60 epochs on CHAMMI, and 100 epochs on JUMP-CP and So2Sat. For CHAMMI training and evalua-tion, we use the DiChaViT codebase 1, and for JUMP-CP and So2Sat, we use the ChaMAEViT codebase 2 with the settings [mae_loss=0, cross_entropy_loss=1, decoder=None, depth=12, training_sample=None (ChaAdaViT), hcs (Chan-nelViT), dcs (DiChaViT)]. For comparisons against the supervised + self-supervised hybrid ChaMAE-ViT [21], we train all models for 100 epochs, and use their codebase for training. However, instead of dynamic patch masking, we perform shared per-channel patch masking where the masking indices are shared throughout the set of sam-pled channels. The learnable scalar weighting α is initialised as an nn.Parameter per layer 
+
+l where l ∈ M . For CHAMMI, as training data consists of 3 datasets and these datasets may benefit from different degrees of inter-channel information sharing, we set 3 scalar parameters per layer. We find that this leads to marginally better metrics on CHAMMI evaluation, but a single parameter per layer is sufficient as it still outperforms baselines. Further, a single parameter is simpler to implement as it is dataset agnostic. 
+
+A.2 DSA pseudo-code 
+
+The Decoupled Self-Attention (DSA) in Listing 1.1, computes attention indepen-dently across two spaces using shared query, key, and value projections. Spatial   
+
+> 1https://github.com/chaudatascience/diverse_channel_vit
+> 2https://github.com/chaudatascience/cha_mae_vit
+
+18 U. Marikkar et al. 
+
+attention is applied by rearranging the input to treat each channel independently, computing token-to-token interactions across the N patch tokens per channel. For layers l ∈ M , channel attention is additionally computed by rearranging the input to treat each token independently, capturing channel-to-channel inter-actions across C channels. The outputs of the two attention computations are then combined via a learnable scalar α, and added residually to the input. For all other layers where l / ∈ M , only spatial attention is applied. 
+
+Listing 1.1: Pytorch pseudo-code for Decoupled Self-Attention (DSA). F.sdpa denotes the scaled dot-product attention function in pytorch. Heads are omitted for simplicity.                 
+
+> class DSA(nn.Module):
+> def __init__(self, dim, channel_attn=True, chan_alpha=0.0): self.w_q = nn.Linear(dim, dim) self.w_k = nn.Linear(dim, dim) self.w_v = nn.Linear(dim, dim) self.w_o = nn.Linear(dim, dim)
+> if channel_attn: # l in M self.alpha = nn.Parameter(torch.tensor(chan_alpha))
+> def forward(self, x): # x: Tensor[B, C, N, D] Q, K, V = self.w_q(x), self.w_k(x), self.w_v(x)
+> with sdpa_kernel(FlashAttention): A_sp = F.sdpa(rearrange(Q,K,V,‘b c n d -> (b c) n d’)) A_sp = rearrange(A_sp, ‘(b c) n d -> b c n d’)
+> if channel_attn: # l in M
+> with sdpa_kernel(Math): # channel A_ch = F.sdpa(rearrange(Q,K,V,‘b c n d -> (b n) c d’)) A_ch = rearrange(A_ch, ‘(b n) c d -> b c n d’) A = self.alpha * A_ch + (1 - self.alpha) * A_sp
+> else :A = A_sp
+> return x + self.w_o(A)
+
+## B Additional results 
+
+B.1 Comparison vs. ChaMAEViT under random patch sampling 
+
+Tab. 7 shows the comparison vs. ChaMAEViT with dynamic patch sampling, where a random independent set of patches are sampled per channel. We observe that while random patch sampling performs better than shared patch sampling for ChaMAEViT without DC-ViT, using DC-ViT with shared patch sampling outperforms the best ChaMAEViT setting on 4/5 metrics. However, this brings us to a limitation of DC-ViT where inter-channel interactions require a 1-1 cor-respondence between tokens of individual channels, making random sampling unfeasible with DC-ViT. We aim to address this via methods such as nearest-neighbour or optimal transport alignment to build patch correspondences for inter-channel interactions in future work. DC-ViT 19 
+
+Table 7: Comparison between ChaMAEViT random and shared patch sampling. DC-ViT Sampling CHAMMI JUMP-CP So2Sat Avg. Full Partial Full Partial 
+
+✗ Shared 73.13 85.23 66.85 65.14 50.01 Random 74.63 90.73 68.05 67.44 52.11 
+
+✓ Shared 76.33 86.11 70.02 67.57 53.11 
+
+B.2 Full results on CHAMMI 
+
+Tab. 8 reports the per-task F1 scores on the CHAMMI benchmark. DC-ViT consistently improves performance across most tasks and methods, with gains observed in the majority of WTC, HPA, and CP dataset tasks, demonstrating the effectiveness of the DC-ViT backbone as a drop-in improvement over standard MC-ViT architectures. 
+
+Table 8: F1 Scores of MC-ViT models vs. DC-ViT on CHAMMI benchmark. “OOD” refers to out-of-distribution tasks. Baseline values are obtained from ChaMAEViT [21]. Method DC-ViT Average OOD WTC HPA CP Mean WTC HPA CP Task1 Task2 Task1 Task2 Task3 Task1 Task2 Task3 Task4 ChAda- ✗ 50.82 67.18 60.67 24.60 77.58 67.18 87.49 75.94 45.41 83.92 45.58 21.94 6.28 -ViT ✓ 56.05 72.06 67.76 28.32 78.01 72.06 93.54 88.42 47.09 86.09 56.22 22.61 6.14 Channel- ✗ 52.54 67.58 62.35 27.81 78.36 67.58 83.93 76.73 47.97 77.70 55.16 21.89 6.38 -ViT ✓ 56.93 73.04 70.40 27.35 82.00 73.04 92.01 87.92 52.87 85.95 54.31 22.28 5.45 DiCha- ✗ 55.36 75.18 64.36 26.53 80.87 75.18 88.08 79.26 49.45 84.08 53.03 20.95 5.60 -ViT ✓ 56.82 75.47 68.60 26.39 80.06 75.47 90.73 87.31 49.90 81.15 52.06 21.56 5.54 ChAMAE- ✗ 58.02 77.15 72.11 24.81 84.52 77.15 94.14 87.47 56.75 90.89 56.68 10.25 7.50 -ViT ✓ 58.54 80.38 72.37 22.87 86.29 80.38 96.25 92.46 52.28 95.38 47.65 10.10 10.86

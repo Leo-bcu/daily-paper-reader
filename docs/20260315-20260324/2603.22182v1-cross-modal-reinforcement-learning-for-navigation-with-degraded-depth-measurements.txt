@@ -1,0 +1,256 @@
+Title: Cross-Modal Reinforcement Learning for Navigation with Degraded Depth Measurements
+
+URL Source: https://arxiv.org/pdf/2603.22182v1
+
+Published Time: Tue, 24 Mar 2026 02:39:48 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Cross-Modal Reinforcement Learning for Navigation with Degraded Depth Measurements 
+
+Omkar Sawant ∗, Luca Zanatta, Grzegorz Malczyk, and Kostas Alexis 
+
+Abstract — This paper presents a cross-modal learning frame-work that exploits complementary information from depth and grayscale images for robust navigation. We introduce a Cross-Modal Wasserstein Autoencoder that learns shared latent representations by enforcing cross-modal consistency, enabling the system to infer depth-relevant features from grayscale observations when depth measurements are corrupted. The learned representations are integrated with a Reinforcement Learning-based policy for collision-free navigation in unstruc-tured environments when depth sensors experience degradation due to adverse conditions such as poor lighting or reflective surfaces. Simulation and real-world experiments demonstrate that our approach maintains robust performance under sig-nificant depth degradation and successfully transfers to real environments. 
+
+Index Terms — Autonomous Systems: UAV’s, Control Appli-cations: Robotics 
+
+I. INTRODUCTION Autonomous navigation in unstructured environments re-mains a fundamental challenge in robotics, particularly when robots must operate under degraded or incomplete sensory information. Aerial robots deployed in GPS-denied settings, such as subterranean tunnels or disaster zones, face severe limitations in depth sensing due to poor lighting condi-tions, reflective surfaces, or sensor failures [1], [2]. These challenges render traditional map-based navigation pipelines unreliable, as they depend critically on consistent and ac-curate depth measurements for obstacle detection and path planning. Classical approaches to autonomous navigation typically decouple perception, planning, and control into separate modules [3]. While this modularity offers certain advantages, it also introduces fragility: failures in any single module can cascade through the system, leading to unsafe behavior. The reliance on explicit map representations fur-ther compounds this vulnerability, as map quality directly depends on sensor reliability [4]. Recent advances in learning-based navigation have demon-strated the potential of end-to-end policies that directly map sensory observations to control commands without requir-ing explicit maps [5]–[7]. These approaches offer an extra layer of robustness by learning implicit representations of navigable space. However, when depth information becomes unavailable or corrupted, these systems have no fallback strategy, severely limiting their applicability in real-world scenarios where sensor failures are common [8].  
+
+> This work was supported by Horizon Europe under Grant EC 101120732 and the Research Council of Norway under Award NO-338694. The authors are with the Department of Engineering Cybernetics, Norwegian University of Science and Technology (NTNU), Norway.
+> ∗Corresponding author. Email:
+
+omkar.sawant@ntnu.no Action commands Grayscale image Depth image 
+
+> Invalid pixels
+> Third Person View
+
+Fig. 1: Real-world navigation under depth sensor degradation with preserved grayscale image. To address this gap, we propose a cross-modal learning framework that exploits complementary information from multiple sensor modalities. Our key insight is that even when depth measurements degrade, other modalities, particularly RGB or grayscale images, often remain informative and can provide critical cues for navigation. For example, this is often the case when it comes to interacting with low-texture or reflective surfaces, as shown in Figure 1. By learning joint representations that capture cross-modal correspondences, a navigation policy can maintain robust performance even when individual sensors fail. The main contributions of this work are as follows. First, we introduce a novel Cross-Modal Wasserstein Au-toencoder (CMWAE). Our approach explicitly learns cross-modal correspondences between grayscale and depth modal-ities by encoding them into a shared latent space, enabling the system to compensate for degraded depth information through grayscale images. Even for a robot equipped with an RGB-D sensor, the RGB input is converted to grayscale to preserve informative visual cues under depth degradation while reducing computational complexity. A cross-modal training strategy is employed such that the encoder learns to extrapolate depth from features in grayscale, while a Wasserstein distance objective is used to improve gener-alization and consistency of the latent space. Second, by integrating this cross-modal latent representation with the current robot state, we train a Reinforcement Learning (RL)-based navigation policy using Proximal Policy Optimization (PPO) that keeps robustness despite spatial gaps or corrup-tion in depth measurements and allows the agent to navigate safely. We demonstrate the method’s performance through 
+
+> arXiv:2603.22182v1 [cs.RO] 23 Mar 2026
+
+both simulation studies and experimental deployment on a flying robot. The remainder of this paper is organized as follows. Section II outlines related work, followed by the problem formulation in Section III. The proposed approach is pre-sented in Section IV. Results are detailed in Section V, before conclusions are drawn in Section VI. II. RELATED WORK Learning-based approaches that integrate perception and control have become increasingly central to autonomous navigation in complex environments. End-to-end learning approaches have emerged as alternatives to classical navi-gation pipelines by directly mapping sensory observations to control commands. DroNet [5] pioneered this direction by employing a lightweight residual CNN to predict steering angles and collision probabilities from monocular images, enabling real-time flight on resource-constrained platforms. Building on this, [9] demonstrated that collision avoidance policies could be learned through direct interaction with the environment by collecting monocular images from crashes. To address generalization across diverse scenarios, RL-based approaches have shown promise in learning robust navigation policies. For instance, [10] combined visual representation learning with RL to achieve agile flight behaviors beyond traditional control approaches. Similarly, [6] proposed amodular framework using Variational Autoencoder (VAE) to compress depth observations into collision-relevant latent features for RL-based navigation. More recently, privileged learning frameworks [11], where the critic receives noise-free perception during training, have been proposed to improve robustness at inference time. Despite these advances, these methods still process single modalities and do not explicitly model cross-modal relationships to compensate for sensor degradation. The limitations of single-modality approaches have mo-tivated extensive exploration of multi-modal sensing in robotics [12], [13]. Classical approaches typically employ sensor fusion techniques, such as Kalman filtering, or prob-abilistic frameworks that combine measurements from multi-ple sensors [14]. More recently, learning-based methods have begun exploring neural architectures for fusing visual, depth, and inertial data [15]. However, sensor degradation remains a critical challenge for autonomous systems operating in real-world environments [8], [16]. Existing approaches ad-dress robustness primarily through data augmentation during training [17] or uncertainty quantification [18], but these strategies offer limited protection when sensors fail unexpect-edly. Cross-modal learning offers a promising approach by exploiting relationships across sensory modalities to enhance perception. In computer vision, this paradigm has led to methods for RGB-to-depth prediction [19], depth completion [20], and cross-modal representation learning [21]. These approaches often align complementary information across modalities to enhance vision-based tasks [22]–[24]. Wasser-stein autoencoders [25] are known to yield higher quality and more stable latent representations than variational au-toencoders, owing to their optimal-transport–based objective. However, despite these advantages, their use in robotics and navigation settings remains limited, with most applications focusing on computer-vision tasks [26], [27]. Despite these advances in computer vision, cross-modal learning has re-ceived limited attention in robotic navigation, particularly for handling sensor degradation. Our work bridges this gap by integrating CMWAE with RL to achieve navigation robust-ness under degraded depth sensing, enabling policies that can compensate for depth sensor failures through alternative visual modalities. III. PROBLEM FORMULATION This work addresses the problem of autonomous collision-avoidant navigation in unknown environments with degraded depth measurements. The robot is equipped with onboard sensors providing depth and grayscale images, along with state estimates. We denote the inertial frame as I, the flying robot body frame as B, and the vehicle frame V. The vehicle frame is yaw-aligned with the body-fixed frame B and has its x − y plane parallel to the inertial frame I. At time t, the robot receives a depth image Id,t and grayscale image Ig,t ,and has access to its state st = [ pt, vt, qt, ωt], where pt =[px,t , p y,t , p z,t ]⊤ is the position in I, vt = [ vx,t , v y,t , v z,t ]⊤
+
+is the linear velocity in I, qt is the attitude quaternion repre-senting the rotation from I to B, and ωt = [ ωx,t , ω y,t , ω z,t ]⊤
+
+is the angular velocity in B. Given a 3D goal position 
+
+pgoal expressed in I, current state st, and sensor input pair 
+
+(Id,t , Ig,t ), the objective is to compute a control policy that generates velocity command ut = [vx,t , v y,t , v z,t , ω z,t ]⊤,consisting of forward and vertical linear velocities and yaw rate, all expressed in B, such that the robot navigates to pgoal 
+
+while avoiding collisions with obstacles in the environment and the grayscale image compensates for regions where depth measurements are degraded or unavailable. IV. METHODOLOGY Our framework consists of two main components: (i) a CMWAE for cross-modal feature extraction and (ii) a RL navigation policy. The CMWAE encodes depth and grayscale images into a unified latent space that captures complementary information from both modalities, enabling the policy to maintain performance when depth measure-ments are degraded. We describe each component and its integration in the following subsections. We formulate the collision-free navigation as a reinforcement learning task. The state space S is defined as the set of all possible agent and environment states with st ∈ S at discrete time t, the action space A with at ∈ A , and the observation space is 
+
+O with each agent-received observation denoted as ot ∈ O .Finally, rt = R(st, at, st+1 ) where R is the reward function while rt is the reward collected by the agent at the time t.
+
+A. Cross-Modal Wasserstein Autoencoder 
+
+At the core of the proposed navigation framework is a CMWAE (shown in Figure 2), which learns a shared Ig,t  (224 x 224)    
+
+> c = 256
+> k = 12 x 12
+> c = 128
+> k = 24 x 24
+> c = 64
+> k = 48 x 48
+> c = 1
+> k = 96 x 96 FC(9216)
+> c : Number of
+> channels
+> k : Kernel size
+> AlexNet
+> AlexNet
+> FC(64)
+> FC(64)
+> FC(64)
+> Id,t (224 x 224)
+> Eg
+> Ed
+> EsDd
+> Ip,t (224 x 224)
+> Encoder
+> Decoder
+> Invalid pixels
+
+Fig. 2: Architecture of the Cross-Modal Weighted Autoencoder for joint depth–grayscale representation learning. low-dimensional latent representation from paired grayscale and depth images. This latent space captures geometric and structural information essential for robust and collision-free navigation. The model takes as input synchronized grayscale and depth images, two inherently correlated yet comple-mentary modalities: intensity images convey appearance and texture, while depth maps encode scene geometry. The CMWAE employs separate encoder branches, Eg and Ed, for the grayscale and depth inputs, respectively. These encoders extract low-dimensional embeddings that are passed through a shared projection network Es. It consists of individual Fully Connected (FC) layers for each embedding and then a shared FC layer which produces the fused latent vector 
+
+z ∈ RLdim , where Ldim is the size of the latent vector. This shared latent space is passed to decoder Dd to reconstruct the depth modality, ensuring that the latent representation retains sufficient geometric information. Both encoder branches Eg
+
+and Ed adopt the AlexNet convolutional architecture [28], chosen for its proven effectiveness in visual feature extrac-tion and its computational efficiency. Following the original AlexNet preprocessing protocol, grayscale and depth images are resized to 224 × 224 before being fed to the encoders. The decoder Dd first maps this latent vector z to a tensor of size 256 × 6 × 6 using a FC layer, followed by four convolutional layers to reconstruct the depth image. The CMWAE is trained on indoor trajectories from the TartanAir dataset [29]. We picked the TartanAir dataset due to its syn-chronized RGB–depth image pairs, and we then process the RGB image to obtain a grayscale image to form our dataset. Training minimizes a combination of reconstruction loss and latent regularization. The reconstruction loss, Lrec , is defined as the expected squared error between the reconstructed and original depth image: 
+
+Lrec = Ez∼E(Id,Ig )∥Dd(z) − Id∥2, (1) where E denotes the complete encoder composed of Ed,
+
+Eg , and Es (green block in Figure 2). Reconstruction is applied only to the depth modality, encouraging the network to implicitly extract geometric information from grayscale features. To ensure a consistent latent representation, the latent space is regularized using the Wasserstein distance be-tween the aggregated posterior of the encoder outputs and a unit Gaussian prior, following the Wasserstein Autoen-coder (WAE) formulation with Maximum Mean Discrep-ancy (MMD) [25]. This regularization enforces distributional alignment across modalities and improves generalization compared to conventional VAE-based schemes. The latent regularization loss is: 
+
+LMMD = MMD (p(z), N (0 , I )) (2) The total loss combines both terms: 
+
+LCMWAE = Lrec + λLMMD , (3) where λ > 0 controls the contribution of latent regularization and I is the identity matrix of size Ldim × Ldim .We deliberately corrupt the depth inputs during training by introducing randomly positioned invalid patches to enhance robustness to depth sensor failures. We applied two differ-ent corruption schemes to the depth images in the dataset and trained the same network architecture separately under each corruption scheme. That is, one instance of the en-coder–decoder model was trained exclusively on corruption scheme 1, and a second instance was trained exclusively on corruption scheme 2. This allows us to assess how each corruption scheme shapes the learned representations. 
+
+a) Corruption scheme 1 ( S1): Square patches cover between 25% and 50% of each image. Patch side lengths are sampled from a discrete uniform distribution U(50 , 100) 
+
+pixels and applied successively on the processed input to the network, until the target corruption coverage is reached. To ensure that the CMWAE remains effective under varying corruption levels, corruption is distributed across the dataset as follows: 5% of images are corrupted at 25% , 10% at 30% ,
+
+15% at 35% , 20% at 40% , 20% at 45% , and the remaining 
+
+30% at 50% . This distribution places a greater proportion of samples at higher corruption levels, providing more exposure to severe degradation during training. 
+
+b) Corruption scheme 2 ( S2): Square patches with side length 100 pixels cover 20% -50% of each corrupted depth image, with corruption levels uniformly sampled. Half the dataset is corrupted while the other half remains pristine for both modalities. These corruption schemes ensure that even when depth information is partially missing, reconstruction from the latent space remains reliable, likely by indirectly inferring depth values from the corresponding grayscale input within corrupted regions. Unlike approaches that enforce full cross-modality reconstruction [30], we apply cross-modal learning locally within the corrupted patches. 
+
+B. Navigation Policy Learning 
+
+The navigation problem is formulated as a RL task, where the underlying state st ∈ S consists of the complete robot and target poses as well as the full environment status. Since the true state cannot be directly observed, the agent receives an observation ot ∈ O at each timestep: 
+
+ot = {nt, nt, ϕ t, θ t, vt, ωt, zt, at−1} (4) where nt ∈ R3 is the unit direction vector pointing toward the target location expressed in vehicle frame V, and nt ∈ R
+
+denotes the distance to the target. The observation includes the robot’s pitch ϕt and roll θt angles expressed in V. The linear velocity vt ∈ R3 and angular velocity ωt ∈ R3
+
+are expressed in the body-fixed frame B. Visual information from grayscale and depth images is compressed into a latent embedding zt using the CMWAE, which is concatenated with the previous action at−1 ∈ R3 and states st of the robot, to form the complete observation vector. The policy outputs actions for the aerial robot’s motion, 
+
+at = [ a1,t , a 2,t , a 3,t ], which are parameterized to represent the (i) speed, (ii) inclination of the commanded velocity with the x-axis of the robot and (iii) yaw rate. Finally, these actions are converted to velocity and yaw rate command as: 
+
+vx,t = a1,t cos a2,t , vy,t = 0 .0,vz,t = a1,t sin a2,t , ωz,t = a3,t ,
+
+giving the velocity command ut, which is executed by the robot’s low-level velocity controller. The parameterization of the controller commands is chosen to ensure that the commanded velocity vector lies within the Field-of-View (FOV) of the depth sensors and prevents a sideways collision with the environment. 
+
+a) Reward Function: For each state transition, the agent is rewarded for progressing toward the goal and penalized for taking inefficient actions or collisions. Based on [6], the reward function takes the form of: 
+
+R(st, at) = 
+
+> 4
+
+X
+
+> i=1
+
+λiri +
+
+> 2
+
+X
+
+> j=1
+
+ηj pj + pcrash , (5) where ri represents positive rewards, pj penalties, defined as: 
+
+r1 = r(∥nt∥2, ν 1), r2 = r(∥nt∥2, ν 2),r3 = |ν3 − ∥ nt∥2|
+
+ν3
+
+, r4 = ν4
+
+ ∥nt∥2 − ∥ nt−1∥2
+
+,p1 = X
+
+> k
+
+ν5,k 
+
+ r(at)k , ν 6,k ) − 1,p2 = X
+
+> k
+
+ν7,k 
+
+ r(( at)k − (at−1)k , ν 8,k ) − 1,pcrash = −ν9,
+
+where k is the action the function r(x, ν ) is defined as 
+
+r(x, ν ) = e− x2 
+
+> ν
+
+. (6) GRU  
+
+> Policy network
+> CMWAE
+> Concatenation
+> FC(256)
+> FC(128)
+> FC(64) FC(3)
+> Invalid pixels
+
+Fig. 3: Depth and grayscale images are encoded into a shared latent space via the CMWAE. Later, the cross-modal repre-sentation is combined with state information and processed by the RL policy, which outputs the velocity actions for a quadrotor platform. The parameters λi, η j > 0 and νi, ν m,k > 0 are tuning coefficients. Scalars ν1 . . . ν 4 and ν9 control distance- and penalty-related terms, while ν5 . . . ν 8 are parameters for action regularization and smoothing. 
+
+b) Network Architecture: We employ the PPO algo-rithm from [31] to train a deep neural network policy that guides the robot toward the goal location in a collision-free manner. The policy network consists of three FC layers of size 256 , 128 , and 64 neurons each, with an ELU activation layer, followed by a Gated Recurrent Unit (GRU) to maintain temporal context. The GRU output is subsequently passed through a final FC layer that maps it to the action vector, as illustrated in Figure 3. Given an observation vector ot,the policy outputs a 3-dimensional action command at. For the purposes of the results presented in the next section, the speed is scaled to be between [0 , 2] m /s, inclination angle is scaled between ± π 
+
+> 4
+
+rad , while yaw rate is scaled between 
+
+± π 
+
+> 3
+
+rad /s.
+
+c) Simulation Environment: The reinforcement learning policy is trained within the Aerial Gym Simulator [32], which provides realistic aerial robot dynamics, onboard sen-sors, and parallelized training. The simulation environment is modeled as a room with four walls and a floor. To encourage generalization, the room dimensions are uniformly sampled at each episode reset, with length drawn from U(10 , 12) m, width from U(5 , 8) m, and height from U(4 , 6) m. The agent is equipped with an image and depth sensor to capture exteroceptive observations, while attitude and velocity con-trol are governed by a scheme relying on geometric control that builds upon the ideas in [33]. Obstacles are uniformly sampled from a predefined set consisting of planar panels of size (0 .1 × 1.2 × 3.0) m, slender cuboidal rods of size 
+
+(0 .1 × 0.1 × 2.0) m, and thin rectangular plates of sizes 
+
+(0 .1 × 0.5 × 0.5) m and (0 .1 × 1.0 × 1.0) m. To maximize environmental diversity, these obstacles are implemented as floating objects suspended within the environment. The episodes run asynchronously across environments and enable the agent to learn simultaneously across different obstacle configurations during training. Success is defined as reaching within 1 m distance from the goal. Failure occurs only in the case of a collision with an obstacle. A timeout indicates that the robot remained collision-free but did not reach the goal within the episode duration. The episode length is set to 10 s , keeping in mind the dynamics of the agent and obstacle density. Environment difficulty is governed by a curriculum schedule in which level k corresponds to k
+
+obstacles. The level is decreased when the success rate across 2048 environments falls below a lower threshold of success rate τlow = 0 .30 and increased when it exceeds an upper threshold τhigh = 0 .70 . Levels 0–5 use only planar panels, whereas levels greater than 5 draw obstacles from the aforementioned predefined library of geometric primitives. Figure 4 illustrates the resulting increase in obstacle density with curriculum level. Level 5  Level 10  
+
+> Level 15 Level 20
+
+Fig. 4: Top-down view of the training environment at each curriculum level. The agent begins each episode at one end of the room and is assigned a target located at the opposite end. The start position is sampled from the first 20% of the environment’s length, ensuring the drone always begins near one end of the workspace. The goal position is sampled from the last 10% 
+
+of the environment’s length. To improve robustness against real-world uncertainties, we apply random forces and torques sampled from a Bernoulli process B(0 .05) and camera pose perturbations, sampled uniformly as U(−5, 5) cm for translations and U([ −3◦, 3◦]) for rotations. To further promote policy robustness under degraded depth sensing, a uniformly selected subset of environments receives corrupted depth inputs at each training step, while the grayscale modality remains uncorrupted throughout. The corruption is applied by overlaying randomly placed square patches with sizes uniformly sampled between 1 × 1 and 
+
+30 × 30 pixels. Smaller and bigger patches play a distinct role in training. Smaller patch sizes capture the fact that depth sensors often exhibit localized noise artifacts, such as speckle, missing pixels, or small dropout regions. On the other hand, larger patches reflect contiguous failures as they manifest when the sensor observes degraded areas, such as reflective surfaces or low-texture regions. The patches are applied iteratively until they collectively cover 50 % of the depth image area. TABLE I: Average Mean Squared Error (MSE) ( ×10 −3)and Average Structural Similarity Index Measure (SSIM) (×10 −2) across corruption levels for CMWAE trained under two corruption schemes. Best values per metric are bolded.                            
+
+> Corruption (%) MSE ( ×10 −3)SSIM ( ×10 −2)
+> S1/S2S1/S2
+> 08.49 / 5.95 85.29 / 85.78
+> 20 9.41 / 6.34 84.95 / 85.67
+> 30 10.05 / 6.72 84.86 / 85.57
+> 40 10.39 / 7.03 84.67 / 85.45
+> 50 10.71 / 8.01 84.79 / 85.34
+
+V. EVALUATION STUDIES To evaluate the proposed approach, we first assess the per-formance for the CMWAE in cross-modal encoding before proceeding to assess the closed-loop policy results both in simulation and experimentally. 
+
+A. Evaluations for CMWAE 
+
+For evaluation, we use a held-out test set derived from the TartanAir dataset, ensuring that none of these images are seen by the encoder during training. For all evaluations, we fix the latent dimensionality to Ldim = 64 to ensure consistency with the policy representation used later during reinforcement-learning experiments and to ensure a fair comparison with the latent-based navigation framework proposed in [6]. We introduce corruption by overlaying randomly placed square patches (of invalid depth measurements) on each image. The patch sizes are sampled from a uniform distribution within a predefined range of 1 × 1 to 50 × 50 , and patches are applied iteratively until the desired corruption coverage percentage –which ranges from 0% to 50% – is reached for each image. Quantitative metrics such as MSE and SSIM are then computed between the reconstructed and original images to evaluate reconstruction quality under different corruption levels. We use MSE because it provides a pixel-level assessment in the reconstructed depth map and SSIM because it offers a complementary perspective by measuring 
+
+Fig. 5: MSE and SSIM box plots for CMWAE trained under corruption scheme S1
+
+Fig. 6: MSE and SSIM box plots for CMWAE trained under corruption scheme S2Clear 
+
+> Text Text
+> Invalid pixels
+
+Fig. 7: Example reconstructions produced by the encoder trained under corruption scheme S2 in evaluation studies the preservation of structural information, including depth gradients and spatial relationships that are essential for accurate scene interpretation. Table I presents the reconstruction results for corruption schemes S1 and S2. We evaluate both models across in-creasing corruption levels of 0% , 20% , 30% , 40% and, 50% ,and the distribution of MSE and SSIM values at each level is illustrated in Figure 5 and Figure 6. As the corruption level increases, MSE rises while SSIM decreases, reflecting a gradual decline in reconstruction accuracy and perceptual quality. Across all corruption levels, the model trained with scheme S2 consistently achieves lower MSE and higher SSIM than the model trained with scheme S1. Based on these findings, we select the CMWAE trained under scheme S2 for our reinforcement learning policy network. Representative examples of reconstructions generated by the encoder trained under S2 are shown in Figure 7. 
+
+B. Evaluations for the RL policy in Aerial Gym 
+
+For our evaluations, we use the Aerial Gym Simulator [32]. To assess how a policy trained without accounting for sensor degradation performs under corrupted depth inputs, we compare our approach against a baseline that does not incorporate corruption during training. Specifically, depth observations remain uncorrupted throughout the training pro-cess. For this purpose, we adopt the Deep Collision Encoder (DCE)-based reinforcement learning policy (DCE-RL) [6], following the same training protocol as in the original work. To ensure a fair comparison, both the DCE-RL policy and our CMWAE-based policy use the same latent size Ldim = 64 .The simulation environment is the same as described in the section IV. The policy was tested up to curriculum level 20, for sufficient complexity. We carry out the evaluations under the following conditions:  
+
+> •
+
+Clean: The agent receives depth observations directly from the simulator, without any artificial corruption throughout the episode.  
+
+> •
+
+Corrupted: The agent receives depth observations that are corrupted by placing the same square patches used during policy training, randomly within the depth image and these corruptions remain for the entire episode. This TABLE II: RL Policy Evaluation Results. Best values per metric are bolded.                                                                 
+
+> DCE-RL / CMWAE-RL Condition Curr. Success (%) Timeout (%) Crash (%) Clean 099.95 / 91.05 0.0 / 0.43 0.05 / 8.53 594.00 / 85.30 2.88 / 1.71 3.19 / 13.00 10 91.02 / 78.10 3.74 / 2.32 5.25 / 19.58 15 85.79 / 71.51 5.09 / 2.50 9.12 / 25.99 20 74.84 / 66.93 9.51 / 2.88 15.65 / 30.19 Corrupted 00.28 / 86.02 72.24 / 4.64 27.48 / 9.34
+> 50.14 / 78.25 65.65 / 1.74 34.21 / 20.01
+> 10 0.04 / 68.10 58.27 / 1.94 41.69 / 29.97
+> 15 0.04 / 43.20 51.10 / 6.58 48.86 / 50.22 20 0.00 / 32.79 47.34 / 6.59 52.66 / 60.62
+
+aims to demonstrate performance when there are spatial gaps in depth information. Table II provides a summary of the performance of both policies across the curriculum levels. From these evalua-tions, we observe that under clean conditions, the DCE-based policy achieves superior performance compared to its CMWAE counterpart. The strong performance of the DCE-based policy can be attributed to the fact that DCE dedicates its entire 64-dimensional latent space to depth encoding, whereas CMWAE must allocate the same latent capacity to jointly encode both grayscale and depth information thus, effectively reducing the representational bandwidth available for each modality. However, when depth inputs are artificially corrupted, the DCE-based policy fails to successfully complete its objective, while the CMWAE-based policy remains robust, showing that our approach is crucial to handle degraded depth images. 
+
+C. Real-world experiments 
+
+To evaluate the robustness of our approach under realistic depth sensor degradation, we conduct physical experiments using a quadrotor platform in a corridor-like environment, which is 28 m in length, 4 m in width, and 5 m in height. The custom-built quadrotor is equipped with an Inertial Mea-surement Unit (IMU) and a radar sensor for state estimation [34], [35], and an RGB-D camera. The Intel Realsense D455 camera provides synchronized depth and color image streams TABLE III: Experimental results across 7 environments, showing time to reach the goal, path length, and average (Avg.), minimum (Min.), and maximum (Max.) corruption of the depth image.                                         
+
+> Env. Time (s) Path (m) Avg. (%) Min. (%) Max. (%)
+> 120.20 25.05 29.08 15.34 49.46 223.36 26.47 25.85 9.04 60.98 322.00 25.61 25.04 12.31 47.76 418.76 25.03 29.60 9.82 40.72 521.53 25.75 26.25 7.64 50.32 621.24 25.28 26.23 9.03 43.34 721.17 25.13 28.72 14.00 48.46
+
+Fig. 8: Top view of the trajectories of the policy across different obstacle configurations. Each column corresponds to a distinct environment with the overlaid path showing the robot’s motion from start (blue) to goal (red). The bottom row shows image captures corresponding to the points along each trajectory where the highest levels of depth corruption were encountered. at 15 Hz . High-level navigation runs on an onboard NVIDIA Jetson Orin NX 16 GB , while a PX4 autopilot handles low-level control, with inter-process communication via ROS. The experimental setup consists of 5 to 6 vertical panels of dimensions 2.4 m × 1.2 m positioned as obstacles throughout the corridor, with their configuration varied, creating differ-ent environments to test the policy’s ability to generalize to unseen obstacle arrangements under depth measurement degradation. To induce significant depth sensor degradation, we disable the infrared projector of the depth camera, which severely compromises depth measurements in regions with poor texture or ambient lighting, while the grayscale images remain unaffected, as shown in Figure 8. This configuration mimics real-world scenarios where depth sensing fails due to environmental conditions, but visual information remains available. Across these environments, the depth observations contain on average 25% to 30% degraded pixels. Figure 3 shows the deployment loop of our policy on the platform. To ensure that the navigation policy shall demonstrate its maneuvering capabilities for obstacle avoidance rather than simply flying over them (possible in the test space we utilized), we constrain the inclination angle of the policy to limit vertical maneuvering. The start and goal locations remain consistent across all runs, with only the obstacle configuration changing, allowing us to isolate the effect of obstacle arrangement on navigation performance. The goal position is always set 24 m forward and 1 m upward relative to the robot’s start position. Table III summarizes the recorded performance across the seven environments, reporting the time required to reach the goal, the corresponding path length, and the average, minimum, and maximum percentages of corruption of the depth image observed during each run. Figure 8 illustrates trajectories obtained across the seven runs. Each column corresponds to a distinct obstacle configuration, and the overlaid cyan path shows the executed motion of the robot from start (blue) to goal (red). The bottom row in Figure 8 shows the frames associated with the marked points along each trajectory. These visual examples correspond with the maximum depth corruption values summarized in Table III for those trajectories: 60 .98% in Figure 8-A, 40 .72% in Figure 8-B, and 48 .46% in Figure 8-C. The variation in time to reach the goal and path length across environments can be attributed to differences in obsta-cle configurations. Each environment presents a distinct ob-stacle arrangement that alters the navigable paths, leading the robot to follow slightly different trajectories. This indicates the robust sim2real transfer and generalizability of the policy across environments with varying configurations. Despite the degraded depth images, the CMWAE encoded sufficient structural information about the obstacles to support reliable navigation performance. VI. CONCLUSION This paper introduced a cross-modal learning framework for autonomous navigation under depth sensor degradation. The proposed Cross-Modal Wasserstein Autoencoder en-ables policies to leverage grayscale information when depth measurements are corrupted, achieving robust collision-free navigation. Simulation results demonstrated improved nav-igation success rates and collision avoidance compared to single-modality baselines across various degradation scenar-ios. Experimental validation on a quadrotor platform fur-ther confirmed successful sim2real transfer and maintained performance under severe depth degradation. Future work will extend this approach to additional modalities and more complex environmental conditions. REFERENCES [1] M. Tranzatto et al. , “Cerberus: Autonomous legged and aerial robotic exploration in the tunnel and urban circuits of the darpa subterranean challenge,” arXiv preprint arXiv:2201.07067 , vol. 3, 2022. [2] J. Delmerico et al. , “The current state and future outlook of rescue robotics,” Journal of Field Robotics , vol. 36, no. 7, pp. 1171–1191, 2019. [3] B. Siciliano et al. , “Robotics and the handbook,” in Springer Hand-book of Robotics . Springer, 2016, pp. 1–6. [4] K. Ebadi et al. , “Present and future of slam in extreme environments: The darpa subt challenge,” IEEE Transactions on Robotics , vol. 40, pp. 936–959, 2024. [5] A. Loquercio et al. , “Dronet: Learning to fly by driving,” IEEE Robotics and Automation Letters , vol. 3, no. 2, pp. 1088–1095, 2018. [6] M. Kulkarni et al. , “Reinforcement learning for collision-free flight exploiting deep collision encoding,” in Proceedings of the IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024. [7] A. Loquercio et al. , “Learning high-speed flight in the wild,” Science Robotics , vol. 6, no. 59, p. eabg5810, 2021. [8] Y. Zhang et al. , “Perception and sensing for autonomous vehicles under adverse weather conditions: A survey,” ISPRS Journal of Pho-togrammetry and Remote Sensing , vol. 196, pp. 146–177, 2023. [9] D. Gandhi et al. , “Learning to fly by crashing,” 2017. [Online]. Available: https://arxiv.org/abs/1704.05588 [10] Y. Song et al. , “Learning perception-aware agile flight in cluttered environments,” 2023. [Online]. Available: https://arxiv.org/abs/2210. 01841 [11] J. Wang et al. , “Vision-based deep reinforcement learning of uav autonomous navigation using privileged information,” 2024. [Online]. Available: https://arxiv.org/abs/2412.06313 [12] J. Delaune et al. , “Thermal-inertial odometry for autonomous flight throughout the night,” in 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2019, pp. 1122–1128. [13] V. De Silva et al. , “Robust fusion of lidar and wide-angle camera data for autonomous mobile robots,” Sensors , vol. 18, no. 8, p. 2730, 2018. [14] S. Khattak et al. , “Vision-depth landmarks and inertial fusion for nav-igation in degraded visual environments,” in International Symposium on Visual Computing . Springer, 2018, pp. 529–540. [15] E. J. Shamwell et al. , “Unsupervised deep visual-inertial odometry with online error correction for rgb-d imagery,” IEEE transactions on pattern analysis and machine intelligence , vol. 42, no. 10, pp. 2478– 2493, 2019. [16] F. Matos et al. , “A survey on sensor failures in autonomous vehicles: Challenges and solutions,” Sensors , vol. 24, no. 16, p. 5108, 2024. [17] S. Wang, M. Tan, Z. Yang, X. Wang, X. Shen, H. Huang, and W. Zhang, “Enhancing deep reinforcement learning-based robot nav-igation generalization through scenario augmentation,” arXiv preprint arXiv:2503.01146 , 2025. [18] R. Michelmore, M. Wicker, L. Laurenti, L. Cardelli, Y. Gal, and M. Z. Kwiatkowska, “Uncertainty quantification with statistical guarantees in end-to-end autonomous driving control,” 2020 IEEE International Conference on Robotics and Automation (ICRA) , pp. 7344–7350, 2019. [Online]. Available: https://api.semanticscholar.org/CorpusID: 202719084 [19] F. Ma et al. , “Sparse-to-dense: Depth prediction from sparse depth samples and a single image,” 2018. [Online]. Available: https://arxiv.org/abs/1709.07492 [20] D. Hou et al. , “Learning an efficient multimodal depth completion model,” 2022. [Online]. Available: https://arxiv.org/abs/2208.10771 [21] Z. Wang et al. , “Cross-modal feature fusion for robust point cloud registration with ambiguous geometry,” ISPRS Journal of Photogram-metry and Remote Sensing , vol. 227, pp. 31–47, 2025. [22] S. Gupta et al. , “Cross modal distillation for supervision transfer,” in 
+
+Proceedings of the IEEE conference on computer vision and pattern recognition , 2016, pp. 2827–2836. [23] Z. Huang et al. , “Multi-level cross-modal interaction network for rgb-d salient object detection,” Neurocomputing , vol. 452, pp. 200–211, 2021. [24] J. Hoffman et al. , “Cross-modal adaptation for rgb-d detection,” in 2016 IEEE international conference on robotics and automation (ICRA) . IEEE, 2016, pp. 5032–5039. [25] I. Tolstikhin et al. , “Wasserstein auto-encoders,” in International Conference on Learning Representations (ICLR) , 2018. [26] F. Ye and A. G. Bors, “Wasserstein expansible variational autoen-coder for discriminative and generative continual learning,” in 2023 IEEE/CVF International Conference on Computer Vision (ICCV) ,2023, pp. 18 619–18 629. [27] W. Xu, S. Keshmiri, and G. Wang, “Stacked wasserstein autoencoder,” Neurocomputing , vol. 363, pp. 195–204, 2019. [Online]. Available: https://www.sciencedirect.com/science/article/pii/ S0925231219310161 [28] A. Krizhevsky et al. , “Imagenet classification with deep convolutional neural networks,” in Advances in Neural Information Processing Systems , F. Pereira, C. Burges, L. Bottou, and K. Weinberger, Eds., vol. 25. Curran Associates, Inc., 2012. [Online]. Available: https://proceedings.neurips.cc/paper files/paper/ 2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf [29] W. Wang et al. , “Tartanair: A dataset to push the limits of visual slam,” in IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2020. [30] J. Ngiam et al. , “Multimodal deep learning,” Proceedings of the 28th International Conference on Machine Learning (ICML-11) , pp. 689– 696, 2011. [31] A. Petrenko et al. , “Sample factory: Egocentric 3d control from pixels at 100000 fps with asynchronous reinforcement learning,” in 
+
+International Conference on Machine Learning (ICML) . PMLR, 2020. [32] M. Kulkarni et al. , “Aerial gym simulator: A framework for highly parallelized simulation of aerial robots,” 2025. [Online]. Available: https://arxiv.org/abs/2503.01471 [33] T. Lee et al. , “Geometric tracking control of a quadrotor uav on se(3),” in 49th IEEE Conference on Decision and Control (CDC) , 2010, pp. 5420–5425. [34] M. Nissov et al. , “Degradation resilient lidar-radar-inertial odometry,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024, pp. 8587–8594. [35] M. Nissov, J. A. Edlund, P. Spieler, C. Padgett, K. Alexis, and S. Khattak, “Robust high-speed state estimation for off-road navigation using radar velocity factors,” IEEE Robotics and Automation Letters ,2024.

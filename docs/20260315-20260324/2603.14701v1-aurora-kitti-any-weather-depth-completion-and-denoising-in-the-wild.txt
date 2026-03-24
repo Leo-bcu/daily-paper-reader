@@ -1,0 +1,395 @@
+Title: 2603.14701v1.pdf
+
+URL Source: https://arxiv.org/pdf/2603.14701v1
+
+Published Time: 2026-03-16T02:11:45.000Z
+
+Number of Pages: 15
+
+Markdown Content:
+# AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild 
+
+## Yiting Wang a,d ,∗, Tim Brödermann b, Hamed Haghighi a, Haonan Zhao a, Christos Sakaridis c,Kurt Debattista a and Valentina Donzella d
+
+> a
+
+Warwick Manufacturing Group, University of Warwick, Coventry, CV4 7AL, United Kingdom 
+
+> b
+
+Computer Vision Laboratory, ETH Zürich, Zurich, 8057, Switzerland 
+
+> c
+
+Photogrammetry and Remote Sensing, ETH Zürich, Zurich, 8093, Switzerland 
+
+> d
+
+School of Engineering and Materials Science, Queen Mary University of London, London, E1 4NS, United Kingdom 
+
+A R T I C L E I N F O 
+
+Keywords :Data Synthetic Sensor Fusion Depth Completion Depth Estimation Robust Perception 
+
+A B S T R A C T 
+
+Robust depth completion is fundamental to real-world 3D scene understanding, yet existing RGB-LiDAR fusion methods degrade significantly under adverse weather, where both camera images and LiDAR measurements suffer from weather-induced corruption. In this paper, we introduce AURORA-KITTI , the first large-scale multi-modal, multi-weather benchmark for robust depth completion in the wild. We further formulate Depth Completion and Denoising (DCD) as a unified task that jointly reconstructs a dense depth map from corrupted sparse inputs while suppressing weather-induced noise. AURORA-KITTI contains over 82K weather-consistent RGBL pairs with metric depth ground truth, spanning diverse weather types, three severity levels, day and night scenes, paired clean references, lens occlusion conditions, and textual descriptions. Moreover, we introduce DDCD , an efficient distillation-based baseline that leverages depth foundation models to inject clean structural priors into in-the-wild DCD training. DDCD achieves state-of-the-art performance on AURORA-KITTI and the real-world DENSE dataset while maintaining efficiency. Notably, our results further show that weather-aware, physically consistent data contributes more to robustness than architectural modifications alone. Data and code will be released upon publication. 
+
+## 1. Introduction 
+
+Accurate and dense metrics depth perception is funda-mental for 3D scene understanding across a broad range of real-world applications, such as autonomous driving, robotic navigation, and environmental monitoring [1, 2, 3]. Depth completion (DC) aims to recover a dense depth map from sparse LiDAR measurements, typically assisted by an RGB image that provides rich contextual cues [4, 5, 6, 7, 8]. While modern learning-based approaches achieve strong performance on benchmarks such as KITTI-DC[9], they are largely developed and evaluated under clear-weather as-sumptions. In real-world deployment, however, sensor suites must operate under rain, snow, fog, and low illumination, where attenuation and backscattering degrade camera im-ages, LiDAR returns, or both. Under such conditions, even state-of-the-art foundation depth estimation models may fail, causing safety concerns (see. Fig. 1). Adverse weather fundamentally alters the sensing pro-cess. For cameras, visibility reduction and contrast attenua-tion obscure structural cues. For LiDAR, weather particles introduce attenuation of valid returns, spurious backscatter-induced false returns, and non-uniform sparsity patterns. Consequently, the problem is no longer pure completion from clean sparse measurements; instead, models must  
+
+> ⋆
+
+The work was partially funded by the Centre for Doctoral Training to Advance the Deployment of Future Mobility Technologies (CDT) and the EU Horizon ROADVIEW Project. This work was partially carried out while Yiting Wang was a visiting scholar at PRS, ETH Zurich. Corresponding author:Yiting.Wang.1@warwick.ac.uk. 
+
+> ORCID
+
+(s): 0000-0002-1268-0168 (Y. Wang); 0009-0009-6428-3066 (T. Brödermann) 
+
+Figure 1: Performance of depth foundation models under increasing weather degradation. From left to right: clean, snow, and night-snow conditions. From top to bottom: input images, relative depth prediction (Depth Anything V2), metric depth prediction (Depth Anything V3) and sparse LiDAR map. Severe weather leads to structural distortion and scale instability. 
+
+jointly address sparsity and corruption. This observation motivates a task formulation beyond conventional depth completion. We define Depth Completion and Denoising (DCD) as the task of recovering a dense, accurate, and clean depth map from corrupted RGB-LiDAR (RGBL) inputs. Unlike stan-dard depth completion, DCD explicitly accounts for multi-modal degradation and targets reliable geometric reconstruc-tion under weather-induced corruption. This formulation is particularly important for real-world sensing scenarios, such as autonomous driving, where consistent metric-scale depth 
+
+Yiting Wang et al.: Preprint submitted to Elsevier Page 1 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild                                                                 
+
+> Table 1
+> Comparison of existing weather-related RGBL datasets. We summarise weather fidelity across RGB and LiDAR, the availability of compound conditions, paired clean references, raw 3D LiDAR, dense depth labels, the primary task, and the dataset scale. AURORA-KITTI uniquely provides large-scale, weather-consistent RGB–LiDAR pairs with depth labels for DCD.
+> Dataset w-RGB w-LiDAR Compound Paired r-LiDAR Depth Task Scale
+> DENSE-Pixel [10]’19 ✓✓✓xx✓depth estimation 1.6k DELIVER [11]’23 ✓xxxx✓segmentation 7.8k WeatherKITTI [12]’24 ✓xx✓x✓detection 284.3k SemanticKITTI-C [13]’24 x✓x✓✓xsegmentation 43.5k MUSES [14]’24 ✓✓✓x✓xsegmentation 2.5k D-Cityscapes+ [15]’25 ✓xx✓xxsegmentation 5.0k AURORA-KITTI’26 ✓✓✓✓✓✓depth completion 82.1k
+
+is essential for safe navigation. More generally, it applies to RGBL perception settings in which both modalities are de-graded by environmental factors, requiring models to unify depth densification and noise suppression within a single framework. Despite practical importance, systematic research on DCD remains limited due to data scarcity. Collecting large-scale, dense, and clean depth ground-truth data under real adverse weather is extremely challenging: active sensors suffer from atmospheric scattering and attenuation, stereo-based supervision becomes unreliable under low visibility, and manual annotation of dense metric depth is infeasible. Existing real-world datasets only partially bridge this gap. As summarised in Tab. 1, most datasets satisfy only a subset of the desired properties: some provide weather fidelity in RGB but not LiDAR, others include LiDAR perturbations without paired clean references, and many lack metrics depth annotations suitable for depth completion evaluation. Moreover, real-world adverse-weather datasets are typically limited in scale (e.g., DENSE and MUSES have no more than 2.5K samples), scene diversity (e.g., DENSE lacks snowy conditions), or controlled clean references for robust-ness analysis. This fragmentation hinders systematic training and controlled benchmarking of robust DCD models. Con-sequently, large-scale training and evaluation under diverse adverse conditions remain largely unexplored. To address this gap, we introduce AURORA-KITTI , the first large-scale, physics-consistent, multi-weather RGBL benchmark designed specifically for DCD. AURORA-KITTI contains over 82K weather-consistent RGB–LiDAR pairs with metric depth labels, spanning multiple weather types, three severity levels, and both daytime and nighttime set-tings. Unlike datasets that only vary LiDAR sparsity, we explicitly model cross-modally aligned weather degrada-tion across RGB and LiDAR. Using a particle-based ren-dering process with shared weather parameters (e.g., rain rate and fog attenuation coefficient), we generate weather-corrupted RGB images and sparse depth observations with matched weather type and severity. Specifically, we in-ject physics-inspired perturbations directly into raw 3D point clouds, simulating attenuation, scattering, and particle-induced backscatter before projecting corrupted points onto the image plane to obtain paired 2D sparse depth maps; see Fig. 3. This process produces realistic non-uniform sparsity, range-dependent degradation, and spurious returns, ensuring consistent severity levels between RGB and LiDAR corrup-tion. We also design an observation-driven lens-occlusion model based on real-world weather imagery to simulate adherent raindrops and snowflakes on the camera lens, introducing spatially localised blur and, for snow, chromatic tint near image boundaries. Each sample further provides a paired clean reference and textual weather description, enabling controlled supervision and robustness analysis. A natural question is whether recent depth foundation models can already solve DCD. Benefiting from large-scale pretraining, monocular depth foundation models encode strong geometric priors and demonstrate impressive gener-alisation under clean conditions. However, as illustrated in Fig. 1, their performance degrades increasingly as weather severity increases. While relative depth predictions retain coarse structure, metric depth predictions exhibit notice-able scale instability and structural distortion under heavy snow and low illumination. By contrast, LiDAR projec-tions remain comparatively robust to illumination changes but suffer from sparsity, range attenuation, and particle-induced backscatter. These observations reveal a critical gap: 
+
+foundation models provide dense structural cues but are sensitive to environmental conditions, whereas LiDAR offers weather-resilient geometry that is sparse and noisy . Simply scaling foundation models or naïvely fusing modalities is insufficient. This gap motivates a principled framework that jointly exploits dense structural priors while explicitly modelling completion and denoising under adverse weather. Leveraging the unique advantages of the AURORA-KITTI dataset, with physics-consistent multi-modal degra-dation, matched clean references and metric depth labels, we further structure our methodology with two complementary components (see Sec. 3). First, to decouple the effect of train-ing data from model design, we retrain SOTA depth mod-els on AURORA-KITTI under the DCD objective without modifying their architectures, isolating data-domain gains from architectural capacity. Second, we propose DDCD ,an efficient distillation-based DCD baseline that transfers clean structural priors from depth foundation models via a scale-and-shift-invariant objective. This design unifies depth   
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 2 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+
+completion and denoising in a single, computationally effi-cient framework and delivers additional improvements be-yond retraining on weather-aware data alone while avoiding heavy training from scratch. Importantly, DDCD introduces a ground truth (GT)-aligned teacher normalisation strategy that treats relative and metric teacher priors differently, enabling heterogeneous foundation-model predictions to be consistently aligned with metric depth supervision. Experi-mental results show that DDCD has the best overall perfor-mance on both AURORA-KITTI and the real-world DENSE dataset, attaining the lowest MAE and iRMSE scores and real-time performance. Notably, in our ablation studies, we find that weather-aware training data contributes more to the robustness of DCD models than architectural design alone. Our results highlight the importance of training on large-scale in-the-wild data for reliable depth perception. Overall, our main contributions are as follows: 
+
+• We formulate Depth Completion and Denoising (DCD) , a unified task that reconstructs dense depth from sparse, weather-corrupted RGBL inputs while suppressing weather-induced noise. 
+
+• We introduce AURORA-KITTI , the first large-scale, physics-consistent, multi-weather RGBL benchmark for DCD, with over 82K samples providing paired clean references and cross-modally consistent weather degradation. We also benchmark existing methods in terms of accuracy, efficiency, and real-time capability. 
+
+• We propose DDCD , a strong and efficient base-line that distils structural priors from depth foun-dation models into adverse-weather training through teacher normalisation, outperforming data retraining alone and achieving state-of-the-art results on both AURORA-KITTI and DENSE. 
+
+## 2. Related Work 
+
+2.1. Robust Benchmarks under Adverse Weather 
+
+KITTI Depth Completion (KITTI-DC) [9] remains the most widely used benchmark for depth completion in out-door environments, providing large-scale RGB–LiDAR pairs with dense labels. However, it is collected primarily under clear-weather conditions. As a result, models trained and evaluated on KITTI-DC often suffer substantial performance degradation when deployed under adverse weather, illumi-nation shifts, or sensor perturbations. Beyond clean weather depth estimation and depth com-pletion, several benchmarks also investigate the robustness with degraded RGB, degraded LiDAR, or degraded multi-sensor settings. For example, SemanticKITTI-C [13] and D-Cityscapes+ [15] inject adverse-weather effects into Li-DAR point clouds or RGB images for robustness evalua-tion, primarily targeting semantic segmentation and panop-tic segmentation. While valuable, these benchmarks do not provide dense depth labels suitable for depth completion. DELIVER [11] includes diverse weather conditions and dense depth maps, but degradation is applied mainly to RGB without modelling weather-consistent LiDAR corrup-tion. MUSES [14] captures real-world multi-modal adverse-weather data across day and night; however, it is designed for segmentation rather than depth completion, lacks reliable dense depth labels, and remains limited in scale (2.5K pairs). Among existing datasets, it is not possible to leverage paired clean sensor data to support denoising in real-world scenes with dynamic and constantly changing objects, nor is it possible to directly obtain clean and dense depth labels under adverse weather conditions. In contrast, the hereby proposed AURORA-KITTI provides large-scale, paired RGB–LiDAR degradations with dense depth supervision, clean references, and weather-consistent multi-modal perturbations, enabling systematic benchmarking for Depth Completion & Denois-ing (DCD). 
+
+2.2. Depth Completion and Robust Modelling 
+
+Depth completion aims to predict dense depth from sparse LiDAR guided by RGB imagery. Early methods focus on encoder–decoder fusion and sparsity-aware propagation, including Sparse2Dense [5], PENet [16], CSPN++ [17], and NLSPN [18]. Recent approaches incorporate global context via attention and transformers (e.g., Completion-Former [19]), or leverage geometric reasoning in 3D space (e.g., BP-Net [7], TPVD [20]). OMNI-DC [21] improves the zero-shot depth completion performance by process-ing the depth gradients at multi-resolution scales. Parallel to completion-specific designs, monocular depth founda-tion models have also demonstrated strong cross-domain generalisation by leveraging large-scale pretraining and teacher–student learning paradigms, such as MiDaS [22], UniDepth [23] and the Depth Anything series [24, 25, 26]. These models encode powerful dense geometric priors and have been increasingly adopted as guidance signals for downstream tasks such as depth completion and multi-modal fusion [27]. However, these methods are mainly designed and trained on the large-scale dataset that was mainly cap-tured under the clean weather conditions, showing limited robustness in predicting the accurate metrics depth under extreme weather corruptions; see Fig. 3. Recent efforts also explore robustness under degra-dation by explicitly modelling adverse weather or lever-aging auxiliary priors. For example, AWDepth [28] im-proves monocular robustness via masked-encoding objec-tives, while SigNet [29] and related works treat degradation as a structured variable in completion. Diffusion-based priors such as Marigold-DC [30] reformulate completion as conditional generation and show promising zero-shot transfer ability; however, the stable diffusion denoising mechanism requires a long processing time, which is difficult for real-world applications where real-time processing is important. Unlike prior work that either assumes clean sparse inputs or addresses degradation implicitly, we explic-itly formulate Depth Completion & Denoising (DCD) and focus on systematic benchmarking with weather-consistent modelling across modalities and the extra guidance from       
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 3 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Figure 2: The proposed depth completion and denoising paradigm in (c) versus the normal weather depth completion in (a) and the "in-the-wild" depth completion in (b).
+> Figure 3: The simulation pipeline for both the RGBL and the text prompt information in the AURORA-KITTI dataset. DL refers to the deep-learning-based methods.
+
+the extra referenced paired knowledge in guiding the depth completion and denoising network. 
+
+## 3. Overall Methodology 
+
+3.1. Task Formulation 
+
+Conventional DC. Conventional depth completion as-sumes clean multi-modal inputs and clean dense supervi-sion. Given a clean RGB image 𝐼 𝑐 ∈ ℝ𝐻 ×𝑊 ×3 and its sparse depth from the LiDAR projection 𝑆 𝑐 ∈ ℝ𝐻 ×𝑊 , a completion model 𝑓 𝑐 𝜃 predicts a dense depth map following the equation, ̂𝐷 𝑐 = 𝑓 𝑐 𝜃 (𝐼 𝑐 , 𝑆 𝑐 ), (1) typically supervised by the clean dense ground-truth data 
+
+𝐷 𝑐 . This setting breaks down in adverse weather, where both modalities are corrupted in structured and spatially non-uniform ways. Let rgb (⋅; 𝜔 ) and lidar (⋅; 𝜔 ) denote weather perturbations parameterised by 𝜔 (type and severity). The noisy weather RGB and weather LiDAR are then formulated with the following: 
+
+𝐼 𝑤 = rgb (𝐼 𝑐 ; 𝜔 ), 𝑆 𝑤 = lidar (𝑆 𝑐 ; 𝜔 ). (2) Naïvely applying standard completion on (𝐼 𝑤 , 𝑆 𝑤 ) produces 
+
+noisy dense predictions that inherit weather artifacts, degrad-ing boundary fidelity and geometric consistency. 
+
+DCD. We define Depth Completion and Denoising (DCD) 
+
+completion model 𝑓 𝑤 𝜃 as recovering a clean dense depth map from corrupted multi-modal inputs with clean depth labels: ̂𝐷 𝑐 = 𝑓 𝑤 𝜃 (𝐼 𝑤 , 𝑆 𝑤 ), (3) where the target 𝐷 𝑐 corresponds to the same scene un-der clean sensing conditions. DCD differs from standard completion by explicitly requiring suppression of weather-induced corruption while densifying sparse measurements. 
+
+Synthetic Supervision. Acquiring tuples (𝐼 𝑤 , 𝑆 𝑤 , 𝐷 𝑐 ) in real adverse weather is practically infeasible: dense depth captured under adverse conditions is itself corrupted, and obtaining pixel-aligned clean depth for the same scene is unrealistic. This supervision mismatch prevents scalable training and controlled benchmarking for DCD. Therefore, we take advantage of the clear reference paired images from the synthetic AURORA-KITTI dataset to further improve the denoising capability of the DCD task. 
+
+Overall Methodology. Fig. 2 summarises our approach, consisting of three components. (1) Physics-consistent RGBL dataset generation (Sec. 3.2). We synthesise weather-consistent RGB-LiDAR corruptions with physi-cally meaningful severity controls, while preserving clean dense depth supervision and paired clean references. (2) Data-driven robust training (Sec. 3.3). We use AURORA-KITTI as in-domain adverse training data to retrain repre-sentative depth completion baselines under the DCD objec-tive, isolating the impact of data coverage from architectural changes and enabling systematic robustness improvement across SOTA models. (3) Clean structural prior distil-lation (Sec. 3.4). To recover fine structures under severe corruption, we distill dense geometric priors from a depth foundation model teacher (predicted on paired clean RGB) into the DCD network using a scale-and-shift-invariant ob-jective, improving structural fidelity with minimal computa-tional overhead. 
+
+3.2. AURORA-KITTI Dataset Generation 
+
+AURORA-KITTI is designed to support physics-consistent benchmarking and training for depth completion and denoising. In this dataset, both RGB and LiDAR obser-vations are degraded under matched adverse-weather condi-tions, while paired clean references and dense supervision are preserved. We denote by  the 3D LiDAR point cloud and by 𝑆 its projection onto the camera image plane, which forms the sparse LiDAR depth map. Given a clean KITTI-DC sample (𝐼 𝑐 , 𝑐 , 𝐷 𝑐 ), consisting of a clean RGB image 
+
+𝐼 𝑐 , a clean 3D LiDAR point cloud 𝑐 , and a dense ground-truth depth map 𝐷 𝑐 , we generate a weather-corrupted tuple:                                             
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 4 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Table 2 Weather-consistent RGB–LiDAR generation in AURORA-KITTI. For each weather type, we apply matched severity parameters across RGB and LiDAR using physically interpretable settings (e.g., rain/snow rate, fog attenuation).
+> Weather Sensor Implementation Severity / Configs
+> Nighttime RGB CycleGAN-based image translation [15] Pretrained model from [15] Wet road RGB CycleGAN-based image translation [12] Pretrained model from [12] Rain RGB PBR rain rendering with photometric consistency on wet road [31] Rain rate (mm/hr) {10 ,100 ,200}
+> Rain LiDAR Physics-based rain simulation on 3D point clouds [32] (+ wet-road effect [33]) Rain rate (mm/hr) {10 ,100 ,200}
+> Raindrop (lens) RGB Mask compositing (randomised placement/blur/opacity) Curated droplet masks (artist-designed) Fog RGB Atmospheric scattering model [15] Attenuation coefficient (m −1 ){0 .01 ,0.1,0.2}
+> Fog LiDAR Signal-domain fog model on 3D point clouds [34] Attenuation coefficient (m −1 ){0 .01 ,0.1,0.2}
+> Snow RGB Image translation + particle rendering [15, 12] Snow road + particle masks (3 types) Snow LiDAR Physics-based snowfall simulation on 3D point clouds [33] Snow rate (mm/hr) {0 .5,1.5,2.5}
+> Snowflake (lens) RGB mask compositing (randomised placement/blur/opacity) Curated snowflake masks
+
+𝐼 𝑤 = rgb (𝐼 𝑐 ; 𝜔 ), 𝑤 = lidar (𝑐 ; 𝜔 ), 𝑆 𝑤 = Π( 𝑤 ),
+
+(4) where 𝜔 encodes weather type, severity, time of day, and lens condition. Specifically, 𝑤 is the weather-corrupted 3D LiDAR point cloud, and 𝑆 𝑤 is the corresponding sparse depth map obtained by projecting 𝑤 into the perspective camera view through Π. Π( ⋅) denotes LiDAR-to-image pro-jection using KITTI calibration to obtain the sparse depth map aligned to 𝐼 𝑤 . Crucially, we apply the same 𝜔 to both modalities to guarantee cross-modal weather consistency. Table 2 and Fig. 3 summarises the implementations and physically meaningful severity levels. 
+
+RGB-text pair generation. We model adverse-weather RGB observations using a layered image formation frame-work that explicitly separates (i) surface and illumination transformation, (ii) volumetric particle rendering, and (iii) sensor-level lens occlusion modelling. Given a clean image 
+
+𝐼 𝑐 , we first simulate global surface and illumination changes (e.g., wet road, snow-covered road, nighttime appearance) using pretrained image-to-image translation models [15, 12]. These transformations preserve scene geometry while mod-ifying scene-level appearance shifts. Secondly, we model in-air particle effects. For fog synthesis, we adopt the standard atmospheric scattering model based on Koschmieder’s law, which combines scene attenuation and additive airlight un-der a homogeneous medium assumption [35]. In our im-plementation, fog severity is controlled by the attenuation coefficient, while the transmittance is determined by the propagation distance from the camera to the scene point along the viewing ray. For rain and snow, we incorporate a physics-based particle rendering engine [31, 15] to gener-ate streaks and falling particles with severity controlled by physically meaningful parameters (e.g., rain rate). Beyond in-air effects, we explicitly model lens-attached occlusions, including adherent raindrops and snowflakes as observed in real-world sensing deployment. Unlike volumet-ric particles, these artifacts occur on the imaging system itself and introduce spatially localised, defocused occlu-sions. To mimic these effects, we design an observation-driven, image-based simulation pipeline that generates such occlusions via mask compositing with randomised spatial placement, blur (to simulate defocus), opacity modulation, and severity-aware layering. For snow, we additionally allow spatially varying chromatic tint to reflect partially opaque and soiled snow accumulation observed in real driving scenes. The third and fifth columns from Fig. 4(a) show that this layered design reproduces characteristic visibility attenuation, streak patterns, and localised occlusions ob-served in real captures. Full formulation and implementation details are provided in the appendix A. To enable controlled analysis and multimodal research, we provide a structured text annotation for each frame (Fig. 3), encoding weather type, severity, time of day, scene context, and lens condi-tions. These annotations support attribute-aware evaluation and can facilitate multi-modal conditioned learning under diverse weather conditions. 
+
+LiDAR generation. We simulate adverse-weather LiDAR directly in the raw 3D point cloud using established physics-based models with interpretable severity parameters. Rain simulation [32] captures signal attenuation, droplet-induced backscatter, range and intensity perturbations, leading to both point dropouts and spurious returns under heavy rain.      
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 5 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Figure 4: (a) AURORA-KITTI vs. real adverse weather (MUSES) [14]. Comparison across day/night and fog/rain/snow conditions. AURORA-KITTI reproduces characteristic visibility degradation and lens contamination patterns observed in real driving. (b) Physics-consistent cross-modal weather severity. Examples of RGBL pairs under matched light/moderate/heavy weather severity.
+
+Fog simulation [34] models the received response as a com-bination of attenuated hard-target returns and volumetric backscatter, producing characteristic fog clutter and reduced effective sensing range. Snow simulation [33] explicitly accounts for particle-beam interactions and occlusions, in-ducing non-uniform sparsity and clutter. For each weather type, we discretise three severity levels using physical pa-rameters (Table 2), and apply the LiDAR projection into the camera field-of-view to ensure cross-modal consistency (Fig. 4). To obtain an RGB-aligned sparse depth map 𝑆 𝑤 ,we project 𝑤 onto the rectified camera frame using the provided KITTI camera intrinsic and extrinsic parameters and rasterise points with a nearest-depth z-buffer rule.The full derivations and implementation details of the 3D-to-2D projection pipeline, including FoV filtering, rectification, and rasterisation, are provided in Appendix B. 
+
+Dataset Statistics AURORA-KITTI is built on top of KITTI-DC [9] and contains 82 ,177 RGB-LiDAR pairs with aligned metric depth supervision that is denser than the original sparse LiDAR. Each sample is annotated with weather type, severity level, time of day, and sensor-lens conditions, enabling attribute-aware evaluation and con-trolled robustness analysis. The resolution of the dataset is 1242 × 375 for training and 1216 x × 352 for testing. The dataset includes eight compound conditions (day/night 
+
+× clear/fog/rain/snow), with three severity levels for each degraded weather in three driving scenarios (i.e., city, res-idential, and road). In addition to the weather pairs, we pro-vide matched clean references for a large subset of samples, which supports clean-prior distillation and paired evaluation under controlled degradation. Table 3 summarises the data distribution across splits and conditions. Unless otherwise stated, we subsample the validation and test sets to 1,600 frames each for fast ablations and model selection, while keeping the full training set unchanged. We further validate the realism of the simulated RGB and LiDAR degradations by comparing AURORA-KITTI to the real-world adverse-weather dataset MUSES [14] in Fig. 4 and 6. More details of the data realism analysis are discussed in Sec. 5.1.1. 
+
+Design Rationale. Across rain, fog, and snow, AURORA-KITTI is designed around three principles: (i) physical con-trollability , where severity parameters correspond to mea-surable quantities (e.g., rain/snow rate, fog attenuation); (ii) 
+
+sensor realism , capturing characteristic artifacts such as at-tenuation, lost points, range shifts, and weather-induced clut-ter directly on 3D raw point cloud; and (iii) cross-modal con-sistency , where RGB and LiDAR are degraded under a per-fectly matching weather type and severity for the same scene. Compared to heuristic noise injection, this design enables controlled robustness evaluation and principled study of multi-sensor fusion under adverse conditions. Compared to WeatherKITTI [12], AURORA-KITTI provides: 1) Richer degradations on both sensor data : three severity levels with explicit physical interpretation on both of the modalities of RGBL data; 2) Richer illumination variety : nighttime and compound conditions (e.g., night-rain, night-snow) which affect the sensing of driving in the dark [36]; and 3) Lens occlusions : in addition to in-air particles, we design adherent simulation models for raindrops and snowflakes that occlude the camera lens, a common phenomenon in outdoor sensing conditions.                                                         
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 6 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Table 3 AURORA-KITTI dataset statistics. Number of RGB-LiDAR pairs per split under eight compound conditions (day/night ×
+> clear/fog/rain/snow). Paired-C denotes the subset with matched clean references. Validation/testing is subsampled to 1,600 frames for ablations unless otherwise stated.
+> Split Day-Clear Day-Fog Day-Rain Day-Snow Night-Clear Night-Fog Night-Rain Night-Snow Paired-C All
+> Train 5098 5102 5061 5112 5000 4977 4966 4987 30,205 70,508 Val 434 434 433 434 389 394 394 397 2,486 5,795 Test 425 425 426 426 413 412 411 418 2,518 5,874 All 5957 5961 5920 5972 5802 5783 5771 5802 35,209 82,177
+
+3.3. Data-driven Robustness Analysis 
+
+To systematically evaluate the current depth reconstruc-tion models under the proposed DCD setting, we establish a unified benchmarking protocol built upon AURORA-KITTI. 
+
+Unified DCD setting. All models are evaluated under the same task formulation defined in Eq. (3). Given corrupted multi-modal inputs (𝐼 𝑤 , 𝑆 𝑤 ), the objective is to predict the corresponding clean dense ground-truth depth 𝐷 𝑐 . For monocular depth models that do not accept sparse depth, we evaluate them using 𝐼 𝑤 only. For depth completion models, both 𝐼 𝑤 (RGB) and 𝑆 𝑤 (LiDAR) are provided. We con-sider two evaluation regimes: (1) direct zero-shot evaluation. Publicly available pre-trained checkpoints (typically trained on clear-weather datasets) are directly tested on AURORA-KITTI without adaptation. This quantifies the domain gap induced by adverse weather. (2) in-domain retraining. Each baseline is retrained or fine-tuned on the AURORA-KITTI training split under the DCD objective. Importantly, archi-tectural designs remain unchanged; only the training data domain is altered. This protocol isolates the effect of data exposure from architectural capacity, allowing us to evaluate whether robustness arises primarily from model design or from weather-aware training data. 
+
+Cross-dataset generalisation. To assess whether robust-ness learned from synthetic adverse weather transfers to real-world conditions, we additionally evaluate retrained models on an external real-world benchmark (DENSE). This mea-sures whether training on AURORA-KITTI improves out-of-domain generalisation without architectural modification. 
+
+3.4. Clear-Weather Structural Prior Distillation 
+
+Under severe weather corruption, fine structures (e.g., thin objects, sharp boundaries) are often lost in (𝐼 𝑤 , 𝑆 𝑤 ),even though clear-weather metric depth labels 𝐷 𝑐 provide metric constraints. In addition, the input raw depth mea-surements are inherently sparse, failing to provide the fine-grained structural information required for dense, pixel-wise supervision. To enhance structural fidelity, we distil dense geometric priors from a frozen depth foundation teacher into the DCD network. 
+
+1) Teacher prior normalisation and construction. 
+
+Given a paired clear-weather RGB image 𝐼 𝑐 , we obtain a dense teacher prediction 
+
+𝑃 = 𝑓 𝜙 (𝐼 𝑐 ), (5) where the frozen foundation teacher 𝑓 𝜙 may output either a disparity-like relative prediction or a metric depth predic-tion. Let 𝐷 𝑐 denote the clear-weather metric depth ground truth and let 𝑀 (𝐱 ) ∈ {0 , 1} indicate pixels with valid depth measurements. Since different teachers predict different ge-ometric quantities, a single normalisation is insufficient. We therefore perform image-wise scale-and-shift fitting on valid pixels to convert the teacher output into a supervision-compatible dense prior 𝐷 𝑡 . For disparity-like teachers, we first fit in the inverse-depth domain: 1  
+
+> 𝐷 𝑐 (𝐱 )
+
+≈ 𝑎 𝑃 (𝐱 ) + 𝑏, 
+
+∀𝐱 s.t. 𝑀 (𝐱 ) = 1 , and obtain the metric teacher prior as 
+
+𝐷 𝑡 (𝐱 ) = 1
+
+𝑎 𝑃 (𝐱 ) + 𝑏 . (6) For metric-depth teachers, we instead fit 𝐷 𝑐 (𝐱 ) ≈ 𝑎 𝑃 (𝐱 ) + 𝑏 
+
+on valid pixels and set 𝐷 𝑡 (𝐱 ) = 𝑎 𝑃 (𝐱 ) + 𝑏 . This design preserves the teacher’s structural geometry while correcting global scale and shift bias. The teacher remains frozen and is used only during training. 
+
+2) Scale-and-shift invariant (SSI) distillation. Al-though 𝐷 𝑡 is GT-aligned, residual global mismatch across scenes and teachers may remain. Following similar set-ting from [37], we adopt a scale-and-shift invariant (SSI) matching strategy at multiple prediction scales. Let 𝑙 ∈{0 , 1, … , 𝐿 − 1} index the pyramid levels of the student prediction, and let ̂ 𝐷 𝑠, (𝑙 ) denote the student output at level 
+
+𝑙 . We resize the teacher prior to the same spatial resolution: 
+
+𝐷 𝑡, (𝑙 ) = Down 𝑙 (𝐷 𝑡 ), where Down 𝑙 (⋅) denotes resizing and downsampling to match the size of ̂ 𝐷 𝑠, (𝑙 ). We then align 
+
+𝐷 𝑡, (𝑙 ) to ̂ 𝐷 𝑠, (𝑙 ) via an optimal affine transformation. Notably, ̂𝐷 𝑠, (𝑙 ) serves as the reference to estimate (𝛼 ∗ 
+
+> 𝑙
+
+, 𝛽 ∗ 
+
+> 𝑙
+
+), ensuring invariance to global scale and shift.: 
+
+(𝛼 ∗ 
+
+> 𝑙
+
+, 𝛽 ∗ 
+
+> 𝑙
+
+) = arg min 
+
+> 𝛼,𝛽
+
+‖‖‖𝑊 (𝑙 ) ⊙ (̂ 𝐷 𝑠, (𝑙 ) − ( 𝛼𝐷 𝑡, (𝑙 ) + 𝛽 ))‖‖‖ 
+
+> 22
+
+, (7) where 𝑊 (𝑙 ) is an optional validity mask (e.g., downsampled from 𝑀 when available; otherwise set to all-ones), and 
+
+⊙ denotes element-wise masking. We denote the aligned teacher prior as ̃𝐷 𝑡, (𝑙 ) = 𝛼 ∗ 
+
+> 𝑙
+
+𝐷 𝑡, (𝑙 ) + 𝛽 ∗ 
+
+> 𝑙
+
+. (8)    
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 7 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Figure 5: Clean structural prior distillation. During training, a frozen depth foundation teacher predicts a dense prior from the paired clean RGB image. After GT-aligned normalisation, this prior provides structural guidance to the DCD network via scale-and-shift invariant (SSI) distillation. The student is supervised jointly by sparse, clean ground-truth data and the aligned teacher prior. The teacher is used only during training.
+
+The SSI distillation loss is then defined as 
+
+ssi =
+
+> 𝐿 −1
+
+∑
+
+> 𝑙 =0
+
+𝛿 𝑙 
+
+‖‖‖𝑊 (𝑙 ) ⊙ (̂ 𝐷 𝑠, (𝑙 ) −̃ 𝐷 𝑡, (𝑙 ))‖‖‖1 , (9) where {𝛿 𝑙 } are fixed multi-scale weights. 
+
+3) Residual gradient regularisation. While SSI distil-lation enforces global structural consistency, heavy corrup-tion may still induce local high-frequency artefacts. Instead of smoothing depth directly, we regularise the spatial gradi-ents of the distillation residual: 
+
+𝑅 (𝑙 ) =̂ 𝐷 𝑠, (𝑙 ) −̃ 𝐷 𝑡, (𝑙 ), (10) Where 𝑅 (𝑙 ) is the per-pixel difference between the student prediction and the aligned teacher prior, i.e., the same error term appearing inside ssi . We apply gradient regularisation on 𝑅 (𝑙 ):
+
+grad =
+
+> 𝐿 −1
+
+∑
+
+> 𝑙 =0
+
+𝛿 𝑙 
+
+(‖∇𝑥 𝑅 (𝑙 )‖1 + ‖∇𝑦 𝑅 (𝑙 )‖1
+
+) . (11) In practice, we compute gradients at multiple resolutions by progressively downsampling the residual, which stabilises training under severe weather corruption while preserving depth discontinuities. 
+
+Overall objective. The final training objective combines clean-depth supervision, SSI distillation, and residual gradi-ent regularisation: 
+
+ = sup + 𝜆 𝑑 ssi + 𝜆 𝑔 grad , (12) where 𝜆 𝑑 and 𝜆 𝑔 are positive weights. sup enforces metric correctness with 𝐷 𝑐 , ssi transfers clean structural knowl-edge from 𝐷 𝑡 in a scale- and shift-invariant manner, and 
+
+grad suppresses local artefacts. The teacher prior is used for pseudo-guidance only during training. 
+
+## 4. Experimental Setup 
+
+Benchmark Models. We evaluate seven representative depth estimation and depth completion approaches, includ-ing classical models, monocular depth foundation models,                   
+
+> Figure 6: LiDAR realism under adverse weather. Range-related statistics of AURORA-KITTI compared with MUSES [14] across weather types, showing consistent effective-range degradation trends.
+
+and unsupervised and supervised paradigms. Specifically, these include: (i) IP-Basic [38] as a classical LiDAR-only completion baseline; (ii) Depth Anything V2 and V3 [25, 26] as large-scale monocular depth foundation models; (iii) Sparse2Dense [5] (unsupervised and supervised variants); (iv) BPNet [7] and DMD3C [27] as supervised RGBL depth completion model; (v) Marigold-DC [30] as a diffusion-based zero-shot method. (vi) Unik3D [39] as a universal metrics depth estimation model for outdoor driving scenes. Together, these baselines cover LiDAR-only, monocular depth estimation, and RGB–LiDAR fusion paradigms from classical to state-of-the-art. 
+
+Datasets. We conduct a comprehensive evaluation on two benchmarks: AURORA-KITTI is our proposed large-scale synthetic adverse-weather RGB–LiDAR benchmark with paired clean depth supervision, diverse illumination, weather conditions, and matched severity controls across modalities (Sec. 3.2). DENSE: Pixel-Accurate Depth Benchmark is used to assess cross-dataset generalisa-tion under real-world adverse weather. It provides high-resolution, per-pixel metric depth references with angular                                                                                                                                 
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 8 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Table 4
+> Benchmarking zero-shot performance on the AURORA-KITTI test set ( ↓lower is better). “Params” follows the reporting convention of each method. The same unit is used across the paper. Method Year RMSE(mm) ↓MAE(mm) ↓iRMSE(1/km) ↓iMAE(1/km) ↓Params Time (𝑚𝑠 )
+> IPBasic(fast)[38] CRV’18 7871.25 2675.13 54.41 15.71 None 16.4 IPBasic(multi)[38] CRV’18 6927.55 2236.72 40.26 13.22 None 29.70 S2Dense(SS)[5] ICRA’19 6031.94 2237.83 23.32 10.83 26.11M 6.10 S2Dense(Su)[5] ICRA’19 5142.94 1803.45 20.36 8.16 26.11M 6.10 BP-Net[7] CVPR’24 5047.30 1851.60 13.26 6.01 89.87M 48.60 Marigold-DC[30] ICCV’25 2773.41 1043.10 49.77 11.61 N/A 18.0 k
+> DMD3C [27] CVPR’25 6065.18 2015.52 24.83 9.28 89.87M 48.60 DA-V3[26] arXiv’25 4564.44 2903.61 23.81 20.53 1,400.00 M 375.90 UniK3D[39] CVPR’25 3748.44 1563.49 9.38 6.37 358.83 M 45.08 DDCD (Ours) TBD 1799.55 566.31 4.13 1.93 89.87M 48.60
+> Table 5
+> Benchmarking zero-shot performance on the DENSE test set (↓lower is better). Method RMSE ↓MAE ↓iRMSE ↓iMAE ↓
+> IPBasic(F)[38] 7102.93 4907.74 272.37 200.23 IPBasic(M)[38] 6843.25 4330.87 167.17 112.59 S2Dense(SS)[5] 6457.09 4459.79 56.38 38.49 S2Dense(Su)[5] 4903.39 3366.42 137.74 81.05 BP-Net[7] 5062.24 3493.10 398.05 93.01 MarigoldDC[30] 6410.40 4605.50 224.89 165.93 DMD3C[37] 6544.14 4608.84 202.78 123.14 DA-V3[26] 7025.90 5939.04 121.56 100.17 UniK3D[39] 3296.92 2435.36 47.13 32.70 DDCD (Ours) 2802.80 1591.54 34.88 13.38
+
+resolution comparable to a 50 Mp camera, enabling fine-grained evaluation for depth estimation and completion be-yond sparse LiDAR ground-truth data used in traditional benchmarks. The benchmark covers four canonical auto-motive scenes (pedestrian zone, residential area, construc-tion zone, and highway) recorded under clear, rainy, and foggy conditions under daytime and nighttime conditions, with a wide range of visibility levels for controlled analysis of weather severity [10]. This real-world dataset allows us to evaluate whether robustness learned from synthetic AURORA-KITTI transfers to complex in-the-wild environ-ments with pixel-accurate depth supervision. 
+
+Evaluation Metrics. We follow the standard depth com-pletion protocol and report root mean squared error (RMSE), mean absolute error (MAE), and their inverse-depth counter-parts, root mean squared error of the inverse depth (iRMSE), and mean absolute error of the inverse depth (iMAE). For outdoor driving scenes (e.g., KITTI-style settings). 
+
+Implementation Details. All retraining experiments are conducted using NVIDIA RTX 4090 GPUs. Unless other-wise stated, we adopt each method’s original optimizer and learning schedule to ensure faithful reproduction, modifying only the training data domain. 
+
+## 5. Experimental Results and Analysis 
+
+This section presents the results and analysis of the benchmarking and the new baseline experimental results. 
+
+5.1. Benchmark Results 
+
+5.1.1. AURORA-KITTI Realism Evaluation 
+
+We evaluate whether AURORA-KITTI captures realistic adverse-weather effects by comparing it with MUSES [14], a real-world multi-modal driving dataset collected under di-verse weather. Fig. 4 (a) shows qualitative RGB comparisons across fog, rain, and snow under both daytime and nighttime conditions. Our renderings reproduce key visual signatures observed in real captures, including contrast attenuation, haze veiling in fog, rain-induced streaks and lens contam-ination from raindrops and snowflakes. Importantly, these artefacts are spatially non-uniform and scene-dependent, matching the heterogeneous corruption patterns commonly seen in the real world. We further validate LiDAR realism using range-related statistics (Fig. 6). Across weather con-ditions, AURORA-KITTI exhibits similar effective-range degradation trends to MUSES: dense fog produces the strongest attenuation and volumetric backscatter, leading to a shorter effective sensing range and a higher proportion of near-range returns, while clear weather and rain preserve longer-range measurements comparatively. These visual and geometric consistencies in both modalities indicate that AURORA-KITTI provides a realistic, reliable and cross-modally aligned proxy for systematic DCD benchmarking and robustness training. 
+
+5.1.2. AURORA-KITTI Benchmark Results 
+
+Quantitative Results. Table 4 reports the zero-shot per-formance of seven existing representative depth estimation and depth completion methods on the AURORA-KITTI test split (1600 pairs) together with our proposed DDCD method. Lower values indicate better performance across all metrics. Compared to learning-based approaches, classical interpolation baselines (IP basic) remain worse across all metrics, confirming the limited robustness of purely heuris-tic interpolation strategies under severe degradations.    
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 9 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Figure 7: The benchmarking qualitative visualisation results on the AURORA-KITTI dataset under foggy and rainy conditions.
+
+In contrast, all deep-learning-based approaches show improved robustness in adverse conditions. Among lightweight models, the supervised version of Sparse2Dense achieves competitive performance with an RMSE of 5142.94 mm while maintaining very high efficiency (6.1 ms per frame with 26.11M parameters), highlighting a favourable accuracy–efficiency trade-off. Compared with other RGB–LiDAR fusion models such as BP-Net and DMD3C, Sparse2Dense remains competitive despite its significantly simpler U-Net-based architecture design. Interestingly, recent monocular depth foundation models, including Depth AnythingV3 and Unik3D, achieve strong performance despite using RGB only as the input. This result demonstrates the effectiveness of large-scale pretraining in learning generalisable geometric knowledge. In particular, amongst the existing SOTA methods, Unik3D achieves the best inverse error metrics (iRMSE = 9.38 1/km) with substantially fewer parameters (358.83M) and reduced inference time compared to Depth Anything v3, demonstrating a better generalisability for outdoor metric depth estimation. Among existing approaches, Marigold-DC achieves the lowest RMSE and MAE. Its superior performance can be attributed to strong pretrained stable-diffusion priors via iterative denoising refinement at test time. The multi-step sampling procedure progressively aligns depth predictions with image structures, leading to improved global consistency and structural fidelity. However, this iterative diffusion process requires dozens of refinement steps (e.g., 50 steps), resulting in high latency (18.0 s per frame) and limiting its applicability to real-time    
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 10 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Figure 8: The benchmarking qualitative visualisation results on the AURORA-KITTI dataset under night and snowy conditions.
+
+robotic systems. In contrast, Marigold-DC shows worse performance in inverse-depth space (i.e. iRMSE and iMAE) compared with other DL-based methods, suggesting its sensitivity to near-range weather-induced noises. Our proposed DDCD achieves the best overall perfor-mance across all metrics. In particular, DDCD reduces RMSE to 1799.55 mm, improving over Marigold-DC by 973.86 mm (35.1% relative reduction) and over Unik3D by 1948.89 mm (52.0% relative reduction). Similar improve-ments are observed in MAE, iRMSE, and iMAE. Impor-tantly, DDCD maintains a moderate model size (89.87M pa-rameters) and real-time inference speed (48.6 ms), achieving a favourable balance between accuracy and efficiency. 
+
+Qualitative Results. Fig. 7 and Fig. 8 present qualitative comparisons under four adverse weather conditions: fog, rain, night, and snow. Severe weather degrades both modal-ities: RGB images exhibit reduced visibility, illumination degradation, and weather artefacts such as rain streaks and snow occlusions, while projected sparse LiDAR maps suffer from missing returns at long distances and weather-induced outliers. Foundation RGB-only models, such as Depth Any-thingV3 and Unik3D, recover rich structural details directly from image cues. However, their metric scale estimation re-mains unstable, particularly in distant regions where notice-able depth compression and abrupt transitions are observed compared to the ground-truth data. Under snowy conditions, fine structures such as tree branches and cyclist silhouettes are occasionally missed due to occlusion by snowflakes in   
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 11 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+
+Unik3D in Fig. 8. Sparse2Dense and BP-Net, although lever-aging sparse LiDAR input, exhibit noisy boundaries and blurred object contours, suggesting that corrupted LiDAR measurements propagate noise through the fusion process. DMD3C and Marigold-DC preserve object structures more faithfully, benefiting from large-scale pretrained representa-tions. Nevertheless, both methods struggle in sky regions and distant areas. It is also worth noting that in rainy scenes, visible rain-streak-like artefacts appear in the predictions of DMD3C and Marigold-DC in Fig. 7, indicating vulnerability to structured weather noise. Overall, DDCD produces more consistent scale alignment, sharper object boundaries, and improved robustness to adverse weather artefacts. Distant regions remain geometrically coherent, and fine structures such as vehicles, pedestrians, and trees are better preserved across all evaluated conditions. 
+
+5.1.3. DENSE Benchmark Results 
+
+Table 5 reports benchmarking results on the real-world DENSE Pixel-Accurate dataset. Compared to the metrics results on the AURORA-KITTI test set, all methods ex-hibit consistently higher errors. As DENSE contains severe weather conditions, such as foggy conditions with visibility ranging from partial degradation to near-zero visibility, it introduces strong scattering effects. In addition, there is no snowy weather in the DENSE dataset, leading to substan-tial domain gaps relative to synthetic training data. Within the performance on the DENSE dataset, a similar perfor-mance trend is observed. Classical interpolation methods remain highly sensitive to noise and sparsity corruption. Differently, substantial degradation can be observed, espe-cially for methods heavily relying on clean LiDAR input depth information, such as Marigold-DC. Unik3D shows comparatively stable performance among existing methods, suggesting stronger cross-domain generalisation capabil-ity. Nevertheless, DDCD achieves the best overall results on DENSE dataset, reducing RMSE to 2802.80 mm and outperforming all other competitors. DDCD also achieves the lowest iRMSE and iMAE, indicating superior inverse-depth accuracy, which is particularly important for long-range perception under degraded visibility. The larger per-formance margin on DENSE further validates the impor-tance of explicitly modelling weather-induced noise and jointly performing depth completion and denoising. These results demonstrate that DDCD generalises effectively from synthetic adverse conditions to real-world severe weather, reducing the domain gap and improving geometric consis-tency. 
+
+5.2. Boosting Robustness via Synthetic Data 
+
+To validate the effectiveness of AURORA-KITTI for ro-bustness enhancement, we retrain representative supervised depth completion baselines on the synthetic training split and evaluate them on both the AURORA-KITTI test set and the real-world DENSE benchmark. For fair comparison, inputs from DENSE are resized to the KITTI resolution                                           
+
+> Figure 9: Visualisation of results with the pretrained model (top row) or AURORA-KITTI retrained model (bottom row) on BPNet. (a) (b) are examples from the DENSE dataset, and (c) and (d) are from the AURORA-KITTI test set.
+> Table 6
+> Different performance with (w/r) or without retraining on our AURORA-KITTI dataset. The top is the result of the AURORA-KITTI; the bottom is the result of the DENSE.
+> Method w/r RMSE ↓MAE ↓iRMSE ↓iMAE ↓
+> S-2Dense 5142.94 1803.45 20.36 8.16 S-2Dense ✓2497.56 833.34 5.27 2.45 BP-Net 4994.39 1832.91 12.18 5.73 BP-Net ✓2103.33 598.72 4.51 2.46 S-2Dense 6457.09 4459.79 56.38 38.49 S-2Dense ✓5903.58 4665.92 55.40 39.99 BP-Net 5062.24 3493.10 398.05 93.01 BP-Net ✓4252.91 2375.51 42.58 22.01
+
+to ensure a consistent evaluation protocol. Table 6 sum-marises the results before and after retraining. Overall, syn-thetic adverse-weather training yields substantial gains on AURORA-KITTI and consistent improvements on DENSE, demonstrating both strong in-domain adaptation and promis-ing cross-domain generalisation. On the AURORA-KITTI test set, retraining markedly improves both Sparse2Dense and BP-Net across all eval-uation metrics. For Sparse2Dense, RMSE decreases from 5142.94 mm to 2497.56 mm, while BP-Net improves from 4994.39 mm to 2103.33 mm. Similar trends are observed for MAE, iRMSE, and iMAE, confirming that exposure to synthetic weather degradation substantially improves ro-bustness under the proposed DCD setting. The gains also transfer to the real-world DENSE dataset. After retrain-ing, Sparse2Dense reduces RMSE from 6457.09 mm to 5903.58 mm, while BP-Net improves from 5062.24 mm to 4252.91 mm, with corresponding improvements in the re-maining metrics. These results indicate that training on AURORA-KITTI not only improves in-domain performance but also enhances robustness under real adverse weather. Fig. 9 provides qualitative comparisons between pre-trained models (top row) and models retrained on AURORA-KITTI (bottom row). On both DENSE and AURORA-KITTI examples, retrained models exhibit clearer object bound-aries, improved scale alignment, and reduced noise artefacts.                                                
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 12 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild
+> Table 7
+> The ablation study of the results on the AURORA-KITTI test using DepthAnythingV2 and DepthAnythingV3 as the depth foundation model for depth prior on both the AURORA-KITTI test set (top two rows) and the DENSE test set (bottom two rows).
+> Model RMSE ↓MAE ↓iRMSE ↓iMAE ↓
+> DepthAnything2 1799.55 566.31 4.13 1.93 DepthAnything3 1711.78 524.15 3.99 1.90 DepthAnything2 2802.80 1591.54 34.88 13.38 DepthAnything3 3950.11 2604.12 41.72 23.54
+> Table 8
+> The ablation study of the baseline without distillation, the baseline with distillation using the noisy depth foundation prediction as the prior map directly from the input noisy RGB images, verses using the clean paired images. Please note that the best-performing checkpoint is used here.
+> Retrain Noise Clean RMSE ↓MAE ↓iRMSE ↓
+> xxx4994.39 1832.91 12.18
+> ✓xx2103.33 598.72 4.51
+> ✓✓x1956.83 580.46 4.49
+> ✓✓✓1799.55 566.31 4.13
+
+In particular, distant objects and foreground structures be-come more distinguishable after retraining, and large-scale depth compression artefacts observed in pretrained models are significantly mitigated. These visual improvements cor-roborate the quantitative gains reported in Table 6. Over-all, the results demonstrate that our synthetic AURORA-KITTI data effectively enhances robustness for supervised depth completion models. Sparse2Dense shows strong data sensitivity and benefits substantially from in-domain re-training, while BP-Net exhibits better cross-domain stability and achieves more consistent improvements on the real-world DENSE benchmark. These complementary behaviors highlight the value of synthetic adverse-weather data for im-proving both in-domain accuracy and cross-domain general-isation in depth completion and denoising under challenging conditions. 
+
+5.3. Ablation study 
+
+We conduct two ablation studies to analyse the impact of (1) different depth foundation models used for clean-pair distillation and (2) each component in our training strategy, including synthetic data retraining and depth-prior distillation. Table 7 compares using Depth AnythingV2 and Depth AnythingV3 as the depth foundation model to generate clean depth priors for distillation. The top two rows report results on AURORA-KITTI, while the bottom two rows correspond to DENSE. On the AURORA-KITTI test set, Depth Any-thing V3 slightly outperforms V2. Specifically, RMSE de-creases from 1799.55 mm (v2) to 1711.78 mm (v3). Similar trends are observed for MAE and inverse-depth metrics, suggesting that V3 provides marginally better in-domain priors for synthetic adverse-weather scenes. However, on the real-world DENSE dataset, the trend reverses. Models distilled using Depth Anything v2 achieve lower RMSE compared to those using v3. This observation is consistent with the direct benchmarking results reported in Table 5, where Depth AnythingV3 exhibits higher errors on DENSE (7025.93 mm). These observations suggest that although V3 is stronger in metric depth estimation, its predictions suffer from a larger domain gap under unseen extreme se-vere weather conditions. Overall, the two foundation models show comparable in-domain performance, but V2 provides better robustness when transferring to real-world adverse conditions. Table 8 presents a step-by-step ablation study of our training strategy on the AURORA-KITTI test set. We pro-gressively introduce synthetic data retraining, depth-prior distillation using noisy RGB inputs, and finally distillation with clean paired RGB inputs. MAE and iRMSE follow the same monotonic trend, confirming that each component consistently improves accuracy. Overall, synthetic-data re-training yields the dominant gain (57.9%), while distillation offers smaller but complementary refinements with noisy and clean priors (7.0% and 8.0%); using clean priors ex-tracted from paired clear RGB further improves over noisy RGB priors. These results indicate that while distillation enhances scale alignment and structural consistency, the primary robustness boost stems from exposing the model to large-scale synthetic adverse-weather data during training. 
+
+5.4. Discussion 
+
+Our experiments on AURORA-KITTI and the real-world DENSE benchmark offer several insights into robust depth perception under adverse weather. 
+
+Foundation priors are strong but not uniformly ro-bust. Depth foundation models deliver compelling struc-tural reconstructions on AURORA-KITTI, indicating that large-scale pretraining provides transferable geometric pri-ors. However, cross-domain results on DENSE reveal that stronger in-domain performance does not necessarily trans-late to robustness under severe scattering and low visibility. In particular, priors generated by different foundation teach-ers lead to notably different transfer behavior (e.g., Depth Anything V2 vs. V3), suggesting that robustness is governed not only by model capacity but also by how the learned priors respond to distribution shift in extreme weather. 
+
+Synthetic adverse-weather exposure is the primary ro-bustness driver. Retraining supervised completion models on AURORA-KITTI yields the dominant gains, highlighting that robustness is largely achieved by aligning the train-ing distribution with realistic weather-induced corruptions. Depth-prior distillation further improves performance, but mainly as a complementary regulariser: it stabilises global geometry and metric scale, and is particularly beneficial for near-range accuracy (inverse-depth metrics) where weather noise most strongly impacts downstream robotics tasks.   
+
+> Yiting Wang et al.: Preprint submitted to Elsevier Page 13 of 15
+
+AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild 
+
+Architecture and efficiency matter for deployment. We observe complementary behaviors across model families: lightweight U-Net-style fusion models (e.g., Sparse2Dense) are highly data-sensitive and benefit substantially from in-domain retraining, whereas BP-Net exhibits more stable cross-domain improvements on DENSE, indicating stronger transferability under unseen weather. Meanwhile, diffusion-based approaches (e.g., Marigold-DC) can achieve strong absolute errors but incur prohibitive latency due to iterative refinement, limiting real-time applicability despite their ac-curacy. 
+
+DCD requires explicit denoising, not just completion. 
+
+Across methods, treating weather-corrupted sparse LiDAR or RGB as standard completion inputs often propagates artefacts into dense predictions. By explicitly targeting a clean, dense depth output and injecting clean structural priors during training, DDCD consistently improves both in-domain performance and real-world transfer, validating the necessity of jointly modelling completion and denoising under adverse weather. 
+
+## 6. Conclusion 
+
+We introduce AURORA-KITTI , a large-scale synthetic benchmark for in-the-wild depth completion and denoising (DCD) with weather-consistent RGB–LiDAR degradation and paired clean supervision. Through systematic bench-marking on AURORA-KITTI and evaluation on the real-world DENSE pixel-accurate benchmark, we show that ex-isting depth completion pipelines and depth foundation mod-els remain vulnerable under severe adverse weather, and that large-scale synthetic weather exposure provides the most substantial robustness gains. We further propose DDCD ,a distillation-based baseline that transfers clean structural priors from frozen depth foundation teachers to stabilise metric scale and suppress weather-induced artefacts. DDCD achieves state-of-the-art performance across metrics on both AURORA-KITTI and DENSE while maintaining practical inference efficiency. We hope AURORA-KITTI and the proposed DCD protocol facilitate future research on robust, weather-aware depth perception and cross-domain generali-sation. 
+
+## References 
+
+[1] J. Guo, J. Ma, F. Sun, Z. Gao, Á. F. García-Fernández, H.-N. Liang, X. Zhu, W. Ding, Cd-udepth: Complementary dual-source informa-tion fusion for underwater monocular depth estimation, Information Fusion 118 (2025) 102961. [2] Y. He, P. Yin, F. R. Yu, X. Zeng, Z. Liu, Light-weight monocular depth estimation via transformer-fusion for monocular visual slam, Information Fusion (2025) 103591. [3] D. Fernandes, A. Silva, R. Névoa, C. Simões, D. Gonzalez, M. Gue-vara, P. Novais, J. Monteiro, P. Melo-Pinto, Point-cloud based 3d ob-ject detection and classification methods for self-driving applications: A survey and taxonomy, Information Fusion 68 (2021) 161–191. [4] K. Wu, J. Lin, J. Miao, Z. Li, X. Zhang, G. Xing, Y. Fan, J. Luo, H. Zhao, Y. Liu, et al., Difnet: Dual-information fusion network for depth completion, Information Fusion 125 (2026) 103424. [5] F. Ma, G. V. Cavalheiro, S. Karaman, Self-supervised sparse-to-dense: Self-supervised depth completion from lidar and monocular camera, in: 2019 International Conference on Robotics and Automa-tion (ICRA), 2019, pp. 3288–3295. doi:10.1109/ICRA.2019.8793637 .[6] Y. Wang, G. Zhang, S. Wang, B. Li, Q. Liu, L. Hui, Y. Dai, Improving depth completion via depth feature upsampling, in: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2024, pp. 21104–21113. [7] J. Tang, F.-P. Tian, B. An, J. Li, P. Tan, Bilateral propagation network for depth completion, in: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2024, pp. 9763–9772. [8] J. Guo, J. Ma, F. Sun, Z. Gao, Á. F. García-Fernández, H.-N. Liang, X. Zhu, W. Ding, Cd-udepth: Complementary dual-source informa-tion fusion for underwater monocular depth estimation, Information Fusion 118 (2025) 102961. [9] J. Uhrig, N. Schneider, L. Schneider, U. Franke, T. Brox, A. Geiger, Sparsity invariant cnns, in: International Conference on 3D Vision (3DV), 2017. [10] T. Gruber, M. Bijelic, F. Heide, W. Ritter, K. Dietmayer, Pixel-accurate depth evaluation in realistic driving scenarios, in: Interna-tional Conference on 3D Vision (3DV), 2019. [11] J. Zhang, R. Liu, H. Shi, K. Yang, S. Reiß, K. Peng, H. Fu, K. Wang, R. Stiefelhagen, Delivering arbitrary-modal semantic segmentation, in: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2023, pp. 1136–1147. [12] J. Wang, C. Lin, L. Nie, S. Huang, Y. Zhao, X. Pan, R. Ai, Weath-erdepth: Curriculum contrastive learning for self-supervised depth estimation under adverse weather conditions, in: 2024 IEEE Interna-tional Conference on Robotics and Automation (ICRA), IEEE, 2024, pp. 4976–4982. [13] X. Yan, C. Zheng, Y. Xue, Z. Li, S. Cui, D. Dai, Benchmarking the robustness of lidar semantic segmentation models, International Journal of Computer Vision 132 (7) (2024) 2674–2697. [14] T. Brödermann, D. Bruggemann, C. Sakaridis, K. Ta, O. Liagouris, J. Corkill, L. Van Gool, Muses: The multi-sensor semantic perception dataset for driving under uncertainty, in: European Conference on Computer Vision, Springer, 2024, pp. 21–38. [15] Y. Wang, H. Zhao, D. Gummadi, M. Dianati, K. Debattista, V. Donzella, Robustness of panoptic segmentation for degraded au-tomotive cameras data, IEEE Transactions on Automation Science and Engineering 22 (2025) 21020–21032. doi:10.1109/TASE.2025. 3605753 .[16] M. Hu, S. Wang, B. Li, S. Ning, L. Fan, X. Gong, Penet: Towards precise and efficient image guided depth completion, in: 2021 IEEE International Conference on Robotics and Automation (ICRA), IEEE, 2021, pp. 13656–13662. [17] X. Cheng, P. Wang, C. Guan, R. Yang, Cspn++: Learning context and resource aware convolutional spatial propagation networks for depth completion, in: Proceedings of the AAAI conference on artificial intelligence, Vol. 34, 2020, pp. 10615–10622. [18] J. Park, K. Joo, Z. Hu, C.-K. Liu, I. S. Kweon, Non-local spatial propagation network for depth completion, in: European Conference on Computer Vision (ECCV), 2020. [19] Y. Zhang, X. Guo, M. Poggi, Z. Zhu, G. Huang, S. Mattoccia, Completionformer: Depth completion with convolutions and vision transformers, in: Proceedings of the IEEE/CVF Conference on Com-puter Vision and Pattern Recognition (CVPR), 2023, pp. 18527– 18536. [20] Z. Yan, Y. Lin, K. Wang, Y. Zheng, Y. Wang, Z. Zhang, J. Li, J. Yang, Tri-perspective view decomposition for geometry-aware depth com-pletion, in: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2024, pp. 4874–4884. [21] Y. Zuo, W. Yang, Z. Ma, J. Deng, Omni-dc: Highly robust depth completion with multiresolution depth integration, in: Proceedings of the IEEE/CVF International Conference on Computer Vision, 2025, pp. 9287–9297. 
+
+Yiting Wang et al.: Preprint submitted to Elsevier Page 14 of 15 AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild 
+
+[22] R. Ranftl, K. Lasinger, D. Hafner, K. Schindler, V. Koltun, Towards robust monocular depth estimation: Mixing datasets for zero-shot cross-dataset transfer, IEEE transactions on pattern analysis and ma-chine intelligence 44 (3) (2020) 1623–1637. [23] L. Piccinelli, Y.-H. Yang, C. Sakaridis, M. Segu, S. Li, L. Van Gool, F. Yu, Unidepth: Universal monocular metric depth estimation (2024). [24] L. Yang, B. Kang, Z. Huang, X. Xu, J. Feng, H. Zhao, Depth anything: Unleashing the power of large-scale unlabeled data, in: Proceedings of the IEEE/CVF conference on computer vision and pattern recog-nition, 2024, pp. 10371–10381. [25] L. Yang, B. Kang, Z. Huang, Z. Zhao, X. Xu, J. Feng, H. Zhao, Depth anything v2, arXiv:2406.09414 (2024). [26] H. Lin, S. Chen, J. H. Liew, D. Y. Chen, Z. Li, G. Shi, J. Feng, B. Kang, Depth anything 3: Recovering the visual space from any views, arXiv preprint arXiv:2511.10647 (2025). [27] Y. Liang, Y. Hu, W. Shao, Y. Fu, Distilling monocular foundation model for fine-grained depth completion, in: Proceedings of the Com-puter Vision and Pattern Recognition Conference, 2025, pp. 22254– 22265. [28] M. Wang, Y. Qin, R. Li, Z. Liu, Z. Tang, K. Li, Awdepth: Monocular depth estimation for adverse weather via masked encoding, IEEE Transactions on Industrial Informatics 20 (9) (2024) 10873–10882. [29] Z. Yan, Z. Wang, K. Wang, J. Li, J. Yang, Completion as enhance-ment: A degradation-aware selective image guided network for depth completion, in: Proceedings of the Computer Vision and Pattern Recognition Conference, 2025, pp. 26943–26953. [30] M. Viola, K. Qu, N. Metzger, B. Ke, A. Becker, K. Schindler, A. Obukhov, Marigold-dc: Zero-shot monocular depth completion with guided diffusion, in: Proceedings of the IEEE/CVF International Conference on Computer Vision, 2025, pp. 5359–5370. [31] M. Tremblay, S. S. Halder, R. De Charette, J.-F. Lalonde, Rain rendering for evaluating and improving robustness to bad weather, International Journal of Computer Vision 129 (2021) 341–360. [32] V. Kilic, D. Hegde, A. B. Cooper, V. M. Patel, M. Foster, Lidar light scattering augmentation (lisa): Physics-based simulation of adverse weather conditions for 3d object detection, in: ICASSP 2025-2025 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), IEEE, 2025, pp. 1–5. [33] M. Hahner, C. Sakaridis, M. Bijelic, F. Heide, F. Yu, D. Dai, L. Van Gool, Lidar snowfall simulation for robust 3d object detection, in: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, 2022, pp. 16364–16374. [34] M. Hahner, C. Sakaridis, D. Dai, L. Van Gool, Fog simulation on real lidar point clouds for 3d object detection in adverse weather, in: Proceedings of the IEEE/CVF international conference on computer vision, 2021, pp. 15283–15292. [35] C. Sakaridis, D. Dai, L. Van Gool, Semantic foggy scene understand-ing with synthetic data, International Journal of Computer Vision 126 (9) (2018) 973–992. [36] Y. Wang, B. Li, Z. Wei, A. Rahman, D. Gummadi, H. Zhao, V. Donzella, A survey and new perspective of sensing in the dark for intelligent transportation systems, IEEE Transactions on Intelligent Transportation Systems 26 (11) (2025) 18283–18303. doi:10.1109/ TITS.2025.3600557 .[37] Y. Liang, Y. Hu, W. Shao, Y. Fu, Distilling monocular foundation model for fine-grained depth completion, in: Proceedings of the Com-puter Vision and Pattern Recognition Conference, 2025, pp. 22254– 22265. [38] J. Ku, A. Harakeh, S. L. Waslander, In defense of classical image processing: Fast depth completion on the cpu, in: 2018 15th Con-ference on Computer and Robot Vision (CRV), 2018, pp. 16–22. 
+
+> doi:10.1109/CRV.2018.00013
+
+.[39] L. Piccinelli, C. Sakaridis, M. Segu, Y.-H. Yang, S. Li, W. Abbeloos, L. Van Gool, UniK3D: Universal camera monocular 3d estimation, in: IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2025. 
+
+Yiting Wang et al.: Preprint submitted to Elsevier Page 15 of 15

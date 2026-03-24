@@ -1,0 +1,555 @@
+Title: GAP-MLLM: Geometry-Aligned Pre-training for Activating 3D Spatial Perception in Multimodal Large Language Models
+
+URL Source: https://arxiv.org/pdf/2603.16461v1
+
+Published Time: Wed, 18 Mar 2026 01:23:12 GMT
+
+Number of Pages: 27
+
+Markdown Content:
+# GAP-MLLM: Geometry-Aligned Pre-training for Activating 3D Spatial Perception in Multimodal Large Language Models 
+
+Jiaxin Zhang 1# , Junjun Jiang 1†, Haijie Li 2, Youyu Chen 1, Kui Jiang 1, and Dave Zhenyu Chen 3
+
+1 Harbin Institute of Technology 
+
+2 School of Electronic and Computer Engineering, Peking University 
+
+3 Huawei No Pre-training, Simple Fusion 
+
+> Video
+> LLM
+> Geometry Encoder
+> Visual Encoder
+
+input 
+
+> Video
+> LLM
+> Geometry Encoder
+> Visual Encoder
+> Multi-level
+> Fusion
+
+Sparse Join t Pre-training 
+
+Multi-level Feature Fusion     
+
+> Tell me the semantic label and
+> pointmap of the point covered
+> by the red cross.
+> Semantic label: table
+> Pointmap: [0.09, 0.21, 0.95]
+> mAP_25 ：57.1
+> mAP_50 ：28.6
+> mAP_25 ：85.7
+> mAP_50 ：46.4
+
+output 
+
++
+
+text   
+
+> 2.37m
+> 3.12m
+> Predicted
+> Metric Point Cloud
+> Predicted
+> Semantic Map
+> 2D Projections Boxes on a 3D GT Point Cloud
+> 2D Projections Boxes on a3D GT Point Cloud
+> couch
+> pillow
+> table
+> curtain
+> radiator
+> picture
+> unknown
+
+previous work 
+
+GAP-MLLM 
+
+Fig. 1: Geometry-aligned pre-training significantly improves 3D perception in MLLMs. (A) Naive fusion without geometry-aware pre-training leads to limited geometric uti-lization and inaccurate 3D detection. (B) Our sparse geometry–semantics joint pre-training and multi-level fusion module progressively integrate geometric priors, acti-vating structural perception and yielding substantial gains in 3D detection mAP. 
+
+Abstract. Multimodal Large Language Models (MLLMs) demonstrate exceptional semantic reasoning but struggle with 3D spatial perception when restricted to pure RGB inputs. Despite leveraging implicit geo-metric priors from 3D reconstruction models, image-based methods still exhibit a notable performance gap compared to methods using explicit 3D data. We argue that this gap does not arise from insufficient geo-metric priors, but from a misalignment in the training paradigm: text-dominated fine-tuning fails to activate geometric representations within 
+
+#This work was done during his internship at Huawei. 
+
+†Corresponding Author         
+
+> arXiv:2603.16461v1 [cs.CV] 17 Mar 2026 2J. Zhang et al. MLLMs. Existing approaches typically resort to naive feature concate-nation and optimize directly for downstream tasks without geometry-specific supervision, leading to suboptimal structural utilization. To ad-dress this limitation, we propose GAP-MLLM , a Geometry-Aligned
+> Pre-training paradigm that explicitly activates structural perception be-fore downstream adaptation. Specifically, we introduce a visual-prompted joint task that compels the MLLMs to predict sparse pointmaps along-side semantic labels, thereby enforcing geometric awareness. Further-more, we design a multi-level progressive fusion module with a token-level gating mechanism, enabling adaptive integration of geometric priors without suppressing semantic reasoning. Extensive experiments demon-strate that GAP-MLLM significantly enhances geometric feature fusion and consistently enhances performance across 3D visual grounding, 3D dense captioning, and 3D video object detection tasks.
+> Keywords: Multimodal Large Language Models ·3D Spatial Percep-tion ·Geometry-Aligned Pre-training
+
+## 1 Introduction 
+
+Multimodal large language models (MLLMs), including vision-language models (VLMs) [2, 25, 29] and vision-language-action models [27, 39, 61], have demon-strated strong cross-modal reasoning and semantic understanding capabilities. Extending these models to 3D spatial perception is a crucial step toward ground-ing MLLMs in the physical world [13,59], enabling structured scene understand-ing and object localization under natural language supervision. Recent efforts [18, 57] enhance 3D spatial perception under pure RGB input by incorporating geometric priors derived from feed-forward reconstruction mod-els [46, 47, 50]. These implicit geometric priors provide pixel-aligned structural cues without requiring explicit 3D inputs such as point clouds [34, 58], offering scalability and compatibility with vision-language pipelines. However, despite their promise, implicit prior-based methods consistently underperform in spatial perception compared to approaches operating on explicit 3D representations. We argue that this gap stems from a geometry–semantics imbalance in ex-isting training paradigms rather than from insufficient geometric priors. As il-lustrated in Fig. 2, point cloud-based methods [34] possess strong geometric integrity but lack the high-level semantic reasoning of LLMs, whereas image-based MLLMs [57] enriched with geometric encoders preserve semantic prowess yet fail to fully exploit structural information for precise spatial inference. Most prior works simply fuse geometric and visual features and fine-tune on text-prioritized downstream tasks without dedicated geometry-aware pre-training. Under this optimization regime, semantic supervision dominates the learning process, and geometric representations remain weakly activated, limiting their effective contribution to spatial perception and accurate localization. To address this limitation, we propose GAP-MLLM , a Geometry-Aligned 
+
+Pre-training paradigm that explicitly activates structural perception before down-stream adaptation. Rather than directly fine-tuning fusion modules on target GAP-MLLM 33D + LLM  
+
+> GE + VLM
+> Fig. 2: Geometry–semantics imbalance in existing 3D perception paradigms. Point cloud-based methods ensure geometric accuracy but lack semantics, whereas image-based geometric encoders (GE) with VLMs retain semantics yet under-utilize geometry. As a result, both paradigms exhibit suboptimal performance in 3D perception.
+
+tasks, we introduce a joint reconstruction-perception objective that aligns ge-ometric priors with the inherent image-text representations of MLLMs across multiple feature levels. Specifically, we design a vision-prompt-based joint task requiring MLLMs to predict both sparse pointmaps and semantic labels (see Fig. 1). This objective enforces structural reasoning as a primary capability rather than an auxiliary feature, preventing geometry from being suppressed by dominant language supervision. Furthermore, inspired by the hierarchical atten-tion patterns of geometric encoders, we develop a multi-level progressive fusion module with a token-level gating mechanism. This design enables adaptive ge-ometric integration from abstract global contexts to fine-grained local details, ensuring that geometry and semantics interact synergistically without mutual suppression. Extensive experiments demonstrate that our geometry-aligned pre-training substantially enhances geometric feature utilization under sparse 3D supervision and consistently improves downstream performance on 3D visual grounding, 3D dense captioning, and 3D video object detection tasks. 
+
+Our contribution can be summarized as follows :1. We propose a geometry-aligned pre-training paradigm that activates struc-tural perception in image-only multimodal large language models with im-plicit geometric priors, moving beyond purely task-driven fine-tuning. 2. We develop a sparse geometry–semantics joint pre-training objective that aligns geometric priors with semantic representations through simultaneous prediction of 3D pointmaps and semantic labels. 3. We design a multi-level progressive fusion architecture with token-level gat-ing, enabling hierarchical and adaptive integration of geometric priors from abstract to fine-grained representations across attention layers. 4. We show through extensive experiments that GAP-MLLM effectively acti-vates the spatial structure perception capabilities even with a small amount of sparse data, and as pre-trained weights, consistently improves performance across a diverse range of downstream 3D perception tasks. 4 J. Zhang et al. 
+
+## 2 Related Works 
+
+Multimodal Large Language Models (MLLMs) Multimodal Large Lan-guage Models (MLLMs) have demonstrated strong semantic reasoning and vi-sual–linguistic alignment capabilities across diverse 2D perception and reasoning tasks [2, 3, 25, 29, 31, 40, 44]. Recent efforts [13, 17, 19, 20, 33, 51–53] extend these models to 3D spatial tasks such as grounding [1, 9, 10, 15], captioning [10, 14, 15], and spatial object detection [5–8, 36, 37], aiming to bridge language under-standing with real-world spatial structure. Some approaches incorporate ex-plicit geometric inputs, including depth maps, point clouds, or BEV representa-tions [34,38,60], which improve spatial perception but rely on costly or scarce 3D annotations. Under pure RGB video settings, obtaining reliable 3D inputs and explicit geometry remains challenging, motivating the use of implicit geometric priors derived directly from image sequences. 
+
+Feed-Forward 3D Reconstruction Feed-forward 3D reconstruction provides an efficient mechanism for extracting geometric structure directly from RGB in-puts. Unlike traditional iterative pipelines [21, 41], recent approaches [26, 32, 46– 48,50] predict pixel-aligned 3D geometry end-to-end. For example, DUSt3R [48] estimates pointmaps without known camera parameters, while VGGT [46] and MapAnything [26] extend to multi-view and metric-scale reconstruction. These models have also been applied to scene semantic segmentation [28, 30, 43], ef-ficient reconstruction [42, 55], and dynamic scene reconstruction [45], demon-strating strong geometric expressiveness under pure RGB settings. More impor-tantly, feed-forward reconstruction provides scalable implicit geometric priors for multimodal systems. However, integrating reconstruction-derived geometry into MLLMs while preserving semantic reasoning remains challenging. 
+
+Image-based 3D Spatial Perception with MLLMs MLLM-powered image-based 3D perception methods aim to combine geometric understanding from image sequences with structured language reasoning. [18,34,57,58]. Existing ap-proaches can be broadly divided into explicit-input and implicit-prior paradigms. Explicit-input methods encode geometric representations into language-aligned tokens. SpatialLM [34] reconstructs point clouds from images and converts them into structured tokens for spatial description, and Video-3D-LLM [58] injects explicit 3D cues into visual tokens via positional encoding. While effective, these methods rely on high-quality 3D annotations. Implicit-prior methods instead ex-tract geometric cues from feed-forward reconstruction models and fuse them with visual features. VG-LLM [57] embeds a reconstruction encoder to inject geomet-ric priors from video sequences, and VLM-3R [18] introduces spatial–visual–view fusion for spatial reasoning tasks. Although these approaches preserve strong se-mantic reasoning, most directly optimize fused representations on downstream tasks without geometry-aware pre-training. Under text-dominated supervision, geometric priors are often weakly activated, limiting structural perception and localization. In contrast, our work focuses on a geometry-aligned pre-training paradigm that activates geometric priors before downstream adaptation, en-abling more effective geometric utilization within MLLMs. GAP-MLLM 5Token        
+
+> 0
+> Token
+> 1036
+> Token
+> 3108
+> Layer 4 Layer 11 Layer 17 Layer 23
+> Token-wise Similarity, Layer-wise Distinction
+> Visualization of Attention Maps Across Geometry Encoder Layers
+> Last-layer Fusion in Prior MLLM Leads to Geometric Inaccuracy
+
+Fig. 3: Failure Analysis. Global attention maps of the geometric encoder are visual-ized using three representative tokens across layers. The same token exhibits distinct attention patterns at different layers. Prior method that relies on last-layer tokens as implicit geometric priors [57] leads to inaccurate 3D bounding box prediction. 
+
+## 3 Method 
+
+We present GAP-MLLM , a geometry-aligned pre-training framework designed to activate structural perception in multimodal large language models under pure RGB input. The framework consists of a multi-level geometric–visual fusion ar-chitecture and a two-stage 3D perception training paradigm that jointly enhance metric-aware spatial perception. We first describe the architecture in Sec. 3.1, followed by the geometry-aligned training strategy in Sec. 3.2. 
+
+3.1 Architecture Visualization Analysis. Existing methods [18, 57] enhance the spatial per-ception capabilities of MLLMs by extracting implicit geometric priors via geo-metric encoders with feed-forward reconstruction, but typically utilize only the last-layer features of geometric encoders as implicit priors. Recent works [42, 55] have attempted to eliminate useless tokens by analyzing information redundancy in the intermediate feature space of feed-forward reconstruction. Different from these works that focus on token efficiency, we investigate how geometric rep-resentations at different layers affect downstream 3D perception when used as implicit priors. As shown in Fig. 3, we visualize the global attention maps of the geometric encoder across layers using representative tokens. The attention pattern of the same token varies significantly across layers, indicating that ge-ometric cues are distributed hierarchically rather than concentrated in the last layer. When only the last-layer geometric tokens are injected to guide 3D bound-ing box prediction, the model exhibits inaccurate geometric structures caused by biased geometric attention. This observation suggests that intermediate-layer 6 J. Zhang et al. Video LLM decoder     
+
+> LLM Block 2
+> LLM Block 3
+> LLM Block N
+> vision geometry token
+> Geometry Encoder Visual Encoder
+> LLM Block 1
+> Multi-model
+> Deepstack
+> Geometry Merger Visual Merger
+> Gated Feature Fusion
+> Reconstruction / Semantic / Detection / Grounding / Caption The last layer
+> Intermediate layers
+> Patchify
+> Multi-level Fusion
+> 4 layers
+
+Fig. 4: Network Architecture. An image sequence is processed by parallel geometric and visual branches to extract multi-level structural and semantic tokens. After gated multi-level fusion, the final-layer fused tokens are aligned with task-related textual representations in the video LLM decoder, while selected intermediate-layer tokens are injected into early decoder blocks to preserve hierarchical geometric information. 
+
+geometric representations are not sufficiently activated in existing pipelines, mo-tivating the necessity of multi-level geometric feature fusion in GAP-MLLM. 
+
+Overview. Fig. 4 illustrates the overall architecture of GAP-MLLM. During both training and inference, the model takes an image sequence {Ii}ni=1 and a task-related natural language query Q as input. The image sequence is pro-cessed by two parallel branches: a visual branch responsible for extracting se-mantic features and a geometric branch responsible for extracting structural representations derived from feed-forward reconstruction. Specifically, for each image Ii ∈ Rh×w×3, the visual and geometric branches respectively generate multi-level tokens {T Vi,j }LV 
+
+> j=1
+
+and {T Gi,j }LG
+
+> j=1
+
+, where 
+
+T Vi,j ∈ R⌊h/p V ⌋×⌊ w/p V ⌋× c, T Gi,j ∈ R⌊h/p G⌋×⌊ w/p G⌋× c. (1) Here, pV and pG denote the patch sizes of the two branches, and LV and LG rep-resent the total number of layers. For simplicity and alignment between modal-ities, we set pV = pG = p and LV = LG = L in subsequent formulations. These multi-level tokens are then passed into a gated fusion module, where geometric and visual representations are hierarchically integrated across layers. The fused tokens are subsequently aligned with textual representations in the MLLM decoder. The final-layer fused tokens serve as the primary input to the decoder, while selected intermediate-layer tokens are progressively injected dur-ing decoding to preserve multi-level structural information. In this work, we adopt Qwen3-VL [2] as the MLLM backbone and visual branch, and VGGT [46] as the geometric branch to extract implicit geometric priors. GAP-MLLM 7
+
+Multi-Level Feature Fusion. Existing implicit prior-based methods [57] typi-cally fuse geometric and visual features via simple element-wise addition, relying only on last-layer geometric representations [18]. While effective, such static and single-layer fusion overlooks hierarchical geometric cues and may leave struc-tural information insufficiently activated under dominant semantic supervision. To address this limitation, we introduce independent gating mechanisms across multiple layers for adaptive and hierarchical geometric integration. The Multi-Level Fusion module takes multi-level visual tokens T Vi,j  
+
+> Lj=1
+
+and geometric tokens T Gi,j  
+
+> Lj=1
+
+as inputs. Note that the Qwen-VL series [2, 3] com-presses image tokens via token merging to reduce computational cost. To ensure spatial alignment between modalities, the geometric branch adopts an identi-cal architectural design to the visual branch. Concretely, both branches group spatially adjacent 2 × 2 patches and pass them through a two-layer MLP to produce a single feature, yielding reduced visual tokens T V ′ 
+
+> i,j
+
+∈ R⌊ h    
+
+> 2p⌋×⌊ w
+> 2p⌋× c
+
+and geometric tokens T G′ 
+
+> i,j
+
+∈ R⌊ h   
+
+> 2p⌋×⌊ w
+> 2p⌋× c
+
+.After token merging, we introduce an independent gating mechanism for each layer j (where j = 1 , 2, . . . , L ) to dynamically balance geometric and visual contributions. The gating coefficient for layer j is defined as: 
+
+gi,j = σ
+
+
+
+MLP 
+
+h 
+
+T V ′ 
+
+> i,j
+
+, T G′
+
+> i,j
+
+i 
+
+, (2) where σ denotes the sigmoid activation function mapping values to [0 , 1] , MLP represents a two-layer perceptron, and [·, ·] indicates concatenation. The fused tokens T Si,j  
+
+> Lj=1
+
+are then computed as: 
+
+T Si,j = gi,j ⊙ T V ′ 
+
+> i,j
+
++ (1 − gi,j ) ⊙ T G′ 
+
+> i,j
+
+, (3) where ⊙ denotes element-wise multiplication. This per-layer token-level gating allows geometry–semantics weighting to vary across representation layers and spatial locations, ensuring that structural information remains sufficiently acti-vated rather than uniformly blended. To further enhance hierarchical structural preservation, we draw inspiration from DeepStack [35] and Qwen3-VL [2] to design a multi-modal DeepStack strat-egy. Specifically, from T Si,j 
+
+> Lj=1
+
+, the final-layer tokens T Si,L are concatenated with textual embeddings as the primary input to the video LLM decoder. Meanwhile, selected intermediate-layer tokens T Si,m with m ∈ { L1, L 2, L 3} are injected into early decoder layers by direct addition to the corresponding hidden states. This hierarchical injection maintains geometric signals throughout decoding, prevent-ing structural cues from being suppressed by dominant semantic representations and promoting sustained geometric activation. 
+
+3.2 Training 
+
+Recent works have proposed multiple object-level datasets for RGB-only 3D scene perception [54, 57], covering tasks such as 3D visual grounding, dense cap-tioning, and video object detection. However, directly fine-tuning MLLMs on 8 J. Zhang et al. Unified First-Frame Metric Coordinate System         
+
+> Sparse Joint Pre-training Object-level Fine-tuning
+> Given the images, find the point
+> covered by the red cross. Output the
+> point's Semantic label and Pointmap .
+> Semantic label: chair
+> Pointmap :[x, y, z]
+> Visual Grounding
+> Describe object
+> at [x, y, z]
+> Dense Captioning Object Detection
+> Locate chair
+> near window
+> 3D box: (x, y, z,
+> w, h, d, ψ, θ, φ)
+> A wooden chair
+> near the table
+> Detect all 3D
+> bounding boxes
+> [{chair, (x, y, z,
+> w, h, d, ψ, θ,
+> φ)},...]
+> Activated 3D Structure
+> 5.12m
+> 8.45m
+
+Fig. 5: Training Strategy. Sparse joint pre-training (left) activates 3D representa-tions under a unified first-frame metric coordinate system. The learned representations are then transferred to object-level fine-tuning (right) for downstream 3D perception. 
+
+object-level supervision remains insufficient to activate implicit geometric pri-ors, as optimization is dominated by language-driven objectives. We argue that an explicit geometry-aligned pre-training stage is necessary to strengthen struc-tural perception before downstream adaptation. Accordingly, we design a two-stage training paradigm, as illustrated in Fig. 5, consisting of sparse pixel-level geometry–semantics pre-training followed by object-level perception fine-tuning. 
+
+Consistent Metric Coordinate System. RGB-based 3D perception under implicit geometric priors lacks explicit constraints on the output space. With-out a unified coordinate definition, predictions across tasks become inconsistent and undermine structural supervision. To enforce geometry-aligned learning, we adopt a consistent metric coordinate system for all tasks. Following VGGT [46], we use the first-frame coordinate system as the shared reference frame. All nu-merical outputs are represented in metric space and rounded to two decimal places, ensuring structural consistency across tasks. 
+
+Sparse Geometry-Semantics Joint Pre-training. Inspired by DepthLM [4], we observe that pure vision models still struggle with metric spatial percep-tion. Even when equipped with implicit geometric priors, multi-view structural prediction remains weak under language-dominated supervision. Therefore, we introduce a sparse geometry–semantics joint pre-training objective to explicitly activate geometric representations under cross-modal guidance. Given image sequences {I1, . . . , I n}, visual prompts, and a natural language query Q, the model predicts both the 3D coordinate (x, y, z ) of the prompted pixel and its semantic label c under the unified first-frame coordinate system, as shown in Fig. 5. By jointly supervising structural coordinates and semantic categories, this objective aligns geometric priors with language representations and explicitly activates 3D structural perception during early optimization. 
+
+Object-level 3D Perception Fine-tuning. After sparse geometry-semantics joint pre-training, we evaluate whether the activated structural representations transfer to complex object-level 3D perception tasks. 
+
+3D Visual Grounding : Following previous works [56], we formulate 3D visual grounding as a 3D video grounding problem that predicts the frame index where GAP-MLLM 9
+
+the target object appears and its 3D bounding box in that coordinate system. Unlike VG-LLM [57], which performs grounding in a single feed-forward pass, we decompose it into a two-stage procedure. In the first stage, given an image sequence and a language query, the model predicts the target frame index It.In the second stage, we reorganize the sequence with It as the first frame and predict the 3D bounding box (x, y, z, w, h, d, ψ, θ, ϕ ), where (x, y, z ) denotes the center coordinate, (w, h, d ) the object size, and (ψ, θ, ϕ ) the rotation angles. 
+
+3D Dense Captioning : Similar to visual grounding, we adopt a two-stage dense captioning approach [60]. Given a frame sequence and the spatial coordi-nate (x, y, z ) of an object center under the unified first-frame coordinate system, the model generates a descriptive caption conditioned on the corresponding 3D location. This formulation preserves coordinate consistency across tasks. 
+
+3D Video Object Detection : Following [57], our 3D video object detection requires the model to output all objects appearing in a multi-frame sequence under the same first-frame coordinate system. The output is represented as 
+
+{(bi, c i)}, where bi follows the same bounding box parameterization as in 3D visual grounding and ci denotes the object category. 
+
+## 4 Experiments 
+
+We evaluate GAP-MLLM on RGB-only 3D scene perception to validate our claim that geometry-aligned pre-training paradigm activates structural percep-tion and improves implicit-prior utilization under sparse supervision. Sec. 4.1 de-scribes datasets, baselines, metrics, and implementation details. Sec. 4.2 reports results on 3D visual grounding, dense captioning, and video object detection, and includes metric 3D reconstruction as a probe of metric-aware perception after sparse prompt-based pre-training. Sec. 4.3 analyzes our sparse geometry-semantics pre-training and multi-level gated fusion. 
+
+4.1 Setting Datasets and Baselines. We first conduct sparse pixel-level geometry se-mantics pre-training, and then perform multi-task fine-tuning on object-level RGB-only 3D perception datasets. 1. Sparse Joint Pre-training : We use ScanNet [16] and EmbodiedScan [49]. To improve semantic label quality, we adopt frame-aligned 3D annotations from EmbodiedScan. Specifically, object centers are projected to 2D and then back-projected to metric 3D coordinates in the first-frame coordinate system using ScanNet depth maps and camera poses. Semantic labels are inherited from Em-bodiedScan. In total, the pre-training set contains approximately 500K samples; however, since supervision is provided only at sparse prompted pixels, the effec-tive pixel-level supervision is roughly equivalent to two 680 ×480 images. Each training sample contains four consecutive frames sampled at 1 FPS, where a red cross marks the prompted pixel location. 2. 3D Visual Grounding : We use ScanRefer [9] and formulate it as 3D video grounding: given a text query, the model predicts the target frame index 10 J. Zhang et al. 
+
+and a 3D bounding box under that frame’s camera coordinates. Following VG-LLM [57], EmbodiedScan [49] annotations are used as ground-truth boxes. 3. 3D Dense Captioning : We adopt Scan2Cap [14]. Mask3D proposals extracted by LEO [24] are used as input, and the model generates captions conditioned on object center coordinates under the first-frame coordinate system. 4. 3D Video Object Detection : We use EmbodiedScan [49] with frame-aligned dense 3D bounding boxes. Four consecutive frames are sampled at 1 FPS, and all annotations are transformed to the first-frame coordinate system [57]. The dataset is split into 958 training and 243 evaluation scenes. 
+
+Baselines. We compare against both explicit 3D-input methods and RGB-only methods that rely on implicit geometric priors. For 3D visual grounding and captioning, we include task-specific models ScanRefer [9] and Scan2Cap [14], as well as generalist 3D/LLM models Chat-3D v2 [23], Grounded 3D-LLM [12], LL3DA [11], LLaVA-3D [60], Video-3D LLM [58], and VG-LLM [57]. For 3D video object detection, we compare with SpatialLM [34] and VG-LLM [57]. For metric 3D reconstruction, we compare with CUT3R [47] and MapAnything [26]. 
+
+Metrics. ScanRefer: Acc@0.25/0.5. Scan2Cap: CIDEr, BLEU-4, ROUGE on IoU ≥ 0.5. 3D Video Detection: Precision/Recall/F1 at IoU 0.25 over 20 classes. Metric 3D Reconstruction: Accuracy/Completeness/Overall on 10 ScanNet [16] validation scenes under aligned and metric evaluation. 
+
+Implementation Details. Our main instantiation of GAP-MLLM is built upon Qwen3-VL-2B [2], with VGGT-1B [46] as the geometric encoder. To demon-strate architectural scalability, we also apply the same training paradigm and fusion design to the VG-LLM setting [57]. Both sparse joint pre-training and mixed-task fine-tuning are conducted for one epoch using Adam, with a warm-up ratio of 0.03 and a peak learning rate of 1e-5. The batch size is 32 for joint pre-training and 16 for mixed-task fine-tuning. The visual and geometric en-coders each contain L = 24 layers. For multi-level fusion, we select intermediate layers L1 = 5 , L2 = 11 , and L3 = 17 , while the final layer L is used as the primary decoder input. We freeze the visual encoder of the MLLM and the geo-metric encoder to provide stable multimodal token representations, and optimize the MLLM backbone (LLM) together with the multi-level fusion module. 
+
+4.2 Evaluations Results on 3D Visual Grounding. As shown in Tab. 1, GAP-MLLM sig-nificantly outperforms prior RGB-only methods that rely on implicit geometric priors. Compared with VG-LLM-4B [57], our 3B model improves Acc@0.25 and Acc@0.5 by over 11 points while using fewer parameters, achieving comparable Acc@0.25 to 3D-input methods. These results indicate that geometry-aligned pre-training effectively activates structural perception within MLLMs. Fig. 6 further illustrates that our predictions exhibit tighter geometric alignment and more accurate box structures. Even when both models identify the same object, our bounding boxes better conform to the underlying spatial geometry. GAP-MLLM 11 
+
+Table 1: ScanRefer Results. Ours surpasses prior RGB-only methods and approaches explicit 3D models.                                   
+
+> Model 3D Input Acc@0.25 Acc@0.5
+> ScanRefer [9] ✓37.3 24.3 3D-LLM [22] ✓30.3 -Chat-3D v2 [23] ✓35.9 30.4 Grounded 3D-LLM [12] ✓47.9 44.1 ChatScene [23] ✓55.5 50.2 LLaVA-3D [60] ✓54.1 42.4 Video-3D LLM [58] ✓58.1 51.7
+> SPAR [56] ✗31.9 12.4 VG-LLM-4B [57] ✗36.4 11.8 VG-LLM-4B (w/ GAP) ✗49.7 23.2 GAP-MLLM-3B (Ours) ✗53.1 26.0
+
+Table 2: Scan2Cap Results. GAP-MLLM achieves the best overall performance among both 3D-input and RGB-only methods.                                                
+
+> Model 3D Input C@0.5 ↑B-4@0.5 ↑R@0.5 ↑
+> Scan2Cap [14] ✓39.1 23.3 44.8 LL3DA [11] ✓65.2 36.8 55.0 Chat-3D-v2 [23] ✓63.9 31.8 -Grounded 3D-LLM [12] ✓70.2 35.0 -LEO [24] ✓72.4 38.2 58.1 Chat-Scene [23] ✓77.1 36.5 -LLaVA-3D [60] ✓79.2 41.1 63.4
+> Video-3D LLM [58] ✓80.0 40.2 61.7 VG-LLM-4B [57] ✗78.6 40.9 62.4 VG-LLM (w/ GAP) ✗80.6 41.1 62.8 GAP-MLLM-3B (Ours) ✗84.7 42.1 63.1 The chair is on the left side of the table. it is the second from the front.
+> This is a black couch. it is located next to a tall shelf and there is a fan in front of it.
+> This is the grey office chair. it is in the second cubicle from the corner.
+> There is a rectangular teal couch. it is besides two armchairs and behind a coffee table.
+
+VG-LLM Ours GT 
+
+Fig. 6: Qualitative comparison on 3D visual grounding. We compare VG-LLM and GAP-MLLM against ground truth (GT). Our predictions exhibit tighter geometric alignment and more accurate box fitting under the same textual descriptions. 
+
+Results on 3D Dense Captioning. Tab. 2 shows that GAP-MLLM achieves the best performance among RGB-only approaches and surpasses several ex-plicit 3D-input methods. Our model obtains 84.7 CIDEr and 42.1 BLEU-4 at IoU 0.5, demonstrating that geometry-aligned pre-training improves coordinate-conditioned grounding and description in image sequences. 
+
+Results on 3D Video Object Detection. As shown in Tab. 3 and Fig. 7, SpatialLM [34], which relies on explicit 3D input, achieves reasonable precision but low recall, indicating sensitivity to incomplete geometry. RGB-based VG-LLM [57] improves recall through stronger semantic perception but remains limited in overall F1. In contrast, GAP-MLLM consistently achieves the highest precision, recall, and F1 under both 4-frame and 6-frame settings. These results demonstrate that geometry-aligned pre-training and gated fusion enable more effective utilization of implicit geometric priors for accurate spatial localization. 12 J. Zhang et al. 
+
+Table 3: 3D Video Object Detection Results. GAP-MLLM achieves the highest precision, recall, and F1 under both 4-frame and 6-frame settings.                                            
+
+> Model 3D Input 4-Frame Setting 6-Frame Setting
+> P25 R25 F1 25 P25 R25 F1 25
+> SpatialLM [34] ✓40.8 23.7 29.1 42.1 26.1 31.1 VG-LLM-4B [57] ✗41.7 35.7 38.2 39.7 34.0 36.4 VG-LLM-7B [57] ✗43.4 39.6 41.2 43.5 38.7 40.8 VG-LLM-4B (w/ GAP) ✗47.0 41.2 43.5 48.8 40.2 43.6 GAP-MLLM-3B (Ours) ✗54.2 48.1 50.6 52.9 45.4 48.5 VGLLM Ours  SpatialLM VG-LLM Ours  SpatialLM
+
+Fig. 7: Qualitative comparison on 3D video object detection. We compare SpatialLM [34], VG-LLM [57], and GAP-MLLM. Our method produces more accurate and spatially consistent 3D bounding boxes across multi-frame inputs. 
+
+Results on Pointmaps and Semantic labels. Our sparse joint pre-training enables the MLLM to generate metric-consistent point and semantic maps. As shown in Fig. 8, the reconstructed geometry is structurally coherent and spatially accurate under metric supervision. The predicted semantic maps inherit the ab-stract semantic capacity of the MLLMs. Although boundaries are not sharp due to sparse supervision, the model reliably captures object extents and structure. Tab. 4 reports aligned and metric evaluations on 10 ScanNet [16] scenes. While CUT3R [47] achieves slightly better performance under Sim(3) aligned evaluation, GAP-MLLM performs best under metric evaluation, indicating stronger metric-aware reconstruction. Furthermore, incorporating semantic supervision yields improvements in metric consistency compared to pointmap only training, highlighting the role of semantic guidance in stabilizing metric structure. GAP-MLLM 13 
+
+Table 4: PointMap Estimation Results on ScanNet (meter). We report Accu-racy, Completeness, and Overall under aligned evaluation (after Sim(3) alignment to GT) and metric evaluation (direct comparison with GT without alignment).                                                                                         
+
+> Model Aligned Evaluation Metric Evaluation
+> Acc. ↓Comp. ↓Overall. ↓Acc. ↓Comp. ↓Overall. ↓
+> Mean Med. Mean Med. Mean Med. Mean Med. Mean Med. Mean Med. CUT3R [47] 0.0302 0.0227 0.0273 0.0207 0.0287 0.0217 0.1199 0.0998 0.1045 0.0871 0.1122 0.0937 Mapanything [26] 0.0688 0.0397 0.0610 0.0480 0.0649 0.0438 0.3409 0.2721 0.2498 0.2265 0.2953 0.2493 GAP-MLLM-3B (w/o semantic) 0.0424 0.0295 0.0326 0.0246 0.0375 0.0270 0.0691 0.0580 0.0570 0.0465 0.0630 0.0523 GAP-MLLM-3B (Ours) 0.0421 0.0293 0.0327 0.0247 0.0374 0.0270 0.0675 0.0553 0.0557 0.0441 0.0616 0.0497 door vanity towel sink bag
+> blackboard chair table bin stool
+> table couch curtain picture lamp
+> shower bathtub plunger toilet toilet paper
+
+Fig. 8: Qualitative results on pointmap and semantic prediction. Despite being trained with sparse supervision, GAP-MLLM reconstructs metrically consistent 3D pointmaps and dense semantic regions. White points denote the unknown category. 
+
+4.3 Analysis Ablation Study on Core Contribution. Tab. 5 shows that both sparse joint pre-training (A) and multi-level fusion (B) improve metrics in 3D video object detection. When combined, they achieve the best performance, demonstrating complementary effects. Applying GAP to VG-LLM [57] yields consistent gains, confirming that our geometry-aligned design generalizes across architectures. 
+
+Sparse Geometry-Semantics Joint Pre-training. To examine whether ge-ometry aware pre-training enhances inherent spatial perception, we evaluate a pure Qwen3-VL [2] backbone without geometric modules. As shown in Tab. 6, sparse joint pre-training consistently improves all metrics, indicating strength-ened geometric perception even without explicit 3D inputs and implicit priors. 14 J. Zhang et al. 
+
+Table 5: Ablation on 3D video object detection. Both sparse joint pre-training (A) and multi-level gated fusion (B) contribute complementary gains.                               
+
+> AB
+> VG-LLM-4B [57]
+> (Qwen2.5-VL + VGGT)
+> GAP-MLLM-3B
+> (Qwen3-VL + VGGT) P25 R25 F1 25 P25 R25 F1 25
+> 41.7 35.7 38.2 48.8 42.1 44.7
+> ✓44.1 39.6 41.4 52.7 45.9 48.7
+> ✓43.3 36.9 39.4 51.8 44.6 47.5
+> ✓✓47.0 41.2 43.5 54.2 48.1 50.6
+
+Table 6: Effect of geometry-aware pre-training on pure VLM. Pre-training enhances geometric perception, even without geometric encoder.        
+
+> Model P25 R25 F1 25
+> Qwen3-VL 43.0 37.3 39.7 + Joint Pre-training 45.5 40.1 42.4
+
+Table 7: Effect of joint geometric-semantic pre-training. Joint supervision outperforms pointmap-only training in 3D perception.           
+
+> Model P25 R25 F1 25
+> VG-LLM [57] 41.7 35.7 38.2 + Pointmap 43.1 38.3 40.1 + Pointmap + Semantic 44.1 39.6 41.4
+
+We further compare pointmap-only and joint geometric–semantic supervision on VG-LLM [57]. As shown in Tab. 7, joint supervision yields additional gains, suggesting that semantic guidance helps structure geometric representations. This trend aligns with the metric reconstruction results in Tab. 4. 
+
+Ablation on Fusion Strategies. Tab. 8 compares different fusion strategies. Simple addition or weighted fusion provides limited gains, while cross-attention improves interaction. Our gated fusion achieves the best results, highlighting the importance of adaptive token-level integration. 
+
+Table 8: Ablation on token-level fusion strategies. Gated fusion achieves the best perfor-mance with higher flexibility.                       
+
+> Fusion Type Precision Recall F1 Add 51.7 45.3 47.9 Weighted 51.4 45.5 47.8 Cross-Attention 52.7 46.3 49.1 Gated (Ours) 54.2 48.1 50.6 Geometry Visual
+> Layer 𝐀 𝐀 Layer 𝐀 𝐀 Layer 𝐀 𝐀 Last Layer
+
+Fig. 9: Visualization of Layer-wise gating weights. Intermediate layers emphasize geome-try, while later layers focus on semantics. 
+
+Fig. 9 visualizes layer-wise gating weights. Intermediate layers emphasize ge-ometric priors, while the final layer assigns higher weight to semantic features. This layer-dependent behavior confirms that geometry and semantics play com-plementary roles across stages, and gated fusion enables flexible balancing. GAP-MLLM 15 
+
+## 5 Conclusion 
+
+In this work, we revisit RGB-only 3D perception from a training perspective and argue that the performance gap of implicit geometric prior-based meth-ods does not stem from insufficient geometry, but from the lack of effective activation within text-dominated fine-tuning paradigms. To address this issue, we propose GAP-MLLM , a geometry-aligned pre-training paradigm that ex-plicitly activates structural perception before downstream adaptation. Through sparse geometry–semantics joint supervision and multi-level gated fusion, GAP-MLLM strengthens metric-aware spatial perception while preserving semantic capability. Extensive experiments across 3D visual grounding, 3D dense cap-tioning, 3D video object detection, and metric 3D reconstruction demonstrate that geometry-aligned pre-training consistently improves the utilization of im-plicit geometric priors and generalizes across different MLLM backbones. We hope this work provides a new perspective on training MLLMs for 3D spatial understanding and highlights the importance of activation-oriented pre-training for multimodal perception in the absence of explicit 3D inputs. 
+
+## References 
+
+1. Achlioptas, P., Abdelreheem, A., Xia, F., Elhoseiny, M., Guibas, L.: Referit3d: Neural listeners for fine-grained 3d object identification in real-world scenes. In: European conference on computer vision. pp. 422–440. Springer (2020) 2. Bai, S., Cai, Y., Chen, R., Chen, K., Chen, X., Cheng, Z., Deng, L., Ding, W., Gao, C., Ge, C., Ge, W., Guo, Z., Huang, Q., Huang, J., Huang, F., Hui, B., Jiang, S., Li, Z., Li, M., Li, M., Li, K., Lin, Z., Lin, J., Liu, X., Liu, J., Liu, C., Liu, Y., Liu, D., Liu, S., Lu, D., Luo, R., Lv, C., Men, R., Meng, L., Ren, X., Ren, X., Song, S., Sun, Y., Tang, J., Tu, J., Wan, J., Wang, P., Wang, P., Wang, Q., Wang, Y., Xie, T., Xu, Y., Xu, H., Xu, J., Yang, Z., Yang, M., Yang, J., Yang, A., Yu, B., Zhang, F., Zhang, H., Zhang, X., Zheng, B., Zhong, H., Zhou, J., Zhou, F., Zhou, J., Zhu, Y., Zhu, K.: Qwen3-vl technical report. arXiv preprint arXiv:2511.21631 (2025) 3. Bai, S., Chen, K., Liu, X., Wang, J., Ge, W., Song, S., Dang, K., Wang, P., Wang, S., Tang, J., et al.: Qwen2. 5-vl technical report. arXiv preprint arXiv:2502.13923 (2025) 4. Cai, Z., Yeh, C.F., Xu, H., Liu, Z., Meyer, G., Lei, X., Zhao, C., Li, S.W., Chandra, V., Shi, Y.: Depthlm: Metric depth from vision language models. arXiv preprint arXiv:2509.25413 (2025) 5. Cao, Y., Jv, Y., Xu, D.: 3dgs-det: Empower 3d gaussian splatting with bound-ary guidance and box-focused sampling for 3d object detection. arXiv preprint arXiv:2410.01647 (2024) 6. Cao, Y., Wu, F., Chen, D.Z., Zhong, Y., Hong, L., Xu, D.: Vggt-det: Mining vggt in-ternal priors for sensor-geometry-free multi-view indoor 3d object detection. arXiv preprint arXiv:2603.00912 (2026) 7. Cao, Y., Yihan, Z., Xu, H., Xu, D.: Coda: Collaborative novel box discovery and cross-modal alignment for open-vocabulary 3d object detection. Advances in Neu-ral Information Processing Systems 36 , 71862–71873 (2023) 8. Cao, Y., Zeng, Y., Xu, H., Xu, D.: Collaborative novel object discovery and box-guided cross-modal alignment for open-vocabulary 3d object detection. IEEE Transactions on Pattern Analysis and Machine Intelligence (2025) 16 J. Zhang et al. 9. Chen, D.Z., Chang, A.X., Nießner, M.: Scanrefer: 3d object localization in RGB-D scans using natural language. In: ECCV (2020) 10. Chen, D.Z., Wu, Q., Nießner, M., Chang, A.X.: D 3 net: A unified speaker-listener architecture for 3d dense captioning and visual grounding. In: European Conference on Computer Vision. pp. 487–505. Springer (2022) 11. Chen, S., Chen, X., Zhang, C., Li, M., Yu, G., Fei, H., Zhu, H., Fan, J., Chen, T.: Ll3da: Visual interactive instruction tuning for omni-3d understanding reasoning and planning. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 26428–26438 (2024) 12. Chen, Y., Yang, S., Huang, H., Wang, T., Xu, R., Lyu, R., Lin, D., Pang, J.: Grounded 3d-llm with referent tokens. arXiv preprint arXiv:2405.10370 (2024) 13. Chen, Y., Qi, Z., Zhang, W., Jin, X., Zhang, L., Liu, P.: Reasoning in space via grounding in the world. arXiv preprint arXiv:2510.13800 (2025) 14. Chen, Z., Gholami, A., Nießner, M., Chang, A.X.: Scan2cap: Context-aware dense captioning in rgb-d scans. In: Proceedings of the IEEE/CVF conference on com-puter vision and pattern recognition. pp. 3193–3203 (2021) 15. Chen, Z., Hu, R., Chen, X., Nießner, M., Chang, A.X.: Unit3d: A unified trans-former for 3d dense captioning and visual grounding. In: Proceedings of the IEEE/CVF international conference on computer vision. pp. 18109–18119 (2023) 16. Dai, A., Chang, A.X., Savva, M., Halber, M., Funkhouser, T., Nießner, M.: Scannet: Richly-annotated 3d reconstructions of indoor scenes. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 5828–5839 (2017) 17. Dwedari, M.M., Niessner, M., Chen, D.Z.: Generating context-aware natural an-swers for questions in 3d scenes. arXiv preprint arXiv:2310.19516 (2023) 18. Fan, Z., Zhang, J., Li, R., Zhang, J., Chen, R., Hu, H., Wang, K., Qu, H., Wang, D., Yan, Z., et al.: Vlm-3r: Vision-language models augmented with instruction-aligned 3d reconstruction. arXiv preprint arXiv:2505.20279 (2025) 19. Feng, K., Gong, K., Li, B., Guo, Z., Wang, Y., Peng, T., Wu, J., Zhang, X., Wang, B., Yue, X.: Video-r1: Reinforcing video reasoning in mllms. arXiv preprint arXiv:2503.21776 (2025) 20. Gao, X., Zhang, Z., Chen, D.Z., Xu, S., Quan, L., Pérez-Pellitero, E., Jang, Y.: Map2thought: Explicit 3d spatial reasoning via metric cognitive maps. arXiv preprint arXiv:2601.11442 (2026) 21. Hartley, R., Zisserman, A.: Multiple view geometry in computer vision. Cambridge university press (2003) 22. Hong, Y., Zhen, H., Chen, P., Zheng, S., Du, Y., Chen, Z., Gan, C.: 3d-llm: In-jecting the 3d world into large language models. Advances in Neural Information Processing Systems 36 , 20482–20494 (2023) 23. Huang, H., Chen, Y., Wang, Z., Huang, R., Xu, R., Wang, T., Liu, L., Cheng, X., Zhao, Y., Pang, J., et al.: Chat-scene: Bridging 3d scene and large language models with object identifiers. Advances in Neural Information Processing Systems 
+
+37 , 113991–114017 (2024) 24. Huang, J., Yong, S., Ma, X., Linghu, X., Li, P., Wang, Y., Li, Q., Zhu, S.C., Jia, B., Huang, S.: An embodied generalist agent in 3d world. arXiv preprint arXiv:2311.12871 (2023) 25. Hurst, A., Lerer, A., Goucher, A.P., Perelman, A., Ramesh, A., Clark, A., Os-trow, A., Welihinda, A., Hayes, A., Radford, A., et al.: Gpt-4o system card. arXiv preprint arXiv:2410.21276 (2024) 26. Keetha, N., Müller, N., Schönberger, J., Porzi, L., Zhang, Y., Fischer, T., Knapitsch, A., Zauss, D., Weber, E., Antunes, N., et al.: Mapanything: Univer-sal feed-forward metric 3d reconstruction. arXiv preprint arXiv:2509.13414 (2025) GAP-MLLM 17 27. Kim, M.J., Pertsch, K., Karamcheti, S., Xiao, T., Balakrishna, A., Nair, S., Rafailov, R., Foster, E., Lam, G., Sanketi, P., et al.: Openvla: An open-source vision-language-action model. arXiv preprint arXiv:2406.09246 (2024) 28. Koch, S., Wald, J., Matsuki, H., Hermosilla, P., Ropinski, T., Tombari, F.: Unified semantic transformer for 3d scene understanding. arXiv preprint arXiv:2512.14364 (2025) 29. Li, B., Zhang, Y., Guo, D., Zhang, R., Li, F., Zhang, H., Zhang, K., Zhang, P., Li, Y., Liu, Z., et al.: Llava-onevision: Easy visual task transfer. arXiv preprint arXiv:2408.03326 (2024) 30. Li, H., Zou, Z., Liu, F., Zhang, X., Hong, F., Cao, Y., Lan, Y., Zhang, M., Yu, G., Zhang, D., et al.: Iggt: Instance-grounded geometry transformer for semantic 3d reconstruction. arXiv preprint arXiv:2510.22706 (2025) 31. Li, J., Li, D., Savarese, S., Hoi, S.: Blip-2: Bootstrapping language-image pre-training with frozen image encoders and large language models. In: International conference on machine learning. pp. 19730–19742. PMLR (2023) 32. Lin, H., Chen, S., Liew, J., Chen, D.Y., Li, Z., Shi, G., Feng, J., Kang, B.: Depth anything 3: Recovering the visual space from any views. arXiv preprint arXiv:2511.10647 (2025) 33. Ma, X., Smart, B., Bhalgat, Y., Chen, S., Li, X., Ding, J., Gu, J., Chen, D.Z., Peng, S., Bian, J.W., et al.: When llms step into the 3d world: A survey and meta-analysis of 3d tasks via multi-modal large language models. arXiv preprint arXiv:2405.10255 (2024) 34. Mao, Y., Zhong, J., Fang, C., Zheng, J., Tang, R., Zhu, H., Tan, P., Zhou, Z.: Spatiallm: Training large language models for structured indoor modeling. In: Ad-vances in Neural Information Processing Systems (2025) 35. Meng, L., Yang, J., Tian, R., Dai, X., Wu, Z., Gao, J., Jiang, Y.G.: Deepstack: Deeply stacking visual tokens is surprisingly simple and effective for lmms. Ad-vances in Neural Information Processing Systems 37 , 23464–23487 (2024) 36. Qi, C.R., Chen, X., Litany, O., Guibas, L.J.: Imvotenet: Boosting 3d object detec-tion in point clouds with image votes. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 4404–4413 (2020) 37. Qi, C.R., Litany, O., He, K., Guibas, L.J.: Deep hough voting for 3d object detec-tion in point clouds. In: proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 9277–9286 (2019) 38. Qi, Z., Zhang, Z., Fang, Y., Wang, J., Zhao, H.: Gpt4scene: Understand 3d scenes from videos with vision-language models. arXiv preprint arXiv:2501.01428 (2025) 39. Qu, D., Song, H., Chen, Q., Yao, Y., Ye, X., Ding, Y., Wang, Z., Gu, J., Zhao, B., Wang, D., et al.: Spatialvla: Exploring spatial representations for visual-language-action model. arXiv preprint arXiv:2501.15830 (2025) 40. Radford, A., Kim, J.W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G., Askell, A., Mishkin, P., Clark, J., et al.: Learning transferable visual models from natural language supervision. In: International conference on machine learning. pp. 8748–8763. PmLR (2021) 41. Schonberger, J.L., Frahm, J.M.: Structure-from-motion revisited. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 4104–4113 (2016) 42. Shen, Y., Zhang, Z., Qu, Y., Zheng, X., Ji, J., Zhang, S., Cao, L.: Fastvggt: Training-free acceleration of visual geometry transformer. arXiv preprint arXiv:2509.02560 (2025) 18 J. Zhang et al. 43. Sheng, Y., Deng, J., Zhang, X., Zhang, Y., Hua, B., Zhang, Y., Ji, J.: Spatialsplat: Efficient semantic 3d from sparse unposed images. arXiv preprint arXiv:2505.23044 (2025) 44. Team, G., Georgiev, P., Lei, V.I., Burnell, R., Bai, L., Gulati, A., Tanzer, G., Vin-cent, D., Pan, Z., Wang, S., et al.: Gemini 1.5: Unlocking multimodal understanding across millions of tokens of context. arXiv preprint arXiv:2403.05530 (2024) 45. Wang, H., Zhou, H., Liu, H., Yan, L.: 4d-vggt: A general foundation model with spatiotemporal awareness for dynamic scene geometry estimation. arXiv preprint arXiv:2511.18416 (2025) 46. Wang, J., Chen, M., Karaev, N., Vedaldi, A., Rupprecht, C., Novotny, D.: Vggt: Visual geometry grounded transformer. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 5294–5306 (2025) 47. Wang, Q., Zhang, Y., Holynski, A., Efros, A.A., Kanazawa, A.: Continuous 3d perception model with persistent state. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 10510–10522 (2025) 48. Wang, S., Leroy, V., Cabon, Y., Chidlovskii, B., Revaud, J.: Dust3r: Geometric 3d vision made easy. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 20697–20709 (2024) 49. Wang, T., Mao, X., Zhu, C., Xu, R., Lyu, R., Li, P., Chen, X., Zhang, W., Chen, K., Xue, T., et al.: Embodiedscan: A holistic multi-modal 3d perception suite towards embodied ai. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 19757–19767 (2024) 50. Wang, Y., Zhou, J., Zhu, H., Chang, W., Zhou, Y., Li, Z., Chen, J., Pang, J., Shen, C., He, T.: π3: Permutation-equivariant visual geometry learning. arXiv preprint arXiv:2507.13347 (2025) 51. Wu, D., Liu, F., Hung, Y.H., Duan, Y.: Spatial-mllm: Boosting mllm capabilities in visual-based spatial intelligence. arXiv preprint arXiv:2505.23747 (2025) 52. Xu, Y., Zhang, J., Huang, Z., Chen, Y., Zhou, Y., Chen, Z., Yuan, Y.J., Xia, P., Huang, G., Cai, X., et al.: Uniugg: Unified 3d understanding and generation via geometric-semantic encoding. arXiv preprint arXiv:2508.11952 (2025) 53. Yang, J., Yang, S., Gupta, A.W., Han, R., Fei-Fei, L., Xie, S.: Thinking in space: How multimodal large language models see, remember, and recall spaces. In: Pro-ceedings of the Computer Vision and Pattern Recognition Conference. pp. 10632– 10643 (2025) 54. Yang, R., Zhu, Z., Li, Y., Huang, J., Yan, S., Zhou, S., Liu, Z., Li, X., Li, S., Wang, W., et al.: Visual spatial tuning. arXiv preprint arXiv:2511.05491 (2025) 55. Yuan, S., Yang, Y., Yang, X., Zhang, X., Zhao, Z., Zhang, L., Zhang, Z.: In-finitevggt: Visual geometry grounded transformer for endless streams. arXiv preprint arXiv:2601.02281 (2026) 56. Zhang, J., Chen, Y., Zhou, Y., Xu, Y., Huang, Z., Mei, J., Chen, J., Yuan, Y.J., Cai, X., Huang, G., et al.: From flatland to space: Teaching vision-language models to perceive and reason in 3d. arXiv preprint arXiv:2503.22976 (2025) 57. Zheng, D., Huang, S., Li, Y., Wang, L.: Learning from videos for 3d world: En-hancing mllms with 3d vision geometry priors. arXiv preprint arXiv:2505.24625 (2025) 58. Zheng, D., Huang, S., Wang, L.: Video-3d llm: Learning position-aware video rep-resentation for 3d scene understanding. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 8995–9006 (2025) 59. Zheng, X., Dongfang, Z., Jiang, L., Zheng, B., Guo, Y., Zhang, Z., Albanese, G., Yang, R., Ma, M., Zhang, Z., et al.: Multimodal spatial reasoning in the large model era: A survey and benchmarks. arXiv preprint arXiv:2510.25760 (2025) GAP-MLLM 19 60. Zhu, C., Wang, T., Zhang, W., Pang, J., Liu, X.: Llava-3d: A simple yet effective pathway to empowering lmms with 3d-awareness. arXiv preprint arXiv:2409.18125 (2024) 61. Zitkovich, B., Yu, T., Xu, S., Xu, P., Xiao, T., Xia, F., Wu, J., Wohlhart, P., Welker, S., Wahid, A., et al.: Rt-2: Vision-language-action models transfer web knowledge to robotic control. In: Conference on Robot Learning. pp. 2165–2183. PMLR (2023) 20 J. Zhang et al. 
+
+# GAP-MLLM: Geometry-Aligned Pre-training for Activating 3D Spatial Perception in Multimodal Large Language Models 
+
+# Supplementary Material 
+
+This supplementary material provides additional details to complement the main paper. We first describe the training prompt design in Sec. 6, covering both sparse geometry–semantics joint pre-training and downstream task fine-tuning. We then present extended ablation studies in Sec. 7 to further analyze the contributions of each design component. Additional qualitative visualizations are provided in Sec. 8 to illustrate the learned geometric perception ability. Finally, we discuss the limitations of the current framework and possible future directions in Sec. 9. 
+
+## 6 Training Prompt Design 
+
+In this section, we provide the complete prompts used in both sparse geome-try–semantics joint pre-training and object-level 3D perception fine-tuning. 
+
+6.1 Sparse Geometry–Semantics Joint Pre-training 
+
+During sparse joint pre-training, a red cross is used as a visual prompt to mark a target pixel in one frame of the input image sequence. The model is required to predict both the semantic label and the 3D coordinate of the pixel under the unified first-frame coordinate system, as shown in Tab. 9. 
+
+Table 9: The prompt for sparse geometry–semantics joint pre-training. Given multi-frame images and a queried pixel marked by a red cross, the model predicts the semantic label and the 3D coordinate of the point in the first-frame coordinate system. 
+
+Sparse Geometry–Semantics Joint Pre-training 
+
+Xhuman : <image><marked_image><image><image> . . . 
+
+Given the images, find the point covered by the red cross. Output a JSON dictionary with the point’s semantic label in "label" and the point’s 3D coordinate in "pointmap" in the camera coordinate system of the first frame. Xgpt :
+
+``` json {"label": "monitor", "pointmap": [-0.32, -0.54, 1.69]} 
+
+``` GAP-MLLM 21 
+
+6.2 3D Visual Grounding 
+
+The two-stage grounding used for 3D visual grounding is illustrated in Tab. 10. In the first stage, the model selects the most informative frame that clearly observes the target object. In the second stage, a set of frames is sampled around the selected anchor frame, while the anchor frame is placed as the first frame to define the coordinate system. This design enforces a unified coordinate system across different tasks and strengthens spatial consistency during grounding. The quantitative impact of this design is analyzed in Sec. 7.2. 
+
+Table 10: Two-stage prompt for 3D visual grounding. The first stage selects the most informative frame for grounding, and the second stage predicts the 3D bounding box under the coordinate system of the selected frame. 
+
+Stage 1: Anchor Frame Selection 
+
+Xhuman : Frame-0: <image> Frame-1: <image> Frame-2: <image> . . . 
+
+Localize the first clear frame in the video showing the object described in the text. Text: A white cabinet in the corner of the room. In the direction from the door and from the inside, it will be on the left. Output a JSON dictionary with the frame index in "frame" .Xgpt :
+
+``` json 
+
+{"frame": 2} 
+
+``` 
+
+Stage 2: Anchor-Conditioned Localization 
+
+Xhuman : <image> ⋆(Frame-2) <image><image><image> . . . 
+
+Localize the object described in the text. Text: A white cabinet in the corner of the room. In the direction from the door and from the inside, it will be on the left. Output a JSON dictionary with the matched object’s 3D bounding box in 
+
+"bbox_3d" in the camera coordinate system of the first frame. The 3D bounding box format should be [x_center, y_center, z_center, x_size, y_size, z_size, yaw, pitch, roll] .Xgpt :
+
+``` json 
+
+{"bbox_3d": [-0.39, -0.19, 2.7, 0.6, 1.22, 1.94, 0.79, 1.32, -3.07]} 
+
+``` 
+
+6.3 3D Dense Captioning 
+
+The prompt for 3D dense captioning is shown in Tab. 11. Given multi-frame images and a queried 3D coordinate in the first-frame coordinate system, the 22 J. Zhang et al. 
+
+model generates a natural language description of the corresponding object. This formulation follows the same unified coordinate definition as other tasks. 
+
+Table 11: The prompt for 3D dense captioning. Given multi-frame images and a queried 3D point in the first-frame coordinate system, the model generates a natural language description of the corresponding object. 
+
+3D Dense Captioning 
+
+Xhuman : <image><image><image><image> . . . 
+
+Carefully watch the video and describe the object located at [3.45, 0.9, -1.37] in detail. Xgpt :A white cabinet in the corner of the room. In the direction from the door and from the inside, it will be on the left. 
+
+6.4 3D Video Object Detection 
+
+The task prompt used for 3D video object detection is shown in Tab. 12. Given multi-frame images, the model is required to predict all objects and their 3D bounding boxes under the first-frame coordinate system. This formulation fol-lows the same unified coordinate definition as other downstream tasks. 
+
+Table 12: Task prompt for 3D video object detection. Given multi-frame images, the model predicts all object categories and their 3D bounding boxes in the first-frame coordinate system. 
+
+3D Video Object Detection 
+
+Xhuman : <image><image><image><image> . . . 
+
+Detect the 3D bounding boxes in the camera coordinate system of the first frame. Output a JSON list where each entry contains the object name in "label" and its 3D bounding box in "bbox_3d" .The 3D bounding box format should be [x_center, y_center, z_center, x_size, y_size, z_size, yaw, pitch, roll] .Xgpt :
+
+``` json 
+
+[{"label": "table", "bbox_3d": [0.32, 0.6, 1.05, 0.86, 1.7, 0.87, -1.34, 1.08, -2.84]}, ... ]
+
+``` GAP-MLLM 23 
+
+## 7 Additional Ablation Study 
+
+7.1 Detailed Ablations on Core Contributions 
+
+We evaluate the effectiveness of the proposed sparse geometry–semantics joint pre-training (A) and the multi-level gated fusion module (B) across different backbones and tasks. The complete results are summarized in Tab. 13. Our ablation experiments are conducted on two MLLM frameworks, VG-LLM-4B [57] and ours, and evaluated on three representative tasks, including 3D visual grounding (ScanRefer [9]), 3D dense captioning (Scan2Cap [14]), and 3D video object detection. For GAP-MLLM, the baseline with neither sparse joint pre-training nor multi-level fusion follows VG-LLM [57] and fuses last-layer geometric tokens with final visual tokens by element-wise addition. Overall, both components consistently improve performance across tasks and models. Sparse joint pre-training yields clear gains on all three tasks, showing that explicitly activating geometric perception benefits downstream 3D percep-tion. Multi-level gated fusion further improves the interaction between geometric and visual features, bringing additional gains. Combining both gives the best results across all settings. For example, under GAP-MLLM-3B, the full model improves ScanRefer accuracy from 47.9/22.6 to 53.0/26.0 and raises the F1 score of 3D video detection from 44.7 to 50.6. These results demonstrate that geometry-aligned pre-training and progressive feature fusion provide complementary benefits for improving 3D perception in MLLMs. 
+
+Table 13: Ablation on sparse joint pre-training (A) and multi-level gated fusion (B) across multiple tasks.                                                                   
+
+> ABScanRefer Scan2Cap 3D Video Detection
+> Acc@0.25 Acc@0.5 C@0.5 B-4@0.5 P25 R25 F1 25
+> VG-LLM-4B (Qwen2.5-VL + VGGT) 45.4 19.3 77.0 40.6 41.2 35.9 37.9
+> ✓48.2 22.6 79.7 40.8 44.1 39.6 41.4
+> ✓46.8 20.5 77.5 40.6 43.3 36.9 39.4
+> ✓✓49.7 23.2 80.6 41.1 47.0 41.2 43.5
+> GAP-MLLM-3B (Qwen3-VL + VGGT) 47.9 22.6 79.9 41.2 48.8 42.1 44.7
+> ✓51.7 25.1 82.5 41.9 52.7 45.9 48.7
+> ✓51.1 23.9 82.7 41.8 51.8 44.6 47.5
+> ✓✓53.0 26.0 84.7 42.1 54.2 48.1 50.6
+
+7.2 Effect of Two-Stage Grounding 
+
+Tab. 14 shows the effect of the proposed two-stage grounding framework. Com-pared with the original VG-LLM formulation, introducing two-stage grounding significantly improves grounding performance (e.g., Acc@0.25 from 37.5 to 45.4 on ScanRefer). 24 J. Zhang et al. 
+
+Table 14: Effect of Two-Stage Grounding under the unified coordinate sys-tem. Introducing Two-Stage Grounding consistently improves performance across mul-tiple 3D perception tasks under the unified coordinate system.                        
+
+> Method ScanRefer Scan2Cap 3D Video Detection
+> Acc@0.25 Acc@0.5 C@0.5 B-4@0.5 P25 R25 F1 25
+> VG-LLM 37.5 11.1 76.9 40.5 40.3 34.9 36.9 VG-LLM + StageGrounding 45.4 19.3 77.0 40.6 41.2 35.9 37.9
+
+This improvement mainly comes from decoupling frame selection and local-ization, as well as adopting a unified coordinate system across tasks. We also observe small but consistent improvements in captioning and detection, high-lighting the benefit of unified spatial representation in multi-task 3D perception. All experiments of GAP-MLLM reported in the main paper, as well as the ablation results in Tab. 13, are conducted under this two-stage grounding for-mulation. 
+
+## 8 Additional Qualitative Results 
+
+In this section, we provide additional qualitative results to examine the capabil-ities of our method. We visualize three representative aspects of GAP-MLLM: metric reconstruction, 3D visual grounding, and 3D video object detection. These examples illustrate the geometric perception ability learned by our geometry-aligned pre-training and its transferability across multiple downstream tasks. 
+
+8.1 Metric Reconstruction 
+
+Metric reconstruction provides a direct probe of whether the model has acquired metric-aware 3D perception after geometry-aligned pre-training. Our model pre-dicts 3D geometry through pixel-level queries, where the MLLM directly outputs the 3D coordinate for each queried pixel, forming a dense pointmap under the coordinate system of the first frame. An important property of our reconstruction is that the predicted geometry is metric-consistent. The generated point clouds preserve real-world scale and are directly aligned with the first-frame coordinate system. This property is particularly important for downstream 3D perception tasks, as it provides a unified spatial representation for grounding, detection, and captioning. Fig. 10 shows qualitative comparisons with existing feed-forward metric re-construction models [26, 47]. For several representative scenes, we measure the distance between two points in the reconstructed point cloud and compare it with the ground truth. Our results produce metric distances that are consis-tently closer to the ground-truth scale while maintaining coherent scene geom-etry, demonstrating that sparse geometry–semantics joint pre-training enables MLLMs to recover accurate metric 3D structure from RGB inputs. GAP-MLLM 25 1.19m    
+
+> 1.43m
+> 1.10m
+> 1.08m
+> CUT3R Mapanything GT
+> 1.43m
+> 2.00m
+> 1.37m
+> 1.34m
+> 1.86m
+> 2.29m
+> 1.51m
+> 1.55m
+> 4.68m
+> 6.06m
+> 4.28m
+> 4.21m
+> Images GAP-MLLM (Ours)
+
+Fig. 10: Qualitative comparison on metric reconstruction. Given multi-view RGB inputs (left), different models reconstruct 3D metric point clouds, where the red line indicates the measured distance. Our method produces metric distances closest to the ground-truth scale while preserving coherent geometry, demonstrating that geometry-aligned pre-training enables MLLMs to generate metrically consistent pointmaps. 
+
+8.2 3D Visual Grounding 
+
+We provide additional qualitative examples of 3D visual grounding in Fig. 11. Compared with VG-LLM, our method produces more accurate and stable lo-calization results that better align with the ground-truth annotations. Although both methods successfully identify the target object, our predicted 3D boxes are more precise, suggesting that the proposed geometry-aligned pre-training paradigm leads to stronger geometric perception. 
+
+8.3 3D Video Object Detection 
+
+Fig. 12 presents additional qualitative results on 3D video object detection. Under the unified coordinate system, the model predicts 3D bounding boxes for multiple objects in the scene. Compared with SpatialLM [34] and VG-LLM [57], our method produces more consistent object localization and more accurate 3D box extents. These results further demonstrate that the geometry-aligned pre-training enhances geometric perception, leading to more stable multi-object detection in complex scenes. 26 J. Zhang et al. A chair sits near a long wooden table. it is the second chair from the right.   
+
+> The chair is between a table and a couch. the chair has a round top and four legs.
+> This is a swivel office chair. it is to the left of the wooden chair to the left of the chalkboard.
+> It is a brown armchair. it is located in the middle of the room next to an identical armchair.
+> VG-LLM Ours GT
+
+Fig. 11: Additional qualitative results on 3D visual grounding. Given a lan-guage query and multi-frame images, the model predicts the 3D bounding box of the described object. Compared with VG-LLM, our method produces more accurate and stable localization results that better match the ground truth. 
+
+## 9 Limitations and Future Work 
+
+Although GAP-MLLM shows consistent improvements across multiple RGB-only 3D perception tasks, the current framework still has several limitations. 
+
+Reliance on implicit geometric priors. Our method focuses on activating implicit geometric priors within MLLMs, rather than improving the reconstruc-tion model itself. In this work, we analyze and adopt a representative feed-forward geometric encoder to validate the effectiveness of the geometry-aligned pre-training paradigm. Stronger geometric encoders may provide better priors and further improve downstream performance. 
+
+Sparse supervision limits fine-grained reconstruction quality. Our ex-periments show that sparse joint supervision is sufficient to activate geomet-ric perception and benefit downstream 3D perception. However, compared with dense supervision, it is less effective for fine-grained geometry and semantics. As a result, the reconstructed point clouds and semantic maps may remain coarse locally. In particular, the predicted semantic maps inherit the abstract semantic behavior of MLLMs, which can lead to unclear boundaries. 
+
+Future work. Future work may explore stronger geometric backbones, or di-rectly train MLLMs to activate geometric perception without relying on external geometric priors. Another promising direction is to design more effective pre-training strategies that reconstruct more precise pointmaps and semantic maps while further benefiting downstream 3D perception tasks, ultimately serving as a stronger foundation for 3D understanding and reasoning. GAP-MLLM 27 VG-LLM Ours  SpatialLM VG-LLM Ours  SpatialLM 
+
+Fig. 12: Additional qualitative results on 3D video object detection. Com-pared with SpatialLM [34] and VG-LLM [57], our method produces more accurate and consistent 3D bounding boxes for multiple objects in the scene, benefiting from im-proved geometric perception under the unified coordinate system.

@@ -1,0 +1,374 @@
+Title: MG-Grasp: Metric-Scale Geometric 6-DoF Grasping Framework with Sparse RGB Observations
+
+URL Source: https://arxiv.org/pdf/2603.16270v1
+
+Published Time: Wed, 18 Mar 2026 01:00:51 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# MG-Grasp: Metric-Scale Geometric 6-DoF Grasping Framework with Sparse RGB Observations 
+
+Kangxu Wang 1, Siang Chen 1, Chenxing Jiang 2, Shaojie Shen 2, Yixiang Dai 1,†, Guijin Wang 1
+
+Abstract —Single-view RGB-D grasp detection remains a com-mon choice in 6-DoF robotic grasping systems, which typically requires a depth sensor. While RGB-only 6-DoF grasp methods has been studied recently, their inaccurate geometric repre-sentation is not directly suitable for physically reliable robotic manipulation, thereby hindering reliable grasp generation. To address these limitations, we propose MG-Grasp, a novel depth-free 6-DoF grasping framework that achieves high-quality object grasping. Leveraging two-view 3D foundation model with camera intrinsic/extrinsic, our method reconstructs metric-scale and multi-view consistent dense point clouds from sparse RGB images and generates stable 6-DoF grasp. Experiments on GraspNet-1Billion dataset and real world demonstrate that MG-Grasp achieves state-of-the-art (SOTA) grasp performance among RGB-based 6-DoF grasping methods. 
+
+Index Terms —RGB 6-DoF Grasping, 3D Reconstruction 
+
+I. INTRODUCTION Robotic 6-DoF grasping is a core capability in fields such as intelligent manufacturing, domestic service, and medical treatment. In early grasp pose detection pipelines, the task was commonly formulated as predicting full 6-DoF gripper poses directly from 3D observations [1]. Recent learning-based 6-DoF grasp detectors have achieved strong performance, and large-scale benchmarks such as GraspNet-1Billion [2] have further accelerated progress and standard-ized evaluation. Representative advances on this benchmark continue to improve grasp quality and efficiency, includ-ing graspness-guided methods [3], heatmap-guided detec-tion [4], and flexible local grasp modeling [5]. However, most existing high-performing 6-DoF pipelines still assume access to explicit 3D geometry that is typically obtained via depth sensing, as in representative RGB-D approaches [2]– [7], which can increase system cost and complicate large-scale deployment in real factories. This motivates RGB-only (depth-free) 6-DoF grasping, aiming to generate physically reliable grasps from ubiquitous multi-view RGB observations without depth hardware. Recent progress in neural rendering [8]–[12] has inspired a line of RGB-only grasping methods that reconstruct geometry from multi-view RGB and then synthesize 6-DoF grasps, as GraspNeRF [13], RGBGrasp [14] and NeuGrasp [15]. De-spite promising results, their geometry quality under sparse views can be insufficient for capturing fine-grained contact 
+
+> 1
+
+The Department of Electronic Engineering, Tsinghua University, Beijing 100084, China. 
+
+> 2
+
+The Department of Electronic and Computer Engineering, The Hong Kong University of Science and Technology, Hong Kong, China. 
+
+> †
+
+Corresponding Author: daiyx23@mails.tsinghua.edu.cn. 
+
+details, thereby limiting physically reliable grasp generation. In parallel, feed-forward 3D foundation models have rapidly advanced RGB-only geometry prediction, ranging from two-view prediction in DUSt3R [16] and MASt3R [17] to more general multi-view geometry prediction in VGGT [18] and related architectures [19]. Building on these models, recent grasping systems such as GraspView [20] and SparseGrasp [21] demonstrate the feasibility of coupling foundation geom-etry model with downstream grasp execution. However, in 6-DoF grasping scenarios with known camera parameters, their predicted geometry can still be non-metric and cross-view inconsistent with scale alignment. An alternative direction is Multi-View Stereo (MVS), where classical pipelines [22] and learning-based backbones [23]–[25] reconstruct dense 3D structure from posed RGB images. Such geometry has been adopted in 6-DoF grasping systems [26]–[28]. Nevertheless, MVS-based methods require sufficient visual overlap and predefined depth ranges, and their effectiveness in tabletop scenarios with multiple viewpoints is not satisfactory. To address these challenges, we propose MG-Grasp , a 
+
+Metric-Scale Geometric 6-DoF Grasp ing Framework with Sparse RGB Observations. Rather than treating multi-view RGB reconstruction as a coarse pre-processing step, MG-Grasp designs metric geometry recovery, multi-view con-sistency refinement, and couples grasp generation into a unified pipeline tailored for robotic 6-DoF grasping. Given sparse multi-view RGB images with known camera intrin-sics and extrinsics, we first convert two-view, up-to-scale depth estimates into metric depth by triangulation-based scale grounding, and refine all views through a confidence-weighted two-stage multi-view optimization. Finally, we fuse a grasp-oriented, reliability-filtered point cloud and decode stable 6-DoF grasps with grasp model. Our pipeline achieves a seconds-level end-to-end latency, making it practical for deployment under sparse-view settings. Extensive experi-ments on GraspNet and real-world setups demonstrate strong performance among RGB-only 6-DoF grasping methods, with notable robustness under sparse-view inputs. Our main contributions can be summarized as follows:  
+
+> •
+
+We propose a depth-free 6-DoF grasping framework, achieving high-quality, physically reliable grasping with sparse multi-view observations.  
+
+> •
+
+We develop a Triangulation-based Scale Recovery scheme that grounds up-to-scale two-view predictions into a global metric coordinate.  
+
+> •
+
+We design a two-stage confidence-weighted Multi-View  
+
+> arXiv:2603.16270v1 [cs.RO] 17 Mar 2026 Fig. 1. Pipeline of MG-Grasp: given sparse posed RGB images, we first perform Depth Aggregation and Dense Correspondence to obtain up-to-scale pointmaps, and then recover metric scale via Triangulation-based Scale Recovery. The metric pointmaps are further refined with multi-view consistency optimization to produce consistent geometry, which is finally used for grasp guidance and 6-DoF grasp generation.
+
+Refinement module that enforces dense cross-view con-sistency, yielding grasp-oriented, multi-view consistent geometry for reliable grasp generation. II. R ELATED WORK 
+
+A. Scene-Level Grasping from RGB-D 
+
+Early 6-DoF grasp detection methods commonly follow a sampling-and-evaluation pipeline [1], [29], where dense grasp candidates are generated and scored by point-cloud classifiers, albeit with limited efficiency. GraspNet [2] im-proves scalability by predicting grasps for all points in a scene in a more unified manner, and subsequent works fur-ther enhance grasp quality via region-based refinement [30], transformer-based point modeling [31], graspness-driven pro-posal learning [3], and heatmap-guided generation [4]. More recently, FlexLoG [5] adopts a grasp-centric formulation that decouples guidance from generation, achieving strong generalization to unseen objects. However, all these methods rely on high-quality depth sensors, which increase system cost and complicate large-scale deployment in real environments. In contrast, our method leverages only sparse multi-view RGB images for 3D reconstruction, eliminating the need for depth cameras while maintaining geometric accuracy through explicit multi-view constraints. 
+
+B. RGB-only 6-DoF Grasping 
+
+Recent studies explore RGB-only 6-DoF grasping by lever-aging multi-view RGB observations to recover grasp-relevant 3D cues without depth sensors. NeRF-based pipelines cou-ple implicit multi-view reconstruction with grasp predic-tion, including GraspNeRF [13], RGBGrasp [14], and Neu-Grasp [15]. In parallel, GraspView [20] studies RGB-only grasping with active perception, using reconstructed geom-etry predicted by VGGT [18] and aligned to metric scale with robot kinematics. SparseGrasp [21] and VG-Grasp [32] utilizes DUSt3R [16] to generate point cloud for grasp generation. Lin’s work [26] reconstructs dense point clouds with CasMVSNet [24] for robotic manipulation, and Avigal’s work [27] use a learnt stereo machine to predict depth maps from multiple RGB views and select grasps via a multi-view GQ-CNN policy. Compared with these RGB-only pipelines, MG-Grasp does not treat multi-view RGB reconstruction as a coarse pre-processing step. Leveraging known camera parameters, our method couples metric scale recovery, cross-view consistency optimization and grasp generation into a unified pipeline, yielding physically reliable 6-DoF grasps. III. M ETHOD 
+
+A. Overview 
+
+Our goal is to recover metric-scale and cross-view consis-tent geometry from sparse posed RGB views, and directly steer the geometry toward reliable 6-DoF grasp generation. As shown in Fig. 1, given multi-view posed RGB images as input, our framework first processes them through Metric-Scale Depth Map Generator module. We recover physical-world scale to produce metric depth maps through a two-view geometry module. These metric depth maps, along with the original images, are then fed into the Multi-View Guided Grasp Generation module. We perform dense multi-view optimization to refine the initial depth estimates into multi-view consistent depth maps. The refined depth maps are then unprojected, sampled and implicitly decoded to 6-DoF grasp poses via an Local Grasp Model. This pipeline ensures that the geometric refinements directly contribute to producing successful grasps, resulting in a high-precision system that outputs both a consistent 3D structure and actionable grasp configurations from sparse multi-view RGB images. 
+
+B. Metric-Scale Depth Map Generator 
+
+This module generates metric-scale depth maps from multi-view RGB images, providing a strong initialization for the subsequent module. We first obtain per-view depth estimates from a two-view geometry model, which are ac-curate but inherently up-to-scale. Leveraging known camera poses, we then recover metric scale by triangulating matched pixels across views and aligning the predicted depths to the triangulated depths. As a result, the depth initialization is grounded in a common physical coordinate system. 
+
+Depth Aggregation and Correspondence. We leverage MASt3R [17] as a two-view geometry model. For each ordered pair (i, j ) and images Ii, Ij ∈ RH×W ×3 , we obtain 
+
+(Xii, Xji , Cii, Cji , Dii, Dji , Qii, Qji ) = MASt3R (Ii, Ij ), (1) where X ∈ RH×W ×3 denotes pointmaps with their confi-dences C ∈ RH×W ×1, D ∈ RH×W ×d denotes feature maps, and corresponding feature confidences Q ∈ RH×W ×1. Xji
+
+denotes the pointmap of image j represented in the coordinate frame of camera i. The same convention applies to C, D,and Q.For each view i, we compute confidence-weighted ag-gregation of depth predictions across all pairs using Cii as weights, yielding an initial depth map ˆZi. Meanwhile, we average Cii across all pairs to obtain an initial confidence map ˆCi, which reflects the average reliability of each pixel over all observations. To establish dense correspondences across views and ensure matching speed and density, following MASt3R-SLAM [33], we compute per-pixel dense matching 
+
+Mi→j = M Xii, Xji , Dii, Dji
+
+, (2) between views (i, j ). Due to partial overlap and ambigu-ous matches, we retain only reliable correspondences. For a candidate correspondence (xki , xkj ) ∈ Mi→j , matching confidence is defined as 
+
+Qi→j (xki , xkj ) = 
+
+q
+
+Qii(xki ) Qji (xkj ). (3) We then filter correspondences with a threshold τQ and obtain the valid set: 
+
+Mvi→j = (xki , xkj ) ∈ Mi→j Qi→j (xki , xkj ) > τ Q , (4) and denote by Qvi→j the confidence score of each retained correspondence. 
+
+Triangulation-based Scale Recovery. As shown in Fig. 1, the initial depth map ˆZi suffers from a severe scale ambiguity and thus lacks metric meaning. To recover metric scale across views, we ground multi-view depths in a common physical coordinate system via triangulation. Different from [16], [34] that typically incorporates the per-view scale into a joint op-timization together with other variables, we decouple metric scale recovery from the subsequent refinement process, which in turn benefits the downstream module. We select a minimal set of view pairs that covers all views and has sufficient overlap, by choosing for each view its best-matched neighbor according to correspondence confidence. For each valid correspondence (xki , xkj ) ∈ Mvi→j , we trian-gulate the corresponding 3D point in the world frame using known poses Ti, Tj :
+
+pkw = Tri (xki , xkj , K, Ti, Tj ), (5) where Tri (·) denotes the triangulation operator and pkw is the resulting 3D point in the world frame. We then transform 
+
+pkw into each camera frame to obtain metric depth estimates 
+
+Ztri  
+
+> i
+
+(xki ) and Ztri  
+
+> j
+
+(xkj ).We recover the per-view scale factors by aligning the predicted depths to the triangulated metric depths over valid correspondences: 
+
+si =
+
+P  
+
+> (xki,xkj)∈Mvi→j
+
+Ztri  
+
+> i
+
+(xki )
+
+P  
+
+> (xki,xkj)∈Mvi→j
+
+ˆZi(xki ) ,sj =
+
+P  
+
+> (xki,xkj)∈Mvi→j
+
+Ztri  
+
+> j
+
+(xkj )
+
+P  
+
+> (xki,xkj)∈Mvi→j
+
+ˆZj (xkj ) .
+
+(6) Finally, the metric-scale depth maps are obtained as: 
+
+˜Zi = si ˆZi, ˜Zj = sj ˆZj . (7) 
+
+C. Multi-View Guided Grasp Generation  
+
+> Fig. 2. Left: metrically scaled pointmaps before refinement; right: refined pointmaps. The highlighted regions (red boxes) illustrate misaligned surface layers before refinement, which are largely removed after refinement, result-ing in multi-view consistent geometry for grasping.
+
+This module refines metric depth to be multi-view consis-tent and decodes stable 6-DoF grasps from the refined ge-ometry. We adopt an optimization-based refinement scheme driven by dense correspondences and their confidence scores. Leveraging the refined depth maps, we unproject them into a multi-view consistent point cloud, which is then sampled and implicitly decoded into 6-DoF grasp via a Local Grasp Model. 
+
+Multi-View Refinement. As shown in Fig. 5, the directly unprojected metric-scale depth maps ˜Z exhibit severe mis-alignment across views. Given camera intrinsics K and poses T ∈ SE(3) , metrically scaled initialization ˜Z = {˜Zi}N −1 
+
+> i=0
+
+,the valid dense correspondences Mv , and their associated confidence scores Qv , we employ robust loss to mitigate residual outliers. We optimize Z = {Zi}N −1 
+
+> i=0
+
+initialized from ˜Z. Inspired by the sequential optimization paradigm in LIVO systems [35], [36], where a 3D-consistency objec-tive provides a stable initialization before enforcing tighter reprojection consistency, we adopt a two-stage confidence-weighted refinement strategy. 
+
+a) Stage I: 3D consistency: For each correspondence 
+
+(xki , xkj ) ∈ Mvi→j in image pair (i, j ), we back-project them into the world frame as: 
+
+pkw,i = π−1 xki , Zi(xki ); K, Ti
+
+ ,
+
+pkw,j = π−1 xkj , Zj (xkj ); K, Tj
+
+ , (8) where π−1(·) denotes the unprojection operator. We then minimize the confidence-weighted robust distance between matched 3D points: 
+
+L3D = X
+
+> i<j
+
+X  
+
+> (xki,xkj)∈Mvi→j
+
+Qvi→j (xki , xkj ) (9) 
+
+ρδ3D
+
+
+
+∥pkw,i − pkw,j ∥2
+
+
+
+, (10) where ρδ3D (·) is the Huber robust penalty with transition threshold δ3D.
+
+b) Stage II: 2D reprojection consistency: After the 3D alignment converges, we further tighten multi-view con-sistency by enforcing symmetric reprojection agreement. Specifically, we project pkw,i into view j and pkw,j into view 
+
+i:
+
+ˆxki→j = π pkw,i ; K, T−1
+
+> j
+
+ , ˆxkj→i = π pkw,j ; K, T−1
+
+> i
+
+ , (11) and minimize the confidence-weighted robust reprojection error: 
+
+L2D = X
+
+> i<j
+
+X  
+
+> (xki,xkj)∈Mvi→j
+
+Qvi→j (xki , xkj )
+
+h
+
+ρδ2D
+
+ ∥ˆxki→j − xkj ∥2
+
+ + ρδ2D
+
+ ∥ˆxkj→i − xki ∥2
+
+ i
+
+,
+
+(12) where ρδ2D (·) is the Huber loss with with transition threshold 
+
+δ2D .The overall refinement objective is optimized in an two-stage manner: 
+
+
+
+Stage I: min  
+
+> Z
+
+L3D for N3D iters ,
+
+Stage II: min  
+
+> Z
+
+L2D for N2D iters . (13) We denote Z∗ as our final refined depth maps. 
+
+Grasp-aware Guidance. After refinement, we fuse all views into a consistent colored point cloud, but we do not unproject all pixels. We define the valid matching Mask of image i, Mvi ∈ { 0, 1}H×W as: 
+
+Mvi (x) = 1 ∃j̸ = i, ∃(x, xj ) ∈ Mvi→j
+
+ . (14) This mask is further intersected with the initial confidence mask ˆCi and the MobileSAM [38] segmentation mask Si
+
+(for background points removal), yielding the final valid pixel 
+
+Vi ∈ { 0, 1}H×W as: 
+
+Vi(x) = Mvi (x) ⊙
+
+ ˆCi(x) > τ C
+
+
+
+⊙ Si(x), (15) where τC denotes pointmap confidence threshold. We un-project only pixels with V(x) = 1 using the refined depth 
+
+Z∗, transform them to the world frame, and fuse different estimates to get multi-view consistent point cloud P. Finally, we remove isolated outliers by a radius-based neighbor filter and get point cloud as: 
+
+Pfilt = p ∈ P |{ q ∈ P : ∥q − p∥2 < r }| ≥ nmin ,
+
+(16) where r and nmin denote the radius threshold and the minimum number of neighbors, respectively. 
+
+Grasp Generation. Given the fused point cloud Pfilt 
+
+transformed to camera frame, we adopt the Local Grasp (LoG) module [5] and perform grasp detection in a grasp-centric, region-level manner. We first generate Nc region centers via Furthest Point Sampling (FPS) on Pfilt , and then aggregate a local region around each center using a ball query. Conditioned on each local point cloud, LoG predicts multiple region-level grasp candidates gp = (∆ t, θ, w ),where ∆t ∈ R3 refines the grasp center relative to the sampled region center, θ ∈ R3 denotes the gripper orientation in Euler angles, and w is the gripper width. We train the LoG module based on our filterd point cloud. Each candidate is converted to a 6-DoF grasp configuration in the world frame as g = ( t, θ, w ) with an associated quality score s. Finally, we apply non-maximum suppression in SE(3) and retain the top-ranked grasps for execution. IV. EXPERIMENTS We evaluate the effectiveness of our framework through comprehensive tests on both the GraspNet-1Billion [2] real dataset and physical robotic grasping experiments. Compar-ative experiments were conducted using heterogeneous data captured by Realsense and Kinect depth cameras. We only use the RGB information. 
+
+A. Implementation Details 
+
+We conduct experiments on GraspNet-1Billion and a real-world robotic setup. For each scene, we select N =5 RGB views using a coverage-oriented sampling strategy with mild randomness, and use the provided camera intrinsics K and poses Ti. The matching correspondence threshold τQ is set to 3.0 and pointmap confidence threshold τC is set to 3.0. In depth refinement, Stage I iteration N3D is set to 100 and Stage II iterarion N2D is set to 100. The Huber transition thresholds δ3D and δ2D are set to 0.3, 3.0 respectively. For radius-based point cloud filtering, radius r is set to 0.03 and minimum neighbor count nmin is set to 60. For the MobileSAM [38] segmentation, we implement ViT-Tiny model. For grasp generation, the number of region centers 
+
+Nc is set to 500. We use the LoG module [5]. In real-world experiments, we use predefined viewpoints (fixed poses) and 
+
+N =4 views per scene. τQ is set to 1.0 and τC is set to 1.0, TABLE I RESULTS ON GRASP NET DATASET , SHOWING AP ON THE REAL SENSE /K INECT SPLITS RESPECTIVELY 
+
+Method Data Seen Similar Novel Average 
+
+PointnetGPD [29] RGB-D 25.96/27.59 22.68/24.38 9.23/10.66 19.29/20.88 GraspNet [2] RGB-D 27.59/29.88 26.11/27.84 10.55/11.51 21.41/23.08 TransGrasp [31] RGB-D 39.81/35.97 29.32/29.71 13.83/11.41 27.65/25.70 HGGD [4] RGB-D 59.36/60.26 51.20/48.59 22.17/18.43 44.24/42.43 FlexLog [37] RGB-D 72.81 /69.44 65.21 /59.01 30.04 /23.67 56.02 /50.67 
+
+GraspNeRF [13] RGB 22.49/24.61 14.15/17.67 11.08/12.86 15.91/18.38 VG-Grasp [32] RGB 59.23/54.65 36.34/35.13 10.84/11.85 35.47/33.88 
+
+Ours RGB 63.70 /66.80 56.03 /57.35 23.22 /20.47 47.65 /48.21 
+
+to accommodate real-image noise and appearance variation. 
+
+Nc is set to 100, r is set to 0.05 and nmin is set to 300 to suppress sparse outliers. The MG-Grasp system is implemented on a desktop com-puter with an NVIDIA RTX 4090 GPU and Intel Core i9-13900K CPU. Our system runs at seconds-level end-to-end latency of 2.86s per inference with 5 views and 2.13s per inference with 4 views. 
+
+B. GraspNet Performance Evaluation 
+
+We evaluate our method on the GraspNet-1Billion bench-mark following the official protocol, reporting Average Preci-sion (AP) on three standard splits: Seen , Similar , and Novel ,under both RealSense and Kinect settings. We compare against representative RGB-D 6-Dof grasp methods as well as recent RGB-based pipelines. Notably, as the original Grasp-NeRF [13] lacked validation on the GraspNet benchmark, we reimplement this model and perform end-to-end training on the standard dataset to ensure fair comparison. Table I reports AP on GraspNet. Overall, our RGB-only method consistently outperforms prior RGB-based grasping approaches on average scores on RealSense/Kinect cam-eras. More specifically, compared with NeRF-based grasping (GraspNeRF [13]), our method achieves higher AP across all splits, with an average improvement of +31.74/+29.83 AP on RealSense/Kinect. We attribute this gain to our more accurate geometry representation. Compared with VG-Grasp, which directly feeds point clouds generated by DUSt3R [16] into a downstream grasp module, our method further improves the average AP by +12.18/+14.33 . This supports the effectiveness of our Metric-Scale Depth Map Generator and Multi-View Guided Grasp Generation modules. Notably, our method narrows the gap to the strong RGB-D upper bound FlexLoG [5], despite using no depth information. To verify that the gains of MG-Grasp are not sim-ply due to the choice of a stronger geometry backbone, we construct three baselines by pairing the same LoG grasp decoder with three different geometry backbones: 
+
+FeedForward-based predictor (VGGT [18]), SLAM-based 
+
+system (MASt3R-SLAM [33]), and MVS-based method (MVSAnywhere [25]). For all baselines, LoG is kept iden-tical and is fed with point clouds unprojected from the                       
+
+> TABLE II RESULTS OF DIFFERENT GEOMETRY PIPELINES ON GRASP NET
+> Method Seen Similar Novel Average
+> FeedForward-based (VGGT [18]) 52.29/51.54 47.98/43.18 20.73/ 22.90 40.33/39.21 SLAM-based (MASt3R-SLAM [33]) 50.39/43.42 38.54/37.50 18.19/14.10 35.71/31.67 MVS-based (MVSAnywhere [25]) 42.64/39.12 33.92/32.41 14.83/12.78 30.46/28.10
+> Ours 63.70 /66.80 56.03 /57.35 23.22 /20.47 47.65 /48.21
+> Fig. 3. Comparison of unprojected point clouds produced by different geometry pipelines. The highlighted regions illustrate misaligned surface.
+
+corresponding depth outputs. As shown in Table II, we keep the LoG module identical and feed it with point clouds unprojected from the depths produced by different backbones. Since VGGT [18] and MASt3R-SLAM [33] output up-to-scale geometry, we recover metric scale by aligning their estimated camera trajectory to the ground-truth poses using evo [39] and rescale the predicted depths accordingly. As shown in Fig. 3, although these methods can provide multi-view geometry, their reconstructed depths are often not sufficiently multi-view consistent under the given camera intrinsics/extrinsics, which directly degrades the region-level local grasp reasoning in LoG. In contrast, our method explicitly refines all depth maps with dense TABLE III ABLATION STUDY OF DIFFERENT MODULES ON GRASP NET . (A) TRIANGULATION -BASED SCALE RECOVERY ; (B) MULTI -VIEW REFINEMENT .                         
+
+> (A) (B) Seen Similar Novel Average
+> ✗✗29.27/23.99 25.48/19.51 14.32/10.64 23.02/18.05
+> ✗✓40.73/35.06 37.10/23.57 20.90/11.85 32.91/23.49
+> ✓✗55.29/39.95 43.67/38.66 20.22/16.25 39.73/31.62
+> ✓✓63.70 /66.80 56.03 /57.35 23.22 /20.47 47.65 /48.21
+
+multi-view correspondences under metric-scale constraints, producing a grasp-oriented point cloud. 
+
+C. Effect of Input View Count 
+
+To study how visual input density affects reconstruction-driven grasping, we evaluate our framework using different numbers of input views, ranging from 2 to 9. For each GraspNet scene, we sample views with the coverage-oriented strategy. We report average AP under both RealSense and Kinect.            
+
+> Fig. 4. Effect of the number of input views on GraspNet grasping performance (AP).
+
+As shown in Fig. 4, increasing the number of input images generally improves grasping performance, with the largest gains observed when moving from sparse inputs (2– 3 views) to moderate multi-view inputs (4–6 views). In particular, using only two views leads to noticeably lower AP, indicating that limited viewpoints often yield incomplete geometry over the scene. Performance saturates around 5–6 views, suggesting that additional views beyond this range provide diminishing returns and may introduce redundant observations. Empirically, this range provides most of the performance gains of multi-view reconstruction while avoid-ing unnecessary pairwise constraints and runtime overhead from processing extra views. 
+
+D. Ablation Study 
+
+We conduct ablation studies on GraspNet to validate the effectiveness of the two key components in MG-Grasp: (A) 
+
+Triangulation-based Scale Recovery , and (B) Multi-View Refinement for multi-view consistency. Without scale recovery, the depth predictions remain up-to-scale and thus cannot be directly evaluated in metric grasping, leading to near-zero valid grasps. Therefore, for the variant without (A), we run Mast3r-sfm [34] to estimate camera poses from the same RGB views and adopt the pose-alignment-based scale calibration using evo [39]. As shown in Table III, Compared with this pose-alignment baseline, our triangulation-based scale recovery consistently yields better grasp AP across all splits. We further remove the proposed Multi-view refinement module and directly use the scaled ini-tial depth maps for point cloud fusion and grasp generation. The results of variant without (B) show a clear performance drop, especially on Seen and Similar objects, suggesting that the refinement stage is crucial for enforcing cross-view geometric consistency and suppressing mismatched/outlier correspondences before point cloud fusion. This validates our design of using confidence-weighted multi-view optimization to bias geometric refinement toward robust grasp generation under sparse views. 
+
+E. Real Robot Experiment  
+
+> Fig. 5. Real world setting.
+
+We further validate MG-Grasp on a real robotic plat-form in tabletop scenes. The setup consists of a UR5e manipulator with a Robotiq 2F-85 adaptive parallel gripper and a RealSense D435i RGB-D camera. We only use the RGB information. Different from prior real-robot evaluations that typically rely on a single view, we acquire 4 sparse RGB views per scene to run our multi-view pipeline. All experiments are executed on a desktop equipped with an NVIDIA RTX 4090 GPU, and MG-Grasp runs with an end-to-end latency of about 2.13s.                     
+
+> TABLE IV REAL ROBOTIC GRASP EXPERIMENT RESULTS
+> Scene Success Attempt
+> 156255355456556656756Success Rate 135/40 = 87.5% Completion Rate 235/35 = 100%
+> 1Success Rate = Total Success / Total Attempts
+> 2Completion Rate = Successful Trials / Total Trials
+
+We evaluate MG-Grasp on a set of 25 daily-use objects with varied shapes and sizes. In each cluttered scene, five objects are randomly sampled and placed on a tabletop with arbitrary poses. For each trial, the robot iterates between grasp proposal and execution, terminating when (i) all objects that remain graspable are removed, or (ii) two consecutive grasp failures occur. Performance is measured by grasp suc-cess rate (successful lifts / total attempts) and task completion rate (cleared objects / total objects across all scenes). Table IV reports that MG-Grasp achieves 35 /40 = 87 .5% 
+
+grasp success and clears 35 /35 = 100% of objects. Despite the strong overall performance, the remaining failures mainly fall into two categories. First, highly reflective objects or near-spherical objects tend to produce unreliable dense cor-respondences, which increases matching errors and leads to inaccurate or incomplete reconstructed geometry. As a result, the downstream 6-DoF grasps can be offset in position or orientation. Second, for objects with unusual shapes, our randomly sampled grasp guidance may occasionally focus on less favorable regions, making it harder for the grasp generator to propose stable contacts. Although MG-Grasp is not specifically designed for trans-parent objects, it still demonstrates promising performance in this setting, achieving an 11/20 = 55.0% grasp success rate and an 11/15 = 73.3% completion rate. Since depth sensors typically fail to produce reliable point clouds on transparent surfaces, these results suggest that our RGB-only pipeline has strong potential for efficient transparent-object grasping where RGB-D methods are inherently limited. 
+
+F. Runtime Analysis 
+
+We report the average runtime of each module in our pipeline, measured over 500 inference runs on the GraspNet RealSense/Kinect splits. As shown in Table V, the pro-posed system runs with a seconds-level latency of 2.86s per inference on average. The runtime is dominated by the geometry stage, where MASt3R [33] matching and the two-stage refinement together account for approximately 77.3% of the total latency. This is mainly because we impose pairwise geometric constraints across image pairs, requiring dense correspondence extraction and iterative optimization over all coupled views, which increases the computational cost. These results suggest that further acceleration can be achieved by reducing the number of processed view pairs and iterations in the refinement stage. We further compare the end-to-end runtime of MG-Grasp with representative RGB-only baselines under the same evaluation protocol. As reported in Table VI, MG-Grasp is both more accurate and more efficient than VG-Grasp [32], indicating a better accuracy and efficiency for RGB-only 6-DoF grasping. We also compare our runtime with FeedForward-based pipeline implemented in Sec. IV-B. Al-though FeedForward-based pipeline is significantly faster due to its single-pass prediction, it does not explicitly enforce consistency under known camera parameters, and thus yields less reliable geometry for downstream grasp reasoning, re-sulting in lower grasping performance than MG-Grasp.                   
+
+> TABLE V RUNTIME BREAKDOWN OF MVR-G RASP PER INFERENCE
+> Module Time (s) Ratio (%) MobileSAM masking 0.06 2.1
+> Depth Aggregation and Correspondence 0.87 30.5
+> Triangulation-based Scale Recovery 0.11 3.8
+> Multi-View Refinement 1.34 46.8
+> Grasp-aware Guidance 0.05 1.6
+> Grasp Generation 0.30 10.6
+> Total 2.86 100.0
+> TABLE VI END -TO -END RUNTIME COMPARISON (SECONDS PER INFERENCE ).
+
+Method Time (s) 
+
+VG-Grasp [32] 11.20 FeedForward-based (VGGT [18]) 0.61 
+
+Ours 2.86 
+
+Finally, we analyze the runtime in the real-robot setting. One complete grasp cycle, including viewpoint motion, grasp execution and object placement, takes 32.57s on average. Within this cycle, MG-Grasp contributes 2.13s for end-to-end 6-DoF grasps inference, accounting for only a small fraction (≈6.5%) of the total task time. This indicates that, despite the seconds-level inference latency, the overall system throughput in our real-robot experiments is mainly constrained by robot motion and manipulation execution rather than perception alone. V. CONCLUSIONS We present MG-Grasp, a depth-free 6-DoF grasping frame-work that derives high-quality grasps directly from sparse multi-view RGB observations. Instead of treating reconstruc-tion as a separate preprocessing step, MG-Grasp couples metric scale recovery, multi-view consistency refinement, and grasp generation in a unified pipeline, leading to stronger performance than prior RGB-only baselines. Notably, MG-Grasp achieves performance comparable to representative RGB-D grasping pipelines, while operating without depth sensors. Extensive evaluations further demonstrate practical effectiveness in tabletop scenes. Future work will focus on accelerating the pipeline through more efficient multi-view selection, lighter refinement, and GPU-friendly fusion to enable faster closed-loop grasping. REFERENCES [1] A. Ten Pas, M. Gualtieri, K. Saenko, and R. Platt, “Grasp pose detection in point clouds,” The International Journal of Robotics Research , vol. 36, no. 13-14, pp. 1455–1473, 2017. [2] H.-S. Fang, C. Wang, M. Gou, and C. Lu, “Graspnet-1billion: A large-scale benchmark for general object grasping,” in Proceedings of the IEEE/CVF conference on computer vision and pattern recognition ,2020, pp. 11 444–11 453. [3] C. Wang, H.-S. Fang, M. Gou, H. Fang, J. Gao, and C. Lu, “Graspness discovery in clutters for fast and accurate grasp detection,” in Proceed-ings of the IEEE/CVF International Conference on Computer Vision ,2021, pp. 15 964–15 973. [4] S. Chen, W. Tang, P. Xie, W. Yang, and G. Wang, “Efficient heatmap-guided 6-dof grasp detection in cluttered scenes,” IEEE Robotics and Automation Letters , vol. 8, no. 8, pp. 4895–4902, 2023. [5] P. Xie, S. Chen, W. Tang, K. Yang, and G. Wang, “Rethinking 6-dof grasp detection: A flexible framework for high-quality grasping,” 
+
+Pattern Recognition , vol. 170, p. 112088, 2026. [6] M. Sundermeyer, A. Mousavian, R. Triebel, and D. Fox, “Contact-graspnet: Efficient 6-dof grasp generation in cluttered scenes,” in 2021 IEEE international conference on robotics and automation (ICRA) .IEEE, 2021, pp. 13 438–13 444. [7] M. Breyer, J. J. Chung, L. Ott, R. Siegwart, and J. Nieto, “Volumetric grasping network: Real-time 6 dof grasp detection in clutter,” in 
+
+Conference on robot learning . PMLR, 2021, pp. 1602–1611. [8] B. Mildenhall, P. P. Srinivasan, M. Tancik, J. T. Barron, R. Ramamoor-thi, and R. Ng, “Nerf: Representing scenes as neural radiance fields for view synthesis,” Communications of the ACM , vol. 65, no. 1, pp. 99–106, 2021. [9] A. Chen, Z. Xu, F. Zhao, X. Zhang, F. Xiang, J. Yu, and H. Su, “Mvsnerf: Fast generalizable radiance field reconstruction from multi-view stereo,” in Proceedings of the IEEE/CVF international conference on computer vision , 2021, pp. 14 124–14 133. [10] Y. Liu, S. Peng, L. Liu, Q. Wang, P. Wang, C. Theobalt, X. Zhou, and W. Wang, “Neural rays for occlusion-aware image-based rendering,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2022, pp. 7824–7833. [11] T. M¨ uller, A. Evans, C. Schied, and A. Keller, “Instant neural graphics primitives with a multiresolution hash encoding,” ACM transactions on graphics (TOG) , vol. 41, no. 4, pp. 1–15, 2022. [12] B. Deng, J. T. Barron, and P. P. Srinivasan, “Jaxnerf: an efficient jax im-plementation of nerf,” URL http://github. com/googleresearch/google-research/tree/master/jaxnerf , 2020. [13] Q. Dai, Y. Zhu, Y. Geng, C. Ruan, J. Zhang, and H. Wang, “Graspnerf: Multiview-based 6-dof grasp detection for transparent and specular ob-jects using generalizable nerf,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 1757–1763. [14] C. Liu, K. Shi, K. Zhou, H. Wang, J. Zhang, and H. Dong, “Rgbgrasp: Image-based object grasping by capturing multiple views during robot arm movement with neural radiance fields,” IEEE Robotics and Au-tomation Letters , vol. 9, no. 6, pp. 6012–6019, 2024. [15] Q. Fan, Y. Cai, C. Li, W. He, X. Zheng, T. Lu, B. Liang, and S. Wang, “Neugrasp: Generalizable neural surface reconstruction with background priors for material-agnostic object grasp detection,” arXiv preprint arXiv:2503.03511 , 2025. [16] S. Wang, V. Leroy, Y. Cabon, B. Chidlovskii, and J. Revaud, “Dust3r: Geometric 3d vision made easy,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2024, pp. 20 697–20 709. [17] V. Leroy, Y. Cabon, and J. Revaud, “Grounding image matching in 3d with mast3r,” in European conference on computer vision . Springer, 2024, pp. 71–91. [18] J. Wang, M. Chen, N. Karaev, A. Vedaldi, C. Rupprecht, and D. Novotny, “Vggt: Visual geometry grounded transformer,” in Pro-ceedings of the Computer Vision and Pattern Recognition Conference ,2025, pp. 5294–5306. [19] N. Keetha, N. M¨ uller, J. Sch¨ onberger, L. Porzi, Y. Zhang, T. Fischer, A. Knapitsch, D. Zauss, E. Weber, N. Antunes et al. , “Mapany-thing: Universal feed-forward metric 3d reconstruction,” arXiv preprint arXiv:2509.13414 , 2025. [20] S. Wang, M. Dai, J. Su, L. Liu, C. Chen, X. Wu, and L. Lin, “Graspview: Active perception scoring and best-view optimization for robotic grasping in cluttered environments,” arXiv preprint arXiv:2511.04199 , 2025. [21] J. Yu, X. Ren, Y. Gu, H. Lin, T. Wang, Y. Zhu, H. Xu, Y.-G. Jiang, X. Xue, and Y. Fu, “Sparsegrasp: Robotic grasping via 3d semantic gaussian splatting from sparse multi-view rgb images,” arXiv preprint arXiv:2412.02140 , 2024. [22] J. L. Schonberger and J.-M. Frahm, “Structure-from-motion revisited,” in Proceedings of the IEEE conference on computer vision and pattern recognition , 2016, pp. 4104–4113. [23] Y. Yao, Z. Luo, S. Li, T. Fang, and L. Quan, “Mvsnet: Depth inference for unstructured multi-view stereo,” in Proceedings of the European conference on computer vision (ECCV) , 2018, pp. 767–783. [24] X. Gu, Z. Fan, S. Zhu, Z. Dai, F. Tan, and P. Tan, “Cascade cost volume for high-resolution multi-view stereo and stereo matching,” in 
+
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , June 2020. [25] S. Izquierdo, M. Sayed, M. Firman, G. Garcia-Hernando, D. Tur-mukhambetov, J. Civera, O. Mac Aodha, G. Brostow, and J. Wat-son, “Mvsanywhere: Zero-shot multi-view stereo,” in Proceedings of the Computer Vision and Pattern Recognition Conference , 2025, pp. 11 493–11 504. [26] Y. Lin, J. Tremblay, S. Tyree, P. A. Vela, and S. Birchfield, “Multi-view fusion for multi-level robotic scene understanding,” in 2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) .IEEE, 2021, pp. 6817–6824. [27] Y. Avigal, S. Paradis, and H. Zhang, “6-dof grasp planning using fast 3d reconstruction and grasp quality cnn,” 2020. [28] A. Saikia, C. Di Vece, S. Bonilla, C. He, M. Magbagbeola, L. Mennillo, T. Czempiel, S. Bano, and D. Stoyanov, “Robotic arm platform for multi-view image acquisition and 3d reconstruction in minimally invasive surgery,” IEEE Robotics and Automation Letters , 2025. [29] H. Liang, X. Ma, S. Li, M. G¨ orner, S. Tang, B. Fang, F. Sun, and J. Zhang, “Pointnetgpd: Detecting grasp configurations from point sets,” in 2019 International Conference on Robotics and Automation (ICRA) . IEEE, 2019, pp. 3629–3635. [30] B. Zhao, H. Zhang, X. Lan, H. Wang, Z. Tian, and N. Zheng, “Regnet: Region-based grasp network for end-to-end grasp detection in point clouds,” in 2021 IEEE international conference on robotics and automation (ICRA) . IEEE, 2021, pp. 13 474–13 480. [31] Z. Liu, Z. Chen, S. Xie, and W.-S. Zheng, “Transgrasp: A multi-scale hierarchical point transformer for 7-dof grasp detection,” in 2022 International Conference on Robotics and Automation (ICRA) . IEEE, 2022, pp. 1533–1539. [32] Y. Dai, K. Yang, H. Zhu, R. Li, Y. Zhao, X. Feng, H. Ma, S. Chen, and G. Wang, “Visual geometric 6-dof grasping: A multi-view framework with sparse rgb observations,” in 2026 IEEE International Symposium on Circuits and Systems . IEEE, 2026, accepted, to appear. [33] R. Murai, E. Dexheimer, and A. J. Davison, “Mast3r-slam: Real-time dense slam with 3d reconstruction priors,” in Proceedings of the Computer Vision and Pattern Recognition Conference , 2025, pp. 16 695–16 705. [34] B. P. Duisterhof, L. Zust, P. Weinzaepfel, V. Leroy, Y. Cabon, and J. Revaud, “Mast3r-sfm: a fully-integrated solution for unconstrained structure-from-motion,” in 2025 International Conference on 3D Vision (3DV) . IEEE, 2025, pp. 1–10. [35] C. Zheng, W. Xu, Z. Zou, T. Hua, C. Yuan, D. He, B. Zhou, Z. Liu, J. Lin, F. Zhu et al. , “Fast-livo2: Fast, direct lidar–inertial–visual odometry,” IEEE Transactions on Robotics , vol. 41, pp. 326–346, 2024. [36] S. Zhou, Z. Wang, X. Dai, W. Song, and S. Gu, “Lir-livo: Alightweight, robust lidar/vision/inertial odometry with illumination-resilient deep features,” arXiv preprint arXiv:2502.08676 , 2025. [37] P. Xie, S. Chen, W. Tang, K. Yang, and G. Wang, “Rethinking 6-dof grasp detection: A flexible framework for high-quality grasping,” 
+
+Pattern Recognition , p. 112088, 2025. [38] C. Zhang, D. Han, Y. Qiao, J. U. Kim, S.-H. Bae, S. Lee, and C. S. Hong, “Faster segment anything: Towards lightweight sam for mobile applications,” arXiv preprint arXiv:2306.14289 , 2023. [39] M. Grupp, “evo: Python package for the evaluation of odometry and slam.” https://github.com/MichaelGrupp/evo, 2017.

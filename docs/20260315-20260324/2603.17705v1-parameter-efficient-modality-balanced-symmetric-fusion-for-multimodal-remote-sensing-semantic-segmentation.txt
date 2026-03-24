@@ -1,0 +1,625 @@
+Title: Parameter-Efficient Modality-Balanced Symmetric Fusion for Multimodal Remote Sensing Semantic Segmentation
+
+URL Source: https://arxiv.org/pdf/2603.17705v1
+
+Published Time: Thu, 19 Mar 2026 01:18:15 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+> JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 1
+
+# Parameter-Efficient Modality-Balanced Symmetric Fusion for Multimodal Remote Sensing Semantic Segmentation 
+
+Haocheng Li, Juepeng Zheng, Member, IEEE , Shuangxi Miao, Ruibo Lu, Guosheng Cai, Haohuan Fu, Fellow, IEEE , and Jianxi Huang, Senior Member, IEEE 
+
+Abstract —Multimodal remote sensing semantic segmentation enhances scene interpretation by exploiting complementary phys-ical cues from heterogeneous data. Although pretrained Vision Foundation Models (VFMs) provide strong general-purpose rep-resentations, adapting them to multimodal tasks often incurs substantial computational overhead and is prone to modality imbalance, where the contribution of auxiliary modalities is suppressed during optimization. To address these challenges, we propose MoBaNet, a parameter-efficient and modality-balanced symmetric fusion framework. Built upon a largely frozen VFM backbone, MoBaNet adopts a symmetric dual-stream architec-ture to preserve generalizable representations while minimizing the number of trainable parameters. Specifically, we design a Cross-modal Prompt-Injected Adapter (CPIA) to enable deep semantic interaction by generating shared prompts and injecting them into bottleneck adapters under the frozen backbone. To obtain compact and discriminative multimodal representations for decoding, we further introduce a Difference-Guided Gated Fusion Module (DGFM), which adaptively fuses paired stage features by explicitly leveraging cross-modal discrepancy to guide feature selection. Furthermore, we propose a Modality-Conditional Random Masking (MCRM) strategy to mitigate modality imbalance by masking one modality only during train-ing and imposing hard-pixel auxiliary supervision on modality-specific branches. Extensive experiments on the ISPRS Vaihingen and Potsdam benchmarks demonstrate that MoBaNet achieves state-of-the-art performance with significantly fewer trainable parameters than full fine-tuning, validating its effectiveness for robust and balanced multimodal fusion. The source code in this work is available at https://github.com/sauryeo/MoBaNet. 
+
+Index Terms —Remote sensing, multimodal fusion, vision foun-dation model, parameter-efficient fine-tuning. 
+
+This work was supported in part by the State Key Program of the National Natural Science Foundation of China under Grant 42530109 and in part by the Henan Provincial Natural Science Foundation under Grant 252300423933. 
+
+(Corresponding authors: Juepeng Zheng and Jianxi Huang.) 
+
+Haocheng Li, Shuangxi Miao, and Jianxi Huang are with the College of Land Science and Technology, China Agricultural University, and also with the Key Laboratory of Remote Sensing for Agri-Hazards, Ministry of Agriculture and Rural Affairs, Beijing 100083, China. Jianxi Huang is also with the Faculty of Geosciences and Engineering, Southwest Jiaotong University, Chengdu 611756, China (e-mail: haoc li@cau.edu.cn; jxhuang@cau.edu.cn). Juepeng Zheng is with the School of Artificial Intelligence, Sun Yat-Sen University, Zhuhai, China (e-mail: zhengjp8@mail.sysu.edu.cn). Ruibo Lu and Guosheng Cai are with Henan Polytechnic University, and also with the Key Laboratory of Spatio-Temporal Information and Ecological Restoration of Mines, Ministry of Natural Resources of the People’s Republic of China, Jiaozuo 454003, China. Haohuan Fu is with the Tsinghua Shenzhen International Graduate School, Tsinghua University, Shenzhen, China, also with the National Supercomput-ing Center in Shenzhen, Shenzhen, China, and also with the Ministry of Education Key Laboratory for Earth System Modeling and the Department of Earth System Science, Tsinghua University, Beijing, China (e-mail: hao-huan@tsinghua.edu.cn). 
+
+I. I NTRODUCTION 
+
+# REMOTE sensing semantic segmentation aims to assign a semantic label to each pixel in high-resolution Earth observation (EO) imagery [1], serving as a fundamental build-ing block for a wide range of applications, including land-cover mapping, urban monitoring, precision agriculture, and disaster assessment [2], [3], [4], [5]. Compared with semantic segmentation in natural scenes, RS imagery typically exhibits larger scale variations, more frequent occlusions, and more complex backgrounds [6], [7], [8]. Moreover, EO data are highly susceptible to illumination changes, cast shadows, sea-sonal variations, and sensor-induced imaging artifacts [9], [10]. These factors often lead to pronounced appearance ambiguity and inter-class confusion, posing more stringent requirements on the robustness of dense prediction models [11]. To mitigate these challenges, researchers have increasingly incorporated complementary sensing modalities beyond RGB [12], [13]. By fusing the physical cues encoded in heterogeneous modalities, multimodal approaches can compensate for the observational limitations of optical imagery alone in complex environments, thereby improving the completeness and stability of scene interpretation [14], [15]. Although multimodal data provide rich complementary cues for RS semantic segmentation, it remains challenging to fuse heterogeneous modalities efficiently and reliably within a uni-fied framework [16], [17]. On the one hand, different modali-ties exhibit substantial discrepancies in imaging mechanisms, numerical distributions, and noise characteristics—often exac-erbated by resolution mismatch and registration errors—which complicate cross-modal feature alignment and interaction modeling [18]. On the other hand, existing fusion strategies tend to be dominated by RGB information during optimiza-tion, such that the effective contribution of auxiliary modalities is easily suppressed and complementary cues cannot be con-sistently translated into performance gains [19], [20]. In recent years, Vision Transformers (ViTs) [21] and vision foundation models (VFMs) [22], [23] pretrained on large-scale data have demonstrated stronger general-purpose representations, offer-ing new opportunities for RS semantic segmentation. How-ever, in multimodal settings, mainstream approaches typically instantiate separate backbones for different modalities and perform full fine-tuning [24], [25], which incurs substantial training and storage overhead. More importantly, such designs still struggle to prevent optimization from converging to RGB- 
+
+> arXiv:2603.17705v1 [cs.CV] 18 Mar 2026 JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 2
+
+dominant shortcut solutions, suggesting that architectural sym-metry does not necessarily yield balanced contributions across modalities [19], [20], [26]. To address the above issues, we propose MoBaNet (Modality-Balanced Symmetric Fusion), a parameter-efficient symmetric fusion framework for multimodal remote sensing semantic segmentation. MoBaNet adopts a pretrained vision foundation model as a shared feature extraction backbone and freezes the backbone parameters to the greatest extent so as to preserve its general-purpose representations [22], [23]. Meanwhile, it introduces only a small set of lightweight train-able modules to model cross-modal interactions. In addition, a symmetric dual-stream design is employed to explicitly en-force equal status of different modalities during fusion, thereby mitigating the RGB-dominant bias commonly observed in multimodal optimization. Specifically, to overcome the limited deep cross-modal interaction caused by freezing the backbone, we first design a Cross-modal Prompt-Injected Adapter (CPIA). Without dis-rupting the pretrained feature space of the foundation model, CPIA generates shared semantic prompts from both modalities and injects them into the bottleneck of lightweight adapters, enabling implicit semantic-level interaction and modulation across modalities [27]. Second, to obtain compact and discrim-inative multimodal representations for decoding, we propose a Difference-Guided Gated Fusion Module (DGFM). DGFM ex-plicitly exploits cross-modal discrepancy to perform channel-wise and spatially adaptive fusion on paired stage features, thereby enhancing complementary information integration in a lightweight manner. This design not only suppresses the interference of noisy or inconsistent responses during fusion, but also yields more robust multimodal representations with low computational overhead. Finally, to alleviate the tendency of multimodal models to exhibit RGB-dominant bias during training, we introduce a Modality-Conditional Random Mask-ing (MCRM) strategy. MCRM randomly applies local masking to only one modality at the batch level and imposes hard-pixel auxiliary supervision on modality-specific branches un-der partial modality degradation. This mechanism encourages the model to exploit informative cues from the complementary modality when the dominant modality becomes unreliable, and thus improves the robustness and balance of cross-modal representation learning. The main contributions of this paper are as follows:  
+
+> •
+
+We propose MoBaNet, a parameter-efficient modality-balanced symmetric fusion framework built upon VFMs for multimodal remote sensing semantic segmentation. By combining a symmetric dual-stream design with PEFT under a largely frozen backbone, MoBaNet substantially reduces training overhead while preserving the VFM’s general-purpose representations and promoting balanced contributions across heterogeneous modalities.  
+
+> •
+
+We design the CPIA and DGFM modules. CPIA en-ables deep semantic interaction under a frozen backbone via prompt injection into bottleneck adapters, whereas DGFM performs stage-level adaptive fusion by explicitly leveraging cross-modal discrepancy to produce compact and discriminative multimodal representations for decod-ing.  
+
+> •
+
+We introduce an MCRM strategy. By applying modality-conditional random masking and hard-pixel auxiliary supervision during training, MCRM mitigates optical-dominant bias in multimodal fusion and improves the robustness and balance of cross-modal representation learning in complex scenes.  
+
+> •
+
+Extensive experiments on multiple multimodal remote sensing semantic segmentation benchmarks demonstrate that our method achieves state-of-the-art performance with only 6.18M trainable parameters, highlighting its strong effectiveness under a parameter-efficient adapta-tion setting. The remainder of this paper is organized as follows. Sec-tion II reviews related work. Section III describes the proposed method. Section IV presents the experimental setup, reports the main results, and conducts ablation studies. Section V provides further discussion and analysis. Finally, Section VI concludes this paper. II. R ELATED WORK 
+
+A. Multimodal Fusion for Remote Sensing Segmentation 
+
+Multimodal remote sensing semantic segmentation im-proves class separability and robustness by fusing complemen-tary sensing cues, e.g., multispectral appearance, DSM-derived elevation, and SAR scattering characteristics [1], [13]. Existing methods typically adopt dual- or multi-branch encoders to extract modality-specific features, and can be broadly grouped into three paradigms according to the fusion stage: early fusion at the input level, late fusion at the prediction/decision level, and feature-level fusion within the encoder–decoder pipeline [28]. Among them, feature-level fusion has become a predominant direction because it enables explicit cross-modal interaction and semantic alignment while preserving modality-specific characteristics [13], [29]. Building upon feature-level fusion, recent research has evolved from parallel architectures toward interaction-enhanced designs, aimed at boosting the effective contribution of auxiliary modalities while suppressing redundant informa-tion [13]. These methodologies can be broadly categorized into three mechanisms: (i) Cross-modal guidance , which con-strains the decoding process of one modality using structural or semantic cues from another (e.g., Gather-to-Guide [18] ensures consistency between auxiliary cues and semantic decoding); (ii) Selective fusion , utilizing gating mechanisms or attention weights to attenuate modality-specific noise and highlight complementary regions [30], as exemplified by CEGFNet’s [31] explicit gating for redundancy reduction; and (iii) Intra-/inter-modality joint interaction , which establishes explicit cross-modal interaction pathways while maintaining modality-specific representations. A representative work is MFNet [32], which integrates LiDAR-derived features with image cues via meticulously designed intra- and inter-modality interaction paths [33]. Meanwhile, the emergence of datasets and benchmarks tailored for heterogeneous modalities has also facilitated JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 3
+
+the development of multimodal remote sensing segmentation methods [12], [34]. For example, WHU-OPT-SAR and its accompanying MCANet [25] further validated the complemen-tary benefits of heterogeneous modalities through cross-modal attention and multi-level feature fusion. Toward stronger in-teraction modeling, Transformer-based fusion has gradually become an important direction. FTransUNet [35] introduces a fusion Transformer to perform global interaction over high-level semantics on top of a CNN backbone that captures shallow details, whereas TMFNet [29] and related approaches further explore DSM-oriented attention interactions and corre-lation modeling to enhance long-range dependency modeling and cross-modal semantic coupling. Overall, existing multi-modal RS segmentation methods have progressively evolved from fusion-level design to stronger interaction modeling, with increasing emphasis on selective noise suppression/alignment and global context modeling [36]. 
+
+B. Foundation Models and Parameter-Efficient Adaptation 
+
+Unlike traditional CNN-based architectures, VFMs are largely built upon ViTs and learn robust visual representations via self-supervised or weakly supervised pre-training. Among them, SAM [23] is centered on promptable segmentation ,encapsulating segmentation as a prompt-driven universal in-terface and showing competitive cross-domain transferability. DINOv2 [22], in contrast, follows a self-supervised represen-tation learning paradigm, acquiring robust patch- and image-level features and serving as a general-purpose backbone for downstream tasks such as classification, detection, and segmentation. Meanwhile, the remote sensing community has also begun exploring foundation models tailored for multi-modal data, such as RingMo-SAM [37] with a dedicated prompt encoder and class-decoupled mask decoder, and Sky-Sense [38] with multimodal spatiotemporal encoding for joint cross-modal modeling. Overall, foundation models offer strong transferability and data-efficient adaptation for multimodal RS understanding. However, the parameter scale and training cost of founda-tion models substantially raise the barrier to full fine-tuning. This has stimulated growing interest in PEFT. The central idea of PEFT is to keep the backbone largely frozen and introduce only a small set of trainable modules for task- or domain-specific adaptation. Representative strategies include Adapters [27], which insert lightweight bottleneck modules between layers; LoRA [39], which injects low-rank trainable updates into linear projections; and visual prompt tuning (VPT) [40], which learns a small number of prompt vectors in the input token space. Prior studies have systematically reviewed PEFT methods and broadly categorized them into ad-ditive, reparameterization-based, and prompt-based schemes. Overall, PEFT can achieve competitive performance under a limited trainable-parameter budget while substantially reduc-ing training and storage overhead. In remote sensing, PEFT is often used with foundation models to bridge the gap between general-purpose visual representations and domain-specific texture statistics and semantic requirements [41], [42]. Most existing PEFT methods are primarily designed for single-modality vision tasks, and directly transferring them to multimodal remote sensing scenarios faces critical bottle-necks [41], [43]. First, deep cross-modal interaction is insuf-ficient: in mainstream dual-stream architectures, if adapters are configured independently for each modality, the frozen backbone branches lack adequate channels for deep infor-mation exchange. As a result, heterogeneous modalities are processed in a manner closer to parallel feature extraction with weakly coupled fusion, making it difficult to achieve deep complementary coupling during encoding [35]. Second, modality imbalance tends to be reinforced under PEFT: frozen foundation models often inherit a preference for optical cues, and standard PEFT does not explicitly model the competi-tion between modalities [44], [45]. Consequently, the limited trainable parameters may still favor optical-dominant shortcut solutions, further diminishing the effective contribution of the auxiliary modality [46]. Therefore, it remains an open and important problem for multimodal RS semantic segmenta-tion to develop a unified adaptation framework that, while maintaining parameter efficiency, can break modality isolation, enable deep interaction, and promote balanced contributions across modalities [47]. III. M ETHOD 
+
+In this section, we first introduce the overall framework in Section III-A. The details of CPIA, DGFM, and MCRM are presented in Sections III-B, III-C, and III-D, respectively. 
+
+A. Overall Architecture 
+
+To achieve parameter-efficient and modality-balanced seg-mentation while preserving the representation capacity of a VFM, we propose a modality-symmetric fine-tuning frame-work with a dual-stream architecture. Given an input mul-timodal image pair consisting of an optical image Irgb ∈
+
+RB×3×H×W and an auxiliary modality Iaux ∈ RB×Ca×H×W ,our goal is to predict a pixel-wise class probability map 
+
+P ∈ RB×K×H×W .We adopt a pretrained ViT as the feature extraction back-bone and freeze its parameters Θbackbone during training. To accommodate the statistical distribution shift and channel mismatch of heterogeneous auxiliary modalities, we design an asymmetric patch embedding scheme: the optical branch reuses and freezes the pretrained embedding Ergb , whereas the auxiliary branch introduces an additional embedding Eaux 
+
+whose parameters are trainable. After patch embedding, both modalities are represented as a 2-D token grid: 
+
+X0 = Ergb (Irgb ) , Y0 = Eaux (Iaux ) , (1) 
+
+X0, Y0 ∈ RB×H′×W ′×C , H′ = Hp , W ′ = Wp . (2) Here, p denotes the patch size and C is the embedding dimension. We apply a shared and frozen absolute positional encoding Pabs to both streams. To maintain consistent spatial priors under varying input resolutions, Pabs is resized via bicubic interpolation and then added to the token embeddings. JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 4Multi -level output collection 
+
+> Layer 1
+
+Vision Foundation Model 
+
+> Layer 2
+> Layer n
+> Embedding
+> CPIA
+
+...   
+
+> ... ... ... ... ... ...
+> DGFM
+> DGFM
+> DGFM
+> DGFM
+> Modality -specific Tokenzation
+> Embedding
+> Multi -scale Deocoder
+> Pre -training
+
+Frozen 
+
+Trainable 
+
+Frozen 
+
+Trainable 
+
+> ΦΦ
+> RGB modality
+> DSM modality
+> Initialize frozen
+> backbone weights
+> Pretrain Dataset
+> MCRM Strategy
+
+Backbone  、、、
+
+MCRM Strategy    
+
+> S1 S2 S3
+> CPIA CPIA
+> ViT Block t 1ViT Block t 1
+> ViT Block t 2ViT Block t 2
+> ViT Block t 3ViT Block t 3
+> ViT Block t 4ViT Block t 4
+> CPIA CPIA
+> CPIA CPIA
+> ... ...
+> Hard -Target
+> Generator
+> Ls 2Ls 1Ls 3
+> Multi -level output collection
+> Layer 1
+
+Vision Foundation Model 
+
+> Layer 2
+> Layer n
+> Embedding
+> CPIA
+
+...   
+
+> ... ... ...
+> DGFM
+> DGFM
+> DGFM
+> DGFM
+> Modality -specific Tokenzation
+> Embedding
+> Multi -scale Deocoder
+> Pre -training
+
+Frozen 
+
+Trainable 
+
+> Φ
+> RGB modality
+> DSM modality
+> Initialize frozen
+> backbone weights
+> Pretrain Dataset
+> MCRM Strategy
+
+Backbone 、
+
+MCRM Strategy    
+
+> S1 S2 S3
+> CPIA
+> ViT Block t 1
+> ViT Block t 2
+> ViT Block t 3
+> ViT Block t 4
+> CPIA
+> CPIA
+> ...
+> Hard -Target
+> Generator
+> Ls 2Ls 1Ls 3
+
+Fig. 1. Overall framework of the proposed multimodal segmentation model with MCRM training. A pretrained vision foundation model initializes a shared frozen ViT backbone. RGB and DSM inputs are first tokenized by modality-specific embeddings, then processed by a stage-wise dual-stream encoder, where CPIA is inserted before each selected stage and DGFM is applied after each selected stage to produce multi-level fused features for the decoder. During training, MCRM performs modality-conditional random masking and hard-pixel auxiliary supervision on one main branch (S1) and two auxiliary modality branches (S2, S3), while only the main branch is used for inference. 
+
+The feature extraction stage consists of L stacked Trans-former blocks. Following the multi-level feature tapping con-figuration, we divide the encoder into S stages according to the selected tap indices {ts}Ss=1 , where S = 4 by default. The s-th stage is defined as the sequence of Transformer blocks from block ts−1 + 1 to block ts, with t0 = 0 . Within each stage, the two modalities are structurally aligned to share the same unimodal modeling capacity and optimization path, while cross-modal interaction is introduced only through a small set of trainable PEFT modules. Given the input tokens of the l-th block, Xl−1, Yl−1 ∈ RB×H′×W ′×C , the shared Pre-LN unimodal modeling is formulated as 
+
+˜Xl = Xl−1 + SA(LN( Xl−1)) , ˜Yl = Yl−1 + SA(LN( Yl−1)) , (3) 
+
+¯Xl = ˜Xl + MLP 
+
+
+
+LN( ˜Xl)
+
+
+
+, ¯Yl = ˜Yl + MLP 
+
+
+
+LN( ˜Yl)
+
+
+
+. (4) 
+
+The parameters of SA( ·) and MLP( ·) are shared across the two streams (shared weights) and are frozen together with the backbone. Rather than inserting trainable modules into every Trans-former block, we adopt a stage-wise insertion strategy. For each selected stage, we place CPIA before the stage encoder and DGFM after the stage encoder:  
+
+> •
+
+CPIA (implicit semantic modulation): before the in-put tokens enter the s-th stage, CPIA generates shared semantic prompts from the bimodal tokens and injects them into both streams via prompt-injected adapters, enabling cross-modal semantic modulation under a frozen backbone.  
+
+> •
+
+DGFM (explicit stage-level fusion): after the s-th stage produces its output features, DGFM adaptively fuses the paired modality features by leveraging their discrepancy cue to guide channel-wise and spatially adaptive fusion, yielding a compact multimodal representation for decod-ing. Denote by Xs and Ys the RGB and auxiliary features out-put from the s-th selected stage, respectively. DGFM produces the fused feature Fs for each stage. The multi-level fused features {Fs}Ss=1 are then fed into the decoder head to produce the main prediction P. During training, we additionally attach two lightweight modality-specific auxiliary heads to generate 
+
+Prgb and Paux for MCRM supervision, while only the main fused branch is retained during inference. Ultimately, only the PEFT parameters Θpeft are updated, while Θbackbone remains frozen throughout training. 
+
+B. Cross-modal Prompt-Injected Adapter (CPIA) 
+
+Under the frozen-backbone setting, relying solely on inde-pendent Transformer computations in the two streams leads to insufficient deep cross-modal semantic interaction. To address this issue, we propose the CPIA, which is inserted before each selected stage encoder and operates on the paired modality tokens. It introduces a lightweight mechanism based on prompt generation and prompt-injected adapters , enabling implicit se-JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 5
+
+mantic complementarity across modalities without disrupting the pretrained feature space. Specifically, CPIA consists of two components: a Cross-modal Prompt Generator and a Prompt-Injected Adapter. 
+
+a) Cross-modal Prompt Generator: Given the paired modality tokens before entering the s-th stage, Xs 
+
+> in
+
+and 
+
+Ys 
+
+> in
+
+∈ RB×H′×W ′×C , CPG first projects each modality to a reduced dimension Cp = ⌊rpC⌋. The two projected features are then concatenated along the channel dimension, fused, and finally projected back to C to obtain a shared semantic base 
+
+Zs:
+
+X↓,s = Xs
+
+> in
+
+Wrgb  
+
+> d
+
+, Y↓,s = Ys
+
+> in
+
+Waux  
+
+> d
+
+, (5) 
+
+Zs = Up  Fuse  [X↓,s ; Y↓,s ] , (6) Here, Fuse( ·) and Up( ·) denote linear mappings. To mit-igate the distribution shift between different modalities, we introduce a Task Feature Transformation (TFT) module that generates modality-specific prompts via channel-wise affine modulation. Specifically, we define 
+
+Ps 
+
+> rgb
+
+= Zs +  Zs ⊙ γrgb + βrgb 
+
+ , (7) 
+
+Ps 
+
+> aux
+
+= Zs + ( Zs ⊙ γaux + βaux ) , (8) where γm, βm ∈ RC are learnable channel-wise parameters for modality m ∈ { rgb , aux } and are broadcast along the spatial dimensions H′ × W ′.
+
+b) Prompt-Injected Adapter: Conventional adapters are designed for unimodal features. In CPIA, we inject the prompt vectors generated by CPG as a dynamic bias into the bottle-neck of an adapter. Specifically, we insert a prompt-injected adapter with a bottleneck structure into each stream, and use the prompt as an additive modulation term on the reduced intermediate representation. For modality m ∈ { rgb , aux },the adapter mapping is defined as        
+
+> Adapter( X,P) = X+Wup
+> 
+> σ Wdown X+Wprompt P
+> ,(9)
+
+where Wdown ∈ RC×d, Wup ∈ Rd×C , and Wprompt ∈
+
+RC×d are learnable matrices. The bottleneck dimension is d =
+
+⌊raC⌋, and σ(·) denotes the ReLU activation. We further apply dropout to improve generalization. The CPIA outputs are then given by 
+
+Xs 
+
+> cpia
+
+= Adapter  Xs
+
+> in
+
+, Ps
+
+> rgb
+
+ , (10) 
+
+Ys 
+
+> cpia
+
+= Adapter( Ys
+
+> in
+
+, Ps
+
+> aux
+
+) . (11) The modulated tokens Xs 
+
+> cpia
+
+and Ys 
+
+> cpia
+
+are then fed into the 
+
+s-th stage encoder. This design symmetrically injects cross-modal prompts into the bottlenecks of both streams, thereby establishing a stable semantic communication channel under the frozen-backbone constraint. 
+
+C. Difference-Guided Gated Fusion Module (DGFM) 
+
+To obtain compact and discriminative multimodal represen-tations for decoding, we introduce a lightweight Difference-Guided Gated Fusion Module (DGFM). For each selected stage, DGFM is applied after the stage encoder to fuse the paired optical and auxiliary features. Unlike more complicated CC
+
+## Linear  Linear 
+
+## Linear 
+
+## Linear   
+
+> Fig. 2. Structure of the CPIA module. A shared semantic base is generated from paired RGB and auxiliary tokens, transformed into modality-specific prompts by TFT, and injected into lightweight bottleneck adapters for sym-metric cross-modal semantic modulation before each selected stage.
+> Fig. 3. Structure of the DGFM module. Reduced RGB and DSM features, together with their discrepancy cue, are fed into a lightweight gate network to predict an adaptive gating map, which dynamically fuses the two modalities into a compact multimodal representation.
+
+fusion designs that introduce dedicated refinement branches, DGFM performs adaptive fusion in a simple yet effective manner by exploiting modality-specific responses together with their explicit discrepancy cue. 
+
+a) Compact Projection and Discrepancy Cue: Given the paired features from the s-th selected encoder stage, Xs, Ys ∈
+
+RB×Ls×Cs with Ls = HsWs, we first reshape them into 2-D feature maps, denoted by ˜Xs, ˜Ys ∈ RB×Cs×Hs×Ws . To reduce the computational cost of fusion, both modality features are projected into a compact channel space through 1 × 1
+
+convolutions: 
+
+Rsx = ϕsx( ˜Xs), Rsy = ϕsy ( ˜Ys), (12) JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 6
+
+where ϕsx(·) and ϕsy (·) denote learnable channel reduc-tion mappings. The reduced features satisfy Rsx, Rsy ∈
+
+RB×C′ 
+
+> s×Hs×Ws
+
+, where C′ 
+
+> s
+
+< C s.Based on the reduced features, we explicitly construct a discrepancy cue: 
+
+Ds = Rsx − Rsy , (13) where Ds ∈ RB×C′ 
+
+> s×Hs×Ws
+
+captures cross-modal disagree-ment and provides direct evidence for adaptive fusion. 
+
+b) Difference-Guided Adaptive Fusion: The reduced modality features and their discrepancy cue are concatenated to predict a channel-wise and spatially adaptive gating map: 
+
+Gs = σ ϕsg
+
+ [Rsx; Rsy ; Ds] , (14) where [·; ·] denotes channel-wise concatenation, σ(·) is the sigmoid function, and Gs ∈ RB×Cs×Hs×Ws is the learned gating map. In practice, ϕsg (·) is implemented as a lightweight gating network consisting of a 1 × 1 convolution, GroupNorm, GELU, and a final 1 × 1 convolution. This design maps the concatenated compact features back to the original channel dimension, enabling channel-wise and spatially adaptive fusion over the full stage features. The fused feature map is then formulated as 
+
+˜Fs = Gs ⊙ ˜Xs + (1 − Gs) ⊙ ˜Ys, (15) where the gating map controls the contribution of the two modalities at each spatial location and channel. Finally, the fused feature map is reshaped back into token form: 
+
+Fs = Reshape( ˜Fs) ∈ RB×Ls×Cs . (16) In this way, DGFM performs lightweight yet effective multimodal fusion by explicitly modeling cross-modal dis-crepancy and using it to guide adaptive feature selection. In the overall framework, CPIA facilitates pre-stage token-level semantic interaction under the frozen backbone, whereas DGFM performs post-stage feature-level adaptive fusion on the stage outputs. 
+
+D. Modality-Conditional Random Masking (MCRM) 
+
+Although the proposed dual-stream architecture enables cross-modal interaction, the optimization process may still become dominated by the modality that provides stronger immediate predictive cues, thereby weakening the contribution of the complementary modality. To mitigate this issue, we in-troduce a training-only strategy termed Modality-Conditional Random Masking (MCRM). The key idea is to simulate partial degradation in a modality-conditional manner: for a subset of training samples, only one modality is locally corrupted, while the counterpart remains intact. This design explicitly encourages the network to exploit complementary cross-modal evidence when one modality becomes unreliable. 
+
+a) Balanced Modality-Conditional Masking: Given amini-batch {(I(i)rgb , I (i)aux )}Bi=1 , we first select N = ⌊rB ⌋
+
+samples for masking, where r ∈ [0 , 1] denotes the masking ratio. The selected samples are then partitioned into an RGB-masked subset and an Aux-masked subset in a nearly balanced manner: 
+
+|Brgb | =
+
+ N
+
+2
+
+
+
+,
+
+|Baux | = N − | Brgb |,Bfull = {1, . . . , B } \ (Brgb ∪ Baux ). (22) We define a modality-conditional masking operator M(·) that masks K randomly sampled local rectangular regions on a single modality by setting the pixels within each region to zero. For each region, the area ratio, aspect ratio, and spatial location are randomly sampled from predefined ranges. The corrupted inputs are formulated as 
+
+( ˜I(i)rgb , ˜I(i)aux ) = 
+
+
+
+(M(I(i)rgb ), I (i)aux ), i ∈ Brgb ,
+
+(I(i)rgb , M(I(i)aux )) , i ∈ Baux ,
+
+(I(i)rgb , I (i)aux ), i ∈ Bfull .
+
+(23) Therefore, for each selected sample, only one modality is locally degraded while the other remains intact. Such asym-metric corruption prevents the model from over-relying on a single dominant modality and promotes the learning of com-plementary multimodal representations under partial modality degradation. 
+
+b) Training Objective under MCRM: Given the MCRM-corrupted input pair ( ˜Irgb , ˜Iaux ), the network produces a fused prediction P together with two modality-specific auxiliary predictions, denoted by Prgb and Paux :
+
+(P, P rgb , P aux ) = F ( ˜Irgb , ˜Iaux ). (24) The fused prediction is supervised by the standard cross-entropy loss: 
+
+Lmain = Lce (P, Y gt ). (25) To explicitly guide the modality-specific branches to com-pensate for the corrupted modality, we further impose auxiliary supervision on pixels that remain misclassified by the fused branch. Specifically, we define a hard-pixel set based on the fused prediction as 
+
+Ω = {u | arg max  
+
+> c
+
+P (u, c )̸ = Ygt (u)}. (26) Only pixels in Ω are used to supervise the auxiliary branches, while correctly predicted pixels are ignored. The auxiliary loss is thus defined as 
+
+Laux = Lce (Prgb , Y gt ; Ω) + Lce (Paux , Y gt ; Ω) . (27) This hard-pixel-guided design avoids redundant supervision on already well-recognized regions and instead encourages each modality-specific branch to provide complementary cues precisely where multimodal fusion remains insufficient. The overall training objective is formulated as 
+
+Ltotal = Lmain + λaux Laux , (28) where λaux is the balancing coefficient for the auxiliary supervision. In this way, the fused branch is optimized to JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 7
+
+learn robust multimodal representations, while the modality-specific auxiliary branches are explicitly driven to compen-sate for locally corrupted inputs on error-prone pixels. Since MCRM is used only during training and introduces no extra inference overhead. The increased parameters in the full model mainly come from the lightweight auxiliary heads for MCRM supervision, which are removed at test time. IV. E XPERIMENTS 
+
+A. Datasets 
+
+We evaluate our method on two multimodal benchmarks: ISPRS Vaihingen and ISPRS Potsdam. Both datasets comprise high-resolution true orthophotos (TOP) and digital surface models (DSM), with pixel-wise annotations for six classes: impervious surfaces, building, low vegetation, tree, car, and clutter. 
+
+a) ISPRS Vaihingen: The ISPRS Vaihingen dataset was acquired over the town of Vaihingen, Germany, covering a typical small urban area dominated by detached houses and multi-story residential buildings. It contains 33 TOP tiles with varying spatial extents at a ground sampling distance (GSD) of approximately 9 cm. The optical imagery includes three spectral channels: near-infrared (NIR), red (R), and green (G), and DSM is provided as the auxiliary modality. Following the official ISPRS split, we use 16 tiles for training and the remaining 17 tiles for testing. 
+
+b) ISPRS Potsdam: The ISPRS Potsdam dataset depicts a typical historical urban scene with dense building blocks, narrow streets, and complex urban textures. It has a higher spatial resolution with a GSD of approximately 5 cm and consists of 38 TOP tiles of a uniform size ( 6000 ×6000 pixels). The optical imagery contains four spectral channels (NIR, R, G, and B), and DSM is provided accordingly. Following the official split protocol, we use 24 tiles for training and the remaining 14 tiles for testing and evaluation. 
+
+B. Implementation Details 
+
+All experiments are implemented in PyTorch and con-ducted on a single NVIDIA GeForce RTX 4090 GPU (24GB memory). We employ pretrained DINOv2 and SAM as the feature extraction backbones for comparison. The models are optimized using AdamW with an initial learning rate of 
+
+3 × 10 −4, a weight decay of 0.01, and a batch size of 12 (reduced to 6 when using ViT-L due to its higher memory footprint). The learning rate schedule consists of a linear warm-up for the first 5 epochs followed by cosine annealing. During training, we apply random cropping with a crop size of 256 × 256 , together with random flipping and mirroring for data augmentation. All models are trained for 50 epochs, with 1000 iterations per epoch. We adopt UperNet [56] as the segmentation decoder to produce pixel-wise prediction masks. For the auxiliary modality, DSM is independently min–max normalized to [0 , 1] on each tile in both training and testing. For RGB images, pixel values are first scaled to [0 , 1] ; when the encoder is from the DINOv2 family, we further apply ImageNet normalization, otherwise no additional ImageNet standardization is performed. For reproducibility, the random seed is fixed to 42. We evaluate segmentation performance using Overall Accu-racy (OA), mean F1-score (mF1), and mean Intersection-over-Union (mIoU). Following the standard evaluation protocol on ISPRS benchmarks, OA is computed as pixel-wise accuracy over all classes, including the background category, whereas mF1 and mIoU are averaged over the five foreground classes only. This setting enables a fair comparison with existing state-of-the-art approaches. 
+
+C. Performance Comparison 
+
+To comprehensively evaluate the effectiveness and gen-erality of the proposed MoBaNet for multimodal remote sensing semantic segmentation, we benchmark it against rep-resentative baselines spanning different modeling paradigms, including classical CNN-based segmentation networks, strong Transformer-based segmenters, and multimodal frameworks equipped with explicit cross-modal fusion mechanisms. Specifically, UNet [48], SegNet [49] FuseNet [50], PSP-Net [51], ABCNet [52], DC-Swin [53], MAResU-Net [54], and UNetFormer [55] are adopted as strong optical-only baselines. These methods take only optical imagery as in-put, characterizing the attainable performance without ge-ometric cues and serving as a reference for quantify-ing the gains brought by multimodal fusion. In contrast, vFuseNet [14], CMFNet [33], CMGFNet [30], TMFNet [29], FTransUNet [35], and MANet [32] further incorporate DSM on top of optical inputs and perform explicit fusion, rep-resenting typical designs for multimodal segmentation. To promote a fair comparison, we adopt consistent DSM co-registration/alignment, normalization, preprocessing, dataset splits, and evaluation metrics whenever possible, thereby re-ducing potential biases caused by inconsistent modality han-dling. Moreover, to examine the backbone-agnostic property of our framework, we implement and evaluate MoBaNet with SAM and DINOv2, demonstrating its stability and general-ization across different backbones. Overall, the comparative quantitative results are reported in Tables I and II. 
+
+a) Performance Comparison on the Vaihingen Dataset: 
+
+Table I summarizes the quantitative results on the ISPRS Vaihingen test set. MoBaNet achieves the best overall perfor-mance in terms of OA, mF1, and mIoU, demonstrating that a parameter-efficient and modality-balanced symmetric fusion scheme can effectively exploit the complementarity between optical imagery and DSM while keeping the VFM backbone largely frozen. Specifically, MoBaNet (DINOv2-ViT-L) attains 91.90% OA, 91.39% mF1, and 84.37% mIoU, which are the best results in Table I. Compared with the strong optical-only baseline DC-Swin, MoBaNet improves mIoU by 1.24 percentage points, indicating that DSM-provided geometric cues help reduce appearance-induced inter-class confusion and boundary deviations. Furthermore, MoBaNet outperforms the recent multimodal method MANet (ViT-B) by 1.77 percent-age points in mIoU (84.37% vs. 82.60%), suggesting that under a constrained trainable-parameter budget, the proposed interaction-and-fusion design (CPIA/DGFM) together with the JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 8Image DSM GT (a) (b) (c) (d) (e) (f) (g) 
+
+Impervious surfaces Buildings Low vegetation Trees Cars Clutter  
+
+> Fig. 4. Visualized comparisons on the Vaihingen test set with the size of 512 × 512. (a) U-Net, (b) ABCNet, (c) DC-Swin, (d) UNetFormer, (e) FTransUNet, (f) MANet, and (g) proposed MoBaNet. To highlight the differences, some purple boxes are added to all subfigures.
+
+bias-mitigating training strategy (MCRM) can better activate discriminative cues from the auxiliary modality instead of converging to RGB-dominant shortcut solutions. Fig. 4 shows qualitative comparisons on the Vaihingen test set. MoBaNet (Fig. 4(g)) produces predictions that better preserve object integrity and yield sharper boundary delin-eation. In shadowed regions or areas with pronounced illu-mination variation, optical-only methods are more susceptible to spectral perturbations, often resulting in local misclassi-fication, boundary bleeding, or fragmented masks. By con-trast, MoBaNet generates more coherent segments with fewer artifacts for challenging classes affected by occlusion and texture ambiguity (e.g., low vegetation and car), reflecting a more effective utilization of DSM structural and height cues through cross-modal interaction and discrepancy-guided adaptive fusion. 
+
+b) Performance Comparison on the Potsdam Dataset: 
+
+Table II reports the quantitative comparisons on the ISPRS Potsdam test set. MoBaNet again achieves the best perfor-mance across OA, mF1, and mIoU, indicating that the pro-posed framework remains effective in higher-resolution urban scenes with richer textures and more complex object layouts. In particular, MoBaNet (DINOv2-ViT-L) reaches 92.23% OA, 93.53% mF1, and 88.03% mIoU, which are the best results in Table II. Compared with the strong optical-only baseline DC-Swin, MoBaNet improves mIoU by 2.39 percentage points (88.03% vs. 85.64%), suggesting that DSM-derived geomet-ric/height cues are especially beneficial for reducing confusion among visually similar categories such as impervious surfaces, building, and low vegetation in dense urban areas. Moreover, MoBaNet surpasses the recent multimodal baseline MANet by 2.95 percentage points in mIoU (88.03% vs. 85.08%), imply-ing that effective exploitation of auxiliary modalities requires not only a fusion architecture but also mechanisms that en-courage consistent cross-modal contribution under parameter-efficient adaptation. Notably, MoBaNet achieves strong perfor-mance on challenging categories such as low vegetation and car (e.g., 89.08% and 96.66%, respectively), further reflecting its improved discriminative capability for fine-grained targets and ambiguous regions. Fig. 5 presents qualitative comparisons on the Potsdam test set. Owing to its higher spatial resolution and intricate urban textures, accurate segmentation requires preserving small ob-jects, recovering regular geometric structures, and suppressing spurious predictions in cluttered backgrounds. As highlighted by the purple boxes, competing methods tend to miss or confuse small targets and produce noisy or broken masks in challenging regions, whereas MoBaNet yields cleaner predic-tions with more coherent regions and boundaries that better follow geometric contours. In addition, MoBaNet maintains clearer delineation at class transitions (e.g., road–building and vehicle–road interfaces), demonstrating improved robustness and fine-detail control in dense urban scenes. 
+
+D. Model Complexity Analysis 
+
+To evaluate the computational complexity and practical efficiency of the proposed MoBaNet, we compare a repre-sentative MoBaNet configuration based on the DINOv2-ViT-JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 9Image DSM GT (a) (b) (c) (d) (e) (f) (g) 
+
+Impervious surfaces Buildings Low vegetation Trees Cars Clutter  
+
+> Fig. 5. Visualized comparisons on the Potsdam test set with the size of 512 × 512. (a) U-Net, (b) ABCNet, (c) DC-Swin, (d) UNetFormer, (e) FTransUNet, (f) MANet, and (g) proposed MoBaNet. To highlight the differences, some purple boxes are added to all subfigures.
+
+B backbone with representative optical-only and multimodal baselines in terms of trainable parameters, inference latency, FPS, peak memory footprint, and mIoU, as reported in Ta-ble III. These metrics jointly reflect the trade-off between segmentation performance and deployment cost. MoBaNet achieves the best segmentation accuracy among all compared methods, reaching 87.80% mIoU, while requiring only 6.18M trainable parameters, which is also the smallest parameter count in the table. This result demonstrates that the proposed parameter-efficient adaptation strategy can effec-tively leverage the representation capability of the foundation backbone with minimal trainable overhead. Compared with representative multimodal baselines, MoBaNet is substan-tially more lightweight than CMGFNet (43.68M), FTransUNet (203.40M), and MANet (20.42M), while outperforming them in mIoU. In particular, MoBaNet exceeds FTransUNet and MANet by 2.24 and 2.72 percentage points, respectively. From the perspective of deployment efficiency, MoBaNet also exhibits a favorable balance between performance and hardware cost. Its inference latency is 13.97 ms with a corre-sponding FPS of 71.60, which is close to that of the efficient multimodal baseline CMGFNet (13.13 ms, 76.18 FPS), while being markedly better than FTransUNet and MANet in both speed and memory usage. Although lightweight optical-only methods such as ABCNet and UNetFormer remain faster and more memory-efficient, they do not exploit complementary DSM information and therefore achieve lower segmentation accuracy than MoBaNet. Overall, these results indicate that MoBaNet provides a strong trade-off among segmentation accuracy, parameter efficiency, and inference cost, highlighting its practical potential for multimodal remote sensing segmen-tation under resource-constrained deployment settings. 
+
+E. Ablation Study 
+
+To evaluate the contribution of each proposed component and the robustness of the overall framework, we conduct two groups of ablation experiments under the same training protocol described in Sec. IV, using DINOv2-ViT-B as the default backbone. Unless otherwise specified, all variants are evaluated in terms of OA, mF1, and mIoU, and the percentage of trainable parameters is additionally reported to reflect parameter efficiency. 
+
+a) Component Ablation: We first investigate the contri-bution of each module by progressively introducing CPIA, DGFM, and MCRM on top of a frozen dual-stream baseline, denoted as Base . Specifically, Base consists of the frozen backbone with a trainable auxiliary patch embedding and the same decoder head, but without any of the proposed com-ponents. Starting from Base , incorporating CPIA yields con-sistent improvements across all evaluation metrics, indicating that prompt-injected adapters effectively facilitate cross-modal semantic interaction under a largely frozen backbone. Further introducing DGFM brings additional gains, suggesting that discrepancy-guided adaptive fusion is beneficial for suppress-ing noisy responses and improving dense prediction quality. Finally, adding MCRM leads to the best overall performance, confirming that Modality-Conditional Random Masking helps mitigate RGB-dominant optimization and promotes a more JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 10 
+
+TABLE I QUANTITATIVE COMPARISON ON THE VAIHINGEN DATASET . B EST RESULTS ARE SHOWN IN BOLD , AND SECOND -BEST RESULTS ARE UNDERLINED (%). Method Backbone Imp. Bui. Low. Tre. Car OA mF1 (%) mIoU (%) U-Net [48] – 86.63 90.56 76.84 83.75 72.80 80.73 82.12 70.17 SegNet [49] – 86.72 91.31 78.82 84.87 69.66 81.55 82.27 70.55 FuseNet [50] VGG16 91.66 96.28 78.98 90.28 81.37 90.51 87.71 78.71 PSPNet [51] ResNet101 92.79 95.46 84.51 89.94 88.61 90.85 90.26 82.58 ABCNet [52] ResNet18 96.67 95.44 83.67 89.61 87.19 91.14 90.51 83.04 DC-Swin [53] Swin-B 96.68 95.85 84.38 89.59 86.31 91.33 90.56 83.13 MAResU-Net [54] ResNet18 91.97 95.04 83.74 89.35 78.28 90.05 87.68 80.75 UNetFormer [55] ResNet18 96.57 95.20 83.43 89.35 86.15 90.76 90.14 82.44 vFuseNet [14] VGG16 91.0 94.4 84.5 89.9 86.3 90.0 89.22 –CMFNet [33] VGG16 92.36 97.17 80.37 90.82 85.47 91.40 89.48 81.44 CMGFNet [30] ResNet34 92.81 96.20 84.08 90.26 85.02 90.98 89.67 81.60 TMFNet [29] ResNet34 91.25 95.70 80.87 88.82 84.60 89.71 88.25 78.70 FTransUNet [35] R50-ViT-B 92.89 96.02 84.70 89.80 86.94 91.05 90.07 82.18 MANet [32] ViT-B 92.79 96.14 84.15 90.57 86.78 91.35 90.33 82.60 MoBaNet (SAM) ViT-B 93.21 96.51 85.72 91.58 90.06 91.65 90.97 83.66 ViT-L 94.25 96.35 84.64 92.07 89.14 91.80 91.29 84.17 MoBaNet (DINOv2) ViT-B 93.40 96.78 85.54 90.55 89.52 91.78 91.16 83.97 ViT-L 94.18 96.90 84.58 92.03 88.32 91.90 91.39 84.37 
+
+TABLE II QUANTITATIVE COMPARISON ON THE POTSDAM DATASET . B EST RESULTS ARE SHOWN IN BOLD , AND SECOND -BEST RESULTS ARE UNDERLINED (%). Method Backbone Imp. Bui. Low. Tre. Car OA mF1 (%) mIoU (%) U-Net [48] – 86.62 91.96 81.52 84.09 83.55 81.93 85.55 74.92 SegNet [49] – 86.77 92.43 79.59 81.79 82.97 81.14 84.71 73.75 FuseNet [50] VGG16 92.64 97.48 87.31 85.14 96.10 90.58 91.60 84.86 PSPNet [51] ResNet101 93.36 96.97 87.75 88.50 95.42 91.08 92.40 84.88 ABCNet [52] ResNet18 92.26 95.13 85.82 87.96 94.80 89.70 91.19 84.03 DC-Swin [53] Swin-B 93.65 96.31 87.16 88.31 95.27 90.86 92.14 85.64 MAResU-Net [54] ResNet18 91.4 95.6 85.8 86.6 93.3 89.0 90.5 83.9 UNetFormer [55] ResNet18 92.80 95.22 86.83 88.19 95.88 90.28 91.78 85.03 vFuseNet [14] VGG16 92.7 96.3 87.3 88.5 95.4 90.6 92.0 –CMFNet [33] VGG16 92.84 97.63 88.00 87.40 95.68 91.16 92.10 85.63 CMGFNet [30] ResNet34 92.62 97.20 86.46 88.55 94.46 90.59 91.86 85.18 TMFNet [29] ResNet34 92.83 96.20 89.86 89.09 91.80 91.05 92.21 85.71 FTransUNet [35] R50-ViT-B 92.70 97.24 87.53 88.64 94.39 90.78 92.10 85.56 MANet [32] ViT-B 93.94 97.46 89.72 86.41 95.17 90.50 91.82 85.08 MoBaNet (SAM) ViT-B 95.15 96.64 90.84 87.45 94.83 91.27 92.58 86.38 ViT-L 95.64 97.12 90.78 85.95 94.88 91.39 92.73 86.65 MoBaNet (DINOv2) ViT-B 94.06 97.57 88.78 90.29 96.29 92.11 93.40 87.80 ViT-L 94.16 97.58 89.08 90.17 96.66 92.23 93.53 88.03 
+
+balanced exploitation of complementary DSM cues. Overall, the full model achieves the best trade-off between segmen-tation accuracy and parameter efficiency, demonstrating the effectiveness of the proposed multimodal adaptation design. 
+
+b) Modality-Missing Robustness: We further evaluate the robustness of the model under modality-missing inference to examine whether the learned representation is overly de-pendent on a single modality. The comparison is conducted on the Potsdam dataset. Specifically, two inference settings are considered: RGB+DSM and RGB-only , where the lat-ter is obtained by setting DSM to zeros while keeping all network parameters unchanged. To isolate the effect of the proposed regularization, the reference model is the variant trained without MCRM, i.e., Base+CPIA+DGFM . As shown in Table V, the full model exhibits substantially smaller performance degradation when DSM is removed. In partic-ular, under the RGB-only setting, the performance drop of MoBaNet is 0.75% in OA, 0.66% in mF1, and 1.17% in mIoU, whereas the reference baseline suffers much larger drops of 19.41%, 16.12%, and 23.06%, respectively. These results indicate that MCRM effectively reduces the model’s over-reliance on a single dominant modality and improves the robustness of multimodal representation learning under partial modality degradation. Notably, MCRM is applied only during training and introduces no additional computational overhead at inference time. 
+
+c) Qualitative Visualization: To complement the quanti-tative analysis, Fig. 6 presents class-specific response maps for the Buildings category on representative samples from the Potsdam dataset. Compared with Base , the full model JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 11 
+
+TABLE III COMPUTATIONAL COMPLEXITY ANALYSIS MEASURED USING A 256 × 256 IMAGE ON A SINGLE NVIDIA G EFORCE RTX 4090 GPU. F OR MOBANET ,
+
+THE REPORTED RESULTS ARE OBTAINED USING THE DINO V2-V IT-B BACKBONE . MIOU VALUES ARE REPORTED ON THE POTSDAM DATASET . A 
+
+HORIZONTAL RULE SEPARATES OPTICAL -ONLY AND MULTIMODAL METHODS . B OLD VALUES INDICATE THE BEST RESULTS .Method Params (M) Latency (ms) ↓ FPS ↑ Memory (MB) ↓ mIoU (%) ↑
+
+ABCNet 13.67 3.55 281.61 194.59 84.03 DC-Swin 118.39 14.59 68.56 603.83 85.64 UNetFormer 11.72 3.58 279.51 186.92 85.03 CMGFNet 43.68 13.13 76.18 357.94 85.18 FTransUNet 203.40 38.90 25.71 930.35 85.56 MANet 20.42 105.36 9.49 1741.83 85.08 MoBaNet 6.18 13.97 71.60 402.99 87.80 
+
+TABLE IV ABLATION STUDY OF THE PROPOSED KEY DESIGNS ON THE ISPRS P OTSDAM DATASET . “B ASE ” DENOTES THE FROZEN VFM DUAL -STREAM BASELINE WITH A TRAINABLE AUXILIARY PATCH EMBEDDING AND THE SAME DECODER HEAD , WITHOUT ANY OF THE PROPOSED DESIGNS . “P ARAMS ” REPORTS THE NUMBER OF TRAINABLE PARAMETERS (M). T HE BEST RESULTS ARE IN BOLD AND THE SECOND -BEST ARE UNDERLINED .Variant CPIA DGFM MCRM Params (M) OA (%) mF1 (%) mIoU (%) Base 1.91 90.47 91.74 84.95 Base + CPIA ✓ 3.99 91.43 92.57 86.33 Base + CPIA + DGFM ✓ ✓ 5.00 91.73 93.02 87.15 Base + CPIA + DGFM + MCRM (Full) ✓ ✓ ✓ 6.18 92.11 93.40 87.80 
+
+TABLE V MODALITY -MISSING EVALUATION AT INFERENCE TIME . “RGB-ONLY ” SETS DSM TO ZEROS . A LL MODELS ARE TRAINED WITH FULL MODALITIES UNLESS OTHERWISE SPECIFIED . “D ROP (↓)” IS COMPUTED AS THE PERFORMANCE DIFFERENCE BETWEEN THE RGB+DSM AND RGB-ONLY SETTINGS .Dataset Input MoBaNet (Full) Reference Baseline OA (%) mF1 (%) mIoU (%) OA (%) mF1 (%) mIoU (%) Potsdam RGB + DSM 92.11 93.40 87.80 91.79 93.09 87.26 RGB-only 91.36 92.74 86.63 72.38 76.97 64.20 Drop ( ↓) 0.75 0.66 1.17 19.41 16.12 23.06 
+
+produces more compact, spatially coherent, and semantically concentrated activations over building regions, while suppress-ing irrelevant responses in the surrounding background. In particular, the highlighted regions generated by the full model align more closely with the spatial extent and boundaries of buildings under varying roof appearances and complex local contexts. These qualitative observations are consistent with the quantitative improvements reported in Table IV and provide further visual evidence that the proposed design enhances multimodal representation quality. V. D ISCUSSION AND FUTURE WORK 
+
+This work presents MoBaNet, a unified parameter-efficient multimodal fine-tuning framework for remote sensing seman-tic segmentation. Built upon a largely frozen vision foundation model, MoBaNet integrates stage-wise cross-modal modula-tion, difference-guided fusion, and training-time robustness regularization, and demonstrates strong effectiveness on RGB– DSM segmentation benchmarks. As an early exploration of parameter-efficient multimodal adaptation for remote sensing with large vision backbones, this work also suggests several directions for further study. 1) Improving parameter-efficient adaptation modules: This work adopts CPIA as a lightweight stage-wise prompt-injected adaptation mechanism to enable cross-modal Softmax         
+
+> MLP
+> (token2feat)
+> MLP
+> (delta -f)
+> Φout
+> Input Interaction & Routing Reconstruction Fusion & Generation
+> Residual
+> Signal
+> ΔFl
+> Instance -aware
+> Features
+> Ftoken
+> Φin
+> Query
+> Key
+> Value
+> Semantic Tokens
+> (Key)T l
+> Image Features
+> (Query)T l
+> Masking
+> TORA Backbone Different
+> task head
+> :element -wise product
+> :concatenation
+> :Frozen
+> :Tunable
+> :Feature map
+> :element -wise product
+> :concatenation
+> :Frozen
+> :Tunable
+> :Feature map
+> Agricultural/RS
+> Datasets
+> Agricultural/RS
+> Datasets
+> Semantic
+> segmentation
+> Semantic
+> segmentation
+> Images
+> classification
+> Images
+> classification
+> Crop
+> detection
+> Crop
+> detection
+> Frozen Layer Frozen Layer
+> TORA TORA
+> Frozen Layer Frozen Layer
+> Frozen Layer Frozen Layer
+> TORA TORA
+> Softmax
+> MLP
+> (token2feat)
+> MLP
+> (delta -f)
+> Φout
+> Input Interaction & Routing Reconstruction Fusion & Generation
+> Residual
+> Signal
+> ΔFl
+> Instance -aware
+> Features
+> Ftoken
+> Φin
+> Query
+> Key
+> Value
+> Semantic Tokens
+> (Key)T l
+> Image Features
+> (Query)T l
+> Masking
+> TORA Backbone Different
+> task head
+> :element -wise product
+> :concatenation
+> :Frozen
+> :Tunable
+> :Feature map
+> Agricultural/RS
+> Datasets
+> Semantic
+> segmentation
+> Images
+> classification
+> Crop
+> detection
+> Frozen Layer
+> TORA
+> Frozen Layer
+> Frozen Layer
+> TORA
+
+(a)  (b)  (c)  (d) (a) (b) (c) (d) 
+
+Fig. 6. Qualitative comparison of feature response visualizations on represen-tative Potsdam samples for the Buildings category. (a) RGB image. (b) DSM. (c) Base . (d) Full model. 
+
+interaction under a frozen backbone. Future research may explore more advanced or more efficient PEFT designs, such as stronger prompt-based, low-rank, or hybrid adap-JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 12 
+
+tation strategies, to further improve adaptation quality while reducing memory and optimization costs for large-scale multimodal models. 2) Improving multimodal fusion modules: DGFM performs discrepancy-guided adaptive fusion to selectively inte-grate complementary cues from heterogeneous modali-ties at selected stages. The experimental results suggest that explicitly modeling cross-modal discrepancy is an effective way to suppress inconsistent responses and im-prove the quality of fused representations. Nevertheless, the current fusion design remains relatively lightweight, and its capacity for modeling more complex cross-modal relationships and higher-level complementary interac-tions may still be limited. 3) Addressing challenging categories and fine structures: 
+
+The experimental results show that MoBaNet improves segmentation quality in complex urban scenes, partic-ularly in terms of region coherence and boundary de-lineation. However, challenging categories such as low vegetation, trees, and small objects like cars remain difficult, indicating that fine-grained discrimination and structural detail modeling are still challenging under complex backgrounds and class ambiguity. 4) Extending to broader remote sensing modalities and set-tings: This study mainly focuses on RGB–DSM segmen-tation on two urban benchmarks. The effectiveness of the proposed framework on other multimodal remote sensing settings, such as multispectral, LiDAR, or SAR data, remains to be explored. In addition, more challenging scenarios, including cross-city transfer, cross-sensor gen-eralization, and incomplete-modality conditions, would provide a broader testbed for evaluating the scalability and robustness of MoBaNet. Overall, this work provides a concise yet effective founda-tion for parameter-efficient multimodal adaptation of vision foundation models in remote sensing. We expect that the proposed framework can be further extended to more diverse modality combinations, scene types, and dense prediction tasks in future research. VI. C ONCLUSION 
+
+In this paper, we proposed MoBaNet, a parameter-efficient modality-balanced symmetric fusion framework for multi-modal remote sensing semantic segmentation. Built upon a largely frozen vision foundation model, MoBaNet combines a stage-wise dual-stream adaptation architecture with three key designs: CPIA for pre-stage cross-modal semantic modulation, DGFM for post-stage discrepancy-guided adaptive fusion, and MCRM for improving modality balance and robustness during training. Extensive experiments on the ISPRS Vaihingen and Pots-dam benchmarks demonstrated that MoBaNet achieves state-of-the-art segmentation performance while requiring only a small proportion of trainable parameters compared with full fine-tuning. The ablation and modality-missing analyses fur-ther verified that the proposed modules contribute comple-mentary benefits in semantic interaction, reliable fusion, and robustness under partial modality degradation. These results suggest that MoBaNet provides an effective and efficient solution for multimodal adaptation of large vision backbones in remote sensing segmentation. In future work, we will further investigate its extension to more diverse modality combina-tions and broader cross-domain remote sensing scenarios. REFERENCES [1] X. X. Zhu, D. Tuia, L. Mou, G.-S. Xia, L. Zhang, F. Xu, and F. Fraundorfer, “Deep Learning in Remote Sensing: A Comprehensive Review and List of Resources,” IEEE Geoscience and Remote Sensing Magazine , vol. 5, no. 4, pp. 8–36, Dec. 2017. [Online]. Available: https://ieeexplore.ieee.org/document/8113128/ [2] F. I. Diakogiannis, F. Waldner, P. Caccetta, and C. Wu, “ResUNet-a: A deep learning framework for semantic segmentation of remotely sensed data,” ISPRS Journal of Photogrammetry and Remote Sensing , vol. 162, pp. 94–114, Apr. 2020. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S0924271620300149 [3] X. Chen, Z. Li, J. Jiang, Z. Han, S. Deng, Z. Li, T. Fang, H. Huo, Q. Li, and M. Liu, “Adaptive Effective Receptive Field Convolution for Semantic Segmentation of VHR Remote Sensing Images,” IEEE Transactions on Geoscience and Remote Sensing ,vol. 59, no. 4, pp. 3532–3546, Apr. 2021. [Online]. Available: https://ieeexplore.ieee.org/document/9147012/ [4] M. O. Turkoglu, S. D’Aronco, G. Perich, F. Liebisch, C. Streit, K. Schindler, and J. D. Wegner, “Crop mapping from image time series: Deep learning with multi-scale label hierarchies,” Remote Sensing of Environment , vol. 264, p. 112603, Oct. 2021. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S0034425721003230 [5] Z. Zheng, Y. Zhong, J. Wang, A. Ma, and L. Zhang, “Building damage assessment for rapid disaster response with a deep object-based semantic change detection framework: From natural disasters to man-made disasters,” Remote Sensing of Environment , vol. 265, p. 112636, Nov. 2021. [Online]. Available: https://linkinghub.elsevier.com/ retrieve/pii/S0034425721003564 [6] E. Maggiori, Y. Tarabalka, G. Charpiat, and P. Alliez, “High-Resolution Aerial Image Labeling With Convolutional Neural Networks,” IEEE Transactions on Geoscience and Remote Sensing , vol. 55, no. 12, pp. 7092–7103, Dec. 2017. [Online]. Available: https://ieeexplore.ieee.org/ document/8024178/ [7] M. Volpi and D. Tuia, “Dense Semantic Labeling of Subdecimeter Resolution Images With Convolutional Neural Networks,” IEEE Transactions on Geoscience and Remote Sensing , vol. 55, no. 2, pp. 881–893, Feb. 2017. [Online]. Available: https://ieeexplore.ieee.org/ document/7725499/ [8] Y. Liu, B. Fan, L. Wang, J. Bai, S. Xiang, and C. Pan, “Semantic labeling in very high resolution images via a self-cascaded convolutional neural network,” ISPRS Journal of Photogrammetry and Remote Sensing , vol. 145, pp. 78–95, Nov. 2018. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S0924271617303854 [9] H. Zhang, K. Sun, and W. Li, “Object-Oriented Shadow Detection and Removal From Urban High-Resolution Remote Sensing Images,” 
+
+IEEE Transactions on Geoscience and Remote Sensing , vol. 52, no. 11, pp. 6972–6982, Nov. 2014. [Online]. Available: https: //ieeexplore.ieee.org/document/6779607/ [10] L. Bai, S. Du, X. Zhang, H. Wang, B. Liu, and S. Ouyang, “Domain Adaptation for Remote Sensing Image Semantic Segmentation: An Integrated Approach of Contrastive Learning and Adversarial Learning,” 
+
+IEEE Transactions on Geoscience and Remote Sensing , vol. 60, pp. 1–13, 2022. [Online]. Available: https://ieeexplore.ieee.org/document/ 9857935/ [11] L. Ma, Y. Liu, X. Zhang, Y. Ye, G. Yin, and B. A. Johnson, “Deep learning in remote sensing applications: A meta-analysis and review,” ISPRS Journal of Photogrammetry and Remote Sensing ,vol. 152, pp. 166–177, Jun. 2019. [Online]. Available: https: //linkinghub.elsevier.com/retrieve/pii/S0924271619301108 [12] M. Schmitt and X. X. Zhu, “Data Fusion and Remote Sensing: An ever-growing relationship,” IEEE Geoscience and Remote Sensing Magazine , vol. 4, no. 4, pp. 6–23, Dec. 2016. [Online]. Available: https://ieeexplore.ieee.org/document/7740215/ [13] J. Li, D. Hong, L. Gao, J. Yao, K. Zheng, B. Zhang, and J. Chanussot, “Deep learning in multimodal remote sensing data fusion: A comprehensive review,” International Journal of Applied Earth Observation and Geoinformation , vol. 112, p. 102926, Aug. JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 13 
+
+2022. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/ S1569843222001248 [14] N. Audebert, B. Le Saux, and S. Lef` evre, “Beyond RGB: Very high resolution urban remote sensing with multimodal deep networks,” 
+
+ISPRS Journal of Photogrammetry and Remote Sensing , vol. 140, pp. 20–32, Jun. 2018. [Online]. Available: https://linkinghub.elsevier.com/ retrieve/pii/S0924271617301818 [15] X. Yang, S. Li, Z. Chen, J. Chanussot, X. Jia, B. Zhang, B. Li, and P. Chen, “An attention-fused network for semantic segmentation of very-high-resolution remote sensing imagery,” ISPRS Journal of Photogrammetry and Remote Sensing , vol. 177, pp. 238–262, Jul. 2021. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/ S0924271621001295 [16] E. G. Parmehr, C. S. Fraser, C. Zhang, and J. Leach, “Automatic registration of optical imagery with 3D LiDAR data using statistical similarity,” ISPRS Journal of Photogrammetry and Remote Sensing ,vol. 88, pp. 28–40, Feb. 2014. [Online]. Available: https://linkinghub. elsevier.com/retrieve/pii/S0924271613002773 [17] W. Sun and R. Wang, “Fully Convolutional Networks for Semantic Segmentation of Very High Resolution Remotely Sensed Images Combined With DSM,” IEEE Geoscience and Remote Sensing Letters , vol. 15, no. 3, pp. 474–478, Mar. 2018. [Online]. Available: https://ieeexplore.ieee.org/document/8281008/ [18] X. Zheng, X. Wu, L. Huan, W. He, and H. Zhang, “A Gather-to-Guide Network for Remote Sensing Semantic Segmentation of RGB and Auxiliary Image,” IEEE Transactions on Geoscience and Remote Sensing , vol. 60, pp. 1–15, 2022. [Online]. Available: https://ieeexplore.ieee.org/document/9519842/ [19] X. Zheng, Y. Lyu, L. Jiang, D. P. Paudel, L. V. Gool, and X. Hu, “Reducing Unimodal Bias in Multi-Modal Semantic Segmentation with Multi-Scale Functional Entropy Regularization.” [20] S. Wei, C. Luo, and Y. Luo, “Improving Multimodal Learning via Imbalanced Learning.” [21] A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai, T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly, J. Uszkoreit, and N. Houlsby, “An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale,” Jun. 2021, arXiv:2010.11929 [cs]. [Online]. Available: http://arxiv.org/abs/2010.11929 [22] M. Oquab, T. Darcet, T. Moutakanni, H. V. Vo, M. Szafraniec, V. Khali-dov, P. Fernandez, D. Haziza, F. Massa, A. El-Nouby, M. Assran, N. Ballas, W. Galuba, R. Howes, P.-Y. Huang, S.-W. Li, I. Misra, M. Rabbat, V. Sharma, G. Synnaeve, H. Xu, H. Jegou, J. Mairal, P. Labatut, A. Joulin, and P. Bojanowski, “DINOv2: Learning Robust Visual Features without Supervision.” [23] A. Kirillov, E. Mintun, N. Ravi, H. Mao, C. Rolland, L. Gustafson, T. Xiao, S. Whitehead, A. C. Berg, W.-Y. Lo, P. Doll´ ar, and R. Girshick, “Segment Anything,” in 2023 IEEE/CVF International Conference on Computer Vision (ICCV) . Paris, France: IEEE, Oct. 2023, pp. 3992–4003. [Online]. Available: https://ieeexplore.ieee.org/ document/10378323/ [24] Y. Wang, C. M. Albrecht, and X. X. Zhu, “Self-Supervised Vision Transformers for Joint SAR-Optical Representation Learning,” in 
+
+IGARSS 2022 - 2022 IEEE International Geoscience and Remote Sensing Symposium . Kuala Lumpur, Malaysia: IEEE, Jul. 2022, pp. 139–142. [Online]. Available: https://ieeexplore.ieee.org/document/ 9883983/ [25] X. Li, G. Zhang, H. Cui, S. Hou, S. Wang, X. Li, Y. Chen, Z. Li, and L. Zhang, “MCANet: A joint semantic segmentation framework of optical and SAR images for land use classification,” International Journal of Applied Earth Observation and Geoinformation , vol. 106, p. 102638, Feb. 2022. [Online]. Available: https://linkinghub.elsevier. com/retrieve/pii/S0303243421003457 [26] R. Niu, X. Sun, Y. Tian, W. Diao, K. Chen, and K. Fu, “Hybrid Multiple Attention Network for Semantic Segmentation in Aerial Images,” IEEE Transactions on Geoscience and Remote Sensing , vol. 60, pp. 1–18, 2022. [Online]. Available: https: //ieeexplore.ieee.org/document/9385072/ [27] N. Houlsby, A. Giurgiu, S. Jastrzebski, and B. Morrone, “Parameter-Efficient Transfer Learning for NLP.” [28] T. Baltruˇ saitis, C. Ahuja, and L.-P. Morency, “Multimodal Machine Learning: A Survey and Taxonomy,” IEEE Transactions on Pattern Analysis and Machine Intelligence , vol. 41, no. 2, pp. 423–443, Feb. 2019. [Online]. Available: https://ieeexplore.ieee.org/document/ 8269806/ [29] Y. Liu, K. Gao, H. Wang, Z. Yang, P. Wang, S. Ji, Y. Huang, Z. Zhu, and X. Zhao, “A Transformer-based multi-modal fusion network for semantic segmentation of high-resolution remote sensing imagery,” International Journal of Applied Earth Observation and Geoinformation , vol. 133, p. 104083, Sep. 2024. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S1569843224004370 [30] H. Hosseinpour, F. Samadzadegan, and F. D. Javan, “CMGFNet: A deep cross-modal gated fusion network for building extraction from very high-resolution remote sensing images,” ISPRS Journal of Photogrammetry and Remote Sensing , vol. 184, pp. 96–115, Feb. 2022. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/ S0924271621003294 [31] W. Zhou, J. Jin, J. Lei, and J.-N. Hwang, “CEGFNet: Common Extraction and Gate Fusion Network for Scene Parsing of Remote Sensing Images,” IEEE Transactions on Geoscience and Remote Sensing , vol. 60, pp. 1–10, 2022. [Online]. Available: https: //ieeexplore.ieee.org/document/9538389/ [32] X. Ma, X. Zhang, M.-O. Pun, and B. Huang, “A Unified Framework With Multimodal Fine-Tuning for Remote Sensing Semantic Segmentation,” IEEE Transactions on Geoscience and Remote Sensing , vol. 63, pp. 1–15, 2025. [Online]. Available: https://ieeexplore.ieee.org/document/11063320/ [33] X. Ma, X. Zhang, and M.-O. Pun, “A Crossmodal Multiscale Fusion Network for Semantic Segmentation of Remote Sensing Data,” 
+
+IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing , vol. 15, pp. 3463–3474, 2022. [Online]. Available: https://ieeexplore.ieee.org/document/9749821/ [34] Y. Liu, Y. Wang, Y. Zhang, S. Mei, J. Zou, Z. Li, F. Lu, W. He, H. Zhang, H. Zhao, C. Chen, C. Xia, H. Li, G. Vivone, R. H¨ ansch, G. Taskin, J. Yao, A. K. Qin, B. Zhang, J. Chanussot, and D. Hong, “Cross-City Semantic Segmentation (C2Seg) in Multimodal Remote Sensing: Outcome of the 2023 IEEE WHISPERS C2Seg Challenge,” 
+
+IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing , vol. 17, pp. 8851–8862, 2024. [Online]. Available: https://ieeexplore.ieee.org/document/10517985/ [35] X. Ma, X. Zhang, M.-O. Pun, and M. Liu, “A Multilevel Multimodal Fusion Transformer for Remote Sensing Semantic Segmentation,” IEEE Transactions on Geoscience and Remote Sensing , vol. 62, pp. 1–15, 2024. [Online]. Available: https: //ieeexplore.ieee.org/document/10458980/ [36] J. Li, Z. Wang, N. Xu, and Z. You, “Semantic segmentation with scale alignment and contextual information fusion for multimodal remote sensing images,” Information Fusion , vol. 126, p. 103671, Feb. 2026. [Online]. Available: https://linkinghub.elsevier.com/retrieve/ pii/S1566253525007432 [37] Z. Yan, J. Li, X. Li, R. Zhou, W. Zhang, Y. Feng, W. Diao, K. Fu, and X. Sun, “RingMo-SAM: A Foundation Model for Segment Anything in Multimodal Remote-Sensing Images,” IEEE Transactions on Geoscience and Remote Sensing , vol. 61, pp. 1–16, 2023. [Online]. Available: https://ieeexplore.ieee.org/document/10315957/ [38] X. Guo, J. Lao, B. Dang, Y. Zhang, L. Yu, L. Ru, L. Zhong, Z. Huang, K. Wu, D. Hu, H. He, J. Wang, J. Chen, M. Yang, Y. Zhang, and Y. Li, “SkySense: A Multi-Modal Remote Sensing Foundation Model Towards Universal Interpretation for Earth Observation Imagery,” in 2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) . Seattle, WA, USA: IEEE, Jun. 2024, pp. 27 662–27 673. [Online]. Available: https://ieeexplore.ieee.org/document/10655854/ [39] E. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang, and W. Chen, “LORA: LOW-RANK ADAPTATION OF LARGE LAN-GUAGE MODELS,” 2022. [40] M. Jia, L. Tang, B.-C. Chen, C. Cardie, S. Belongie, B. Hariharan, and S.-N. Lim, “Visual Prompt Tuning,” in Computer Vision – ECCV 2022 ,S. Avidan, G. Brostow, M. Ciss´ e, G. M. Farinella, and T. Hassner, Eds. Cham: Springer Nature Switzerland, 2022, vol. 13693, pp. 709–727, series Title: Lecture Notes in Computer Science. [Online]. Available: https://link.springer.com/10.1007/978-3-031-19827-4 41 [41] L. Hu, H. Yu, W. Lu, D. Yin, X. Sun, and K. Fu, “AiRs: Adapter in Remote Sensing for Parameter-Efficient Transfer Learning,” 
+
+IEEE Transactions on Geoscience and Remote Sensing , vol. 62, pp. 1–18, 2024. [Online]. Available: https://ieeexplore.ieee.org/document/ 10385180/ [42] L. Hu, W. Lu, H. Yu, D. Yin, X. Sun, and K. Fu, “TEA: A Training-Efficient Adapting Framework for Tuning Foundation Models in Remote Sensing,” IEEE Transactions on Geoscience and Remote Sensing , vol. 62, pp. 1–18, 2024. [Online]. Available: https://ieeexplore.ieee.org/document/10740309/ [43] X. Zou, S. Zhang, K. Li, S. Wang, J. Xing, L. Jin, C. Lang, and P. Tao, “Adapting Vision Foundation Models for Robust Cloud Segmentation in Remote Sensing Images,” IEEE Transactions on JOURNAL OF L ATEX CLASS FILES, VOL. 13, NO. 9, SEPTEMBER 2014 14 
+
+Geoscience and Remote Sensing , vol. 63, pp. 1–14, 2025. [Online]. Available: https://ieeexplore.ieee.org/document/11121911/ [44] Y. Wang, Y. Wan, Y. Zhang, B. Zhang, and Z. Gao, “Imbalance knowledge-driven multi-modal network for land-cover semantic segmentation using aerial images and LiDAR point clouds,” ISPRS Journal of Photogrammetry and Remote Sensing , vol. 202, pp. 385–404, Aug. 2023. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S092427162300179X [45] Y. Chen, M. Zhao, and L. Bruzzone, “A Novel Approach to Incomplete Multimodal Learning for Remote Sensing Data Fusion,” 
+
+IEEE Transactions on Geoscience and Remote Sensing , vol. 62, pp. 1–14, 2024. [Online]. Available: https://ieeexplore.ieee.org/document/ 10496710/ [46] S. Gao, X. Yang, L. Jiang, Z. Fu, and J. Du, “Global feature-based multimodal semantic segmentation,” Pattern Recognition , vol. 151, p. 110340, Jul. 2024. [Online]. Available: https://linkinghub.elsevier.com/ retrieve/pii/S0031320324000918 [47] D. Hong, L. Gao, N. Yokoya, J. Yao, J. Chanussot, Q. Du, and B. Zhang, “More Diverse Means Better: Multimodal Deep Learning Meets Remote-Sensing Imagery Classification,” IEEE Transactions on Geoscience and Remote Sensing , vol. 59, no. 5, pp. 4340–4354, May 2021. [Online]. Available: https://ieeexplore.ieee.org/document/ 9174822/ [48] O. Ronneberger, P. Fischer, and T. Brox, “U-Net: Convolutional Networks for Biomedical Image Segmentation,” in Medical Image Computing and Computer-Assisted Intervention – MICCAI 2015 ,N. Navab, J. Hornegger, W. M. Wells, and A. F. Frangi, Eds. Cham: Springer International Publishing, 2015, vol. 9351, pp. 234–241, series Title: Lecture Notes in Computer Science. [Online]. Available: http://link.springer.com/10.1007/978-3-319-24574-4 28 [49] V. Badrinarayanan, A. Kendall, and R. Cipolla, “SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation,” 
+
+IEEE Transactions on Pattern Analysis and Machine Intelligence ,vol. 39, no. 12, pp. 2481–2495, Dec. 2017. [Online]. Available: https://ieeexplore.ieee.org/document/7803544/ [50] C. Hazirbas, L. Ma, C. Domokos, and D. Cremers, “FuseNet: Incorporating Depth into Semantic Segmentation via Fusion-Based CNN Architecture,” in Computer Vision – ACCV 2016 , S.-H. Lai, V. Lepetit, K. Nishino, and Y. Sato, Eds. Cham: Springer International Publishing, 2017, vol. 10111, pp. 213–228, series Title: Lecture Notes in Computer Science. [Online]. Available: https://link.springer.com/10.1007/978-3-319-54181-5 14 [51] H. Zhao, J. Shi, X. Qi, X. Wang, and J. Jia, “Pyramid Scene Parsing Network,” in 2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR) . Honolulu, HI: IEEE, Jul. 2017, pp. 6230–6239. [Online]. Available: http://ieeexplore.ieee.org/document/8100143/ [52] R. Li, S. Zheng, C. Zhang, C. Duan, L. Wang, and P. M. Atkinson, “ABCNet: Attentive bilateral contextual network for efficient semantic segmentation of Fine-Resolution remotely sensed imagery,” ISPRS Journal of Photogrammetry and Remote Sensing , vol. 181, pp. 84–98, Nov. 2021. [Online]. Available: https://linkinghub.elsevier.com/retrieve/ pii/S0924271621002379 [53] L. Wang, R. Li, C. Duan, C. Zhang, X. Meng, and S. Fang, “A Novel Transformer Based Semantic Segmentation Scheme for Fine-Resolution Remote Sensing Images,” IEEE Geoscience and Remote Sensing Letters , vol. 19, pp. 1–5, 2022. [Online]. Available: https://ieeexplore.ieee.org/document/9681903/ [54] R. Li, S. Zheng, C. Duan, J. Su, and C. Zhang, “Multistage Attention ResU-Net for Semantic Segmentation of Fine-Resolution Remote Sensing Images,” IEEE Geoscience and Remote Sensing Letters ,vol. 19, pp. 1–5, 2022. [Online]. Available: https://ieeexplore.ieee.org/ document/9378788/ [55] L. Wang, R. Li, C. Zhang, S. Fang, C. Duan, X. Meng, and P. M. Atkinson, “UNetFormer: A UNet-like transformer for efficient semantic segmentation of remote sensing urban scene imagery,” ISPRS Journal of Photogrammetry and Remote Sensing ,vol. 190, pp. 196–214, Aug. 2022. [Online]. Available: https: //linkinghub.elsevier.com/retrieve/pii/S0924271622001654 [56] T. Xiao, Y. Liu, B. Zhou, Y. Jiang, and J. Sun, “Unified Perceptual Parsing for Scene Understanding,” Jul. 2018, arXiv:1807.10221 [cs]. [Online]. Available: http://arxiv.org/abs/1807.10221

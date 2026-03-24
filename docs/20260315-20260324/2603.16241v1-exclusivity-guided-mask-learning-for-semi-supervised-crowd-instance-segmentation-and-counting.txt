@@ -1,0 +1,733 @@
+Title: Exclusivity-Guided Mask Learning for Semi-Supervised Crowd Instance Segmentation and Counting
+
+URL Source: https://arxiv.org/pdf/2603.16241v1
+
+Published Time: Wed, 18 Mar 2026 00:58:23 GMT
+
+Number of Pages: 25
+
+Markdown Content:
+# Exclusivity-Guided Mask Learning for Semi-Supervised Crowd Instance Segmentation and Counting 
+
+Jiyang Huang 1 , Hongru Cheng 1, Wei Lin 2 , Jia Wan 1⋆ , and Antoni B. Chan 2 
+
+> 1
+
+Harbin Institute of Technology, Shenzhen  
+
+> 2
+
+City University of Hong Kong 
+
+{jiyanghuang0127,elonlin24,jiawan1998}@gmail.com {24S151003}@hit.edu.cn {abchan}@cityu.edu.hk 
+
+Abstract. Semi-supervised crowd analysis is a prominent area of re-search, as unlabeled data are typically abundant and inexpensive to obtain. However, traditional point-based annotations constrain perfor-mance because individual regions are inherently ambiguous, and con-sequently, learning fine-grained structural semantics from sparse anno-tations remains an unresolved challenge. In this paper, we first propose an Exclusion-Constrained Dual-Prompt SAM (EDP-SAM), based on our Nearest Neighbor Exclusion Circle (NNEC) constraint, to generate mask supervision for current datasets. With the aim of segmenting individu-als in dense scenes, we then propose Exclusivity-Guided Mask Learn-ing (XMask), which enforces spatial separation through a discriminative mask objective. Gaussian smoothing and a differentiable center sampling strategy are utilized to improve feature continuity and training stabil-ity. Building on XMask, we present a semi-supervised crowd counting framework that uses instance mask priors as pseudo-labels, which con-tain richer shape information than traditional point cues. Extensive ex-periments on the ShanghaiTech A, UCF-QNRF, and JHU++ datasets (using 5%, 10%, and 40% labeled data) verify that our end-to-end model achieves state-of-the-art semi-supervised segmentation and counting per-formance, effectively bridging the gap between counting and instance segmentation within a unified framework. 
+
+Keywords: Semi-supervised learning · Crowd Counting · Instance Seg-mentation 
+
+## 1 Introduction 
+
+Crowd scene analysis has long been a pivotal research topic in computer vision, driven by its critical applications in public safety, smart city management, and  
+
+> ⋆
+
+Corresponding author 
+
+> arXiv:2603.16241v1 [cs.CV] 17 Mar 2026
+
+2 Huang et al. 
+
+traffic monitoring. Despite significant progress in density estimation and localiza-tion [18, 25, 39, 49, 65], the field remains constrained by a severe data annotation bottleneck. The prohibitive cost of acquiring pixel-level ground truth forces a reliance on point-based annotations, which inherently lack structural semantics regarding individual shape and occupancy. Current crowd analysis research spans multiple directions: density regression and point-based localization, which treat individuals as dimensionless points, ignoring spatial extent; and object detection research [11, 14, 33, 51, 56] strug-gles with bounding box regression in scenarios of severe occlusion. Other re-lated methods [37, 45] connect the detection task with counting, but lack in semantic information. While recent foundation models like SAM [21] demon-strate zero-shot segmentation potential, their direct application is hindered by high computational latency and performance degradation in dense, ambiguous regions [7]. Consequently, learning fine-grained structural semantics from sparse annotations remains an open problem. In particular, how to harness additional data to compensate for the lack of dense supervision has not been sufficiently investigated. SLIC               
+
+> Superpixel
+> SAM
+> NNEC
+> Initial
+> Masks
+> Intersection
+> Correction
+> ∑=1
+> ∑=0
+> Feats
+> Embedding
+> Points
+> Location
+> NNEC region
+> Center
+> Sampling
+> Gaussian
+> Smooth
+> MaskHead Discriminative Loss Spatial -Awared Mask Generation Valid Pseudo Mask selection Mask Constraint Loss
+> EDP -SAM
+> Annotation
+> Data
+> Image Data
+> Trained Counting Model
+> Mask Dataset
+> XMask Training and Generation Mask Constraint Mechanism
+> Semi -Supervised Segmentation and Counting Feedback Framework
+
+Fig. 1: Conception of our approach. EDP-SAM is designed to generate data with mask supervision. To acquire segmentation capabilities, we propose a semi-supervised XMask method to learn a discriminative feature representation. Subsequently, we present a mask-constraint strategy composing the final step in our framework, coupling semantic and spatial information to enhance counting accuracy. 
+
+To address these limitations, we propose a novel paradigm that extends crowd counting to dense instance segmentation without relying on expensive point and mask annotations, as illustrated in Fig. 1. Our objective is to achieve high in-stance segmentation performance while enhancing counting accuracy in dense crowds. First, we employ SAM [21] to generate datasets with masks by using existing annotations as point prompts and SLIC [2]-generated superpixels for region guidance. The Nearest-Neighbor Exclusion Circle (NNEC) is further introduced as a spatial constraint to suppress interference from adjacent in-stances. This design, Exclusion-Constrained Dual-Prompt SAM (EDP-SAM) ,yields spatially consistent and reliable pseudo-masks. After manual correction, the resulting datasets are subsequently used for model training and standardized comparison with baseline methods. We then propose an E Xclusivity-Guided Mask Learning (XMask) for crowd instance segmentation by enforcing spatial separation through a discriminative mask objective. First, we propose NNEC, a metric-induced local topological partition that guarantees first-order exclusivity under sparse supervision. Next, by leveraging discriminative feature embedding learning [5, 9, 46], we reformu-Exclusivity-Guided Mask Learning 3
+
+late the instance segmentation task as a semantic segmentation problem within dynamically defined local regions, , which significantly enhances computational efficiency. Additionally, to improve feature continuity and training stability, we incorporate Depthwise Gaussian smoothing into the embedding space and use a Differentiable Center Sampling strategy to ensure gradient consistency. Based on the proposed crowd instance segmentation architecture, we fur-ther design a semi-supervised mask-constraint mechanism that provides richer guidance than point labels for semi-supervised crowd counting. By incorporat-ing a set of mask constraint losses and coupling them with a valid mask filter-ing strategy, the proposed mechanism forms a feedback loop that enhances the reliability and consistency of pseudo-mask supervision. Rather than leveraging feature embeddings to generate instance pseudo-masks for enforcing a strict spa-tial containment, Abousamra, Shahira et al. [1] impose a topological constraint on the likelihood map’s landscape using persistence loss, ensuring the number of connected components in the predicted heatmap corresponds exactly to the number of ground truth dots. Our design allows the segmentation branch to reg-ularize crowd counting in a semi-supervised manner. Crucially, our specialized framework delivers segmentation performance on par with foundation models (e.g., SAM) but with drastically reduced computational costs, presenting a ro-bust and efficient alternative for dense crowd analysis. Extensive experiments on the ShanghaiTech A (ShTech A), UCF-QNRF, and JHU++ datasets (using 5%, 10%, and 40% labeled protocols) demonstrate that our end-to-end model signifi-cantly outperforms point-prompt FastSAM [66]-based methods in both inference speed and segmentation accuracy. The contributions of our paper are summarized as follows: 
+
+– We propose Exclusion-Constrained Dual-Prompt SAM (EDP-SAM), an au-tomatic mask generation framework for dense crowds that guides SAM with head-point and superpixel dual prompts while enforcing a Nearest Neighbor Exclusion constraint to prevent cross-instance leakage. This design improves individual separation in highly congested scenes, and the resulting pseudo-masks are lightly refined to build a high-quality crowd segmentation dataset. 
+
+– We introduce Exclusivity-Guided Mask Learning (XMask), an exclusivity-guided semi-supervised method for dense crowd instance segmentation that enforces spatial separation through a discriminative mask objective, cou-pled with Gaussian smoothing and differentiable center sampling for robust learning under limited supervision. 
+
+– Building on XMask, we further introduce an instance mask prior framework for semi-supervised crowd counting, in which reliable instance masks replace point annotations as structured pseudo-labels. By leveraging richer spatial and shape information instead of sparse point cues, the framework produces more accurate pseudo-labels and significantly enhances the performance. 
+
+– Our semi-supervised strategy achieves state-of-the-art results, effectively bridg-ing the gap between crowd counting and segmentation, constructing feature structural consistency, demonstrating superior segmentation efficiency and higher recall while maintaining precise counting performance. 4 Huang et al. 
+
+## 2 Related Works 
+
+2.1 Instance Segmentation 
+
+Instance segmentation is a core foundational task in computer vision. It not only requires detecting all objects of interest in an image but also assigns precise category labels and instance IDs to each object’s pixels. 
+
+Crowd Instance Segmentation. Crowd instance segmentation aims to separate each individual in highly congested scenes, where severe occlusion and overlap make precise delineation challenging. Early deep learning approaches [19] relied on fully convolutional networks to directly predict crowd regions. With the rise of foundation models such as SAM [21] and FastSAM [66], recent efforts have shifted toward adapting prompt-driven segmentation frameworks to dense small-object scenarios. For instance, CrowdSAM [7] utilizes density-derived prompts and post-processing refinement to enhance mask quality. Nevertheless, limita-tions in inference efficiency and scalability remain unresolved. 
+
+Two Stage Instance Segmentation. Two-stage instance segmentation fol-lows a proposal-to-refinement pipeline: it first generates candidate regions and then refines them into final masks. In this framework, methods are mainly cat-egorized into top-down and bottom-up approaches [41]. 
+
+Top-down instance segmentation methods rely on high-performance detec-tors to generate RoIs, followed by independent mask prediction within each region, effectively decomposing the task into local binary segmentation. Mask R-CNN [16] established this paradigm by adding a parallel mask branch to Faster R-CNN [44]. Subsequent works improved feature propagation and mask quality, including PANet [32] with bottom-up path aggregation, Cascade Mask R-CNN [12] with multi-stage refinement, and several boundary-aware exten-sions [10, 20, 62] that enhance pixel-level mask accuracy. 
+
+Bottom-up approaches [26, 31] learn pixel-wise embeddings instead of re-lying on predefined anchors, encouraging pixels of the same instance to cluster in a high-dimensional space while separating different instances. This paradigm is typically optimized via discriminative losses with pull–push forces. Represen-tative works [5, 9, 26, 46]jointly predict semantic maps and pixel embeddings to simplify training, while others [3, 60] exploit spatial affinity cues for grouping. Embedding-based methods have shown particular advantages in irregular sce-narios, such as biomedical images, as demonstrated by EmbedSeg [22]. 
+
+Semi-supervised Instance Segmentation. This task learns from scarce annotations and abundant unlabeled data, commonly relying on pseudo-labeling or consistency constraints to exploit unlabeled samples. Early semi-supervised instance segmentation methods were primarily built upon anchor-based frameworks such as Mask R-CNN [16]. Noisy Boundaries [57] and PAIS [17] enhanced pseudo-label robustness via boundary-aware modeling and dynamic alignment, respectively, yet remained limited by architectural com-plexity or label reweighting strategies. To adapt to anchor-free paradigms, Polite Teacher [13] adopted a CenterMask-style design with mutual learning, improv-ing efficiency but showing weakness on extremely small objects. More recently, Exclusivity-Guided Mask Learning 5
+
+Guided Distillation [4] introduced Vision Transformers to leverage pretrained representations, albeit with increased memory overhead. The emergence of vision foundation models like SAM [21] has shifted semi-supervised instance segmentation toward prompt-driven and more generaliz-able paradigms, improving pseudo-label quality. Methods like Sˆ4M [61] and SemiSAM+ [64] exploit SAM [21] as a powerful teacher to refine mask super-vision. Meanwhile, diffusion-based approaches [53, 58, 59], including Diffusion-Inst [15], model segmentation as a denoising process and leverage generative modeling for semantic alignment. Despite enhanced robustness to ambiguous boundaries, these methods often suffer from substantial computational overhead in dense scenarios. 
+
+2.2 Semi-supervised Crowd Counting 
+
+Semi-Supervised Crowd Counting is a specialized sub-field of computer vision that addresses the challenge of estimating the number of individuals in dense crowds using a limited amount of labeled data alongside a large corpus of unla-beled data. 
+
+Density-Based Counting. Crowd counting annotation is costly and labor-intensive. Recent Works [8, 36, 39] explore semi-supervised learning to leverage unlabeled data for improved counting performance. Liu et al. [34, 35] propose a Learning-to-Rank (L2R) module that models the ordinal relationship between image patches and their sub-patches. DACount [27] and P ³Net [28] improve density discrimination by assigning density-level labels to image patches. Ap-proaches [40, 55] incorporate pixel-wise uncertainty to suppress noise in pseudo density maps, promoting pseudo-label quality. 
+
+Localization-Based Counting. Semi-supervised localization-based count-ing methods generally adopt a teacher–student framework. OT-M [29] derives pseudo-points from predicted density maps using optimal transport. CU [24], built upon P2PNet [49], improves pseudo-label reliability by selecting high-confidence patches based on uncertainty estimation. SAL [63] incorporates active learning to dynamically divide data, treating difficult samples as labeled and eas-ier ones as unlabeled. P2R [30] introduces a points to region supervision strategy that segments regions around pseudo-points to propagate confidence more ef-fectively than traditional P2PNet [49] matching. Consistent-Point [67] improves semi-supervised point-prompt crowd counting by refining pseudo-points through position aggregation and uncertainty calibration for more consistent supervision. 
+
+## 3 Methods 
+
+To ensure robust semi-supervised instance segmentation performance in dense crowds, we propose framework consist of 3 stages. As shown in Fig. 2, our model establishes a synergistic bridge between semi-supervised instance segmen-tation and counting within a single end-to-end architecture, enabling the two tasks to mutually reinforce each other in a closed-loop manner. The proposed 6 Huang et al. Unlabeled 
+
+> Dataset
+> Labeled
+> Dataset
+
+Teacher 
+
+Student 
+
+> Unlabeled
+> Labeled
+
+Mask Constraint Loss          
+
+> Valid
+> Pseduo Mask
+> ∑=1
+> Invalid
+> Mask
+> ∑=0
+> Background region
+> Mask
+> Head
+> Counting Model
+> Mask
+> Head
+> Counting Model
+> Points
+> Prediction
+> Points
+> Prediction
+> MaskHead Discriminative Loss
+> NNEC
+> Positive Region Pull -force
+> Negative Region Push -force
+> Feature Map
+> Points
+> Prediction
+> Feature
+> Map
+
+Instance Segmentation Generation      
+
+> Differentiable
+> Center Sampling
+> Gaussian Smoothed Feature Map
+> Gaussian Smoothed
+> Valid and Invalid
+
+Xmask ( Semi -supervised Exclusivity -Guided Mask Training )  
+
+> Feature Map
+> Points Prediction
+> High -Prob Pseudo Points
+> Mask Constraint Counting
+> SLIC
+> Super
+> pixel
+> SAM
+> NNEC
+> Initial
+> Masks
+> Intersection
+> Correction
+> EDP -SAM
+> Point
+> Annotation
+> EMA
+> Pseudo -Masks
+> Preparation and Pretraining
+> Pseudo -Masks
+> Segmentation
+
+Fig. 2: Overview of the proposed framework. Our semi-supervised pipeline consists of three stages: (1) pretraining and mask preparation, (2) crowd segmentation training, and (3) mask-constrained crowd counting optimization. In Stage 1, mask annotations are generated from point labels via the proposed EDP-SAM (yellow region). Stage 2 presents the semi-supervised XMask training process, including discriminative super-vision and pseudo-mask generation. The trained segmentation model is then utilized in Stage 3 to produce pseudo-masks for unlabeled data, where newly designed loss functions are introduced to further enhance counting performance via mask constraint. 
+
+method achieves state-of-the-art semi-supervised crowd instance segmentation and counting performance. Our approach builds on P2R [30], which mitigates noisy pseudo-label loca-tions by matching predictions within a neighborhood. Structurally, we stream-line the P2PNet [49] architecture by removing the regression branch in favor of pixel grid coordinates. Our model incorporates a feature backbone, fusion neck, and classification head, alongside an innovative introduced parallel mask head for segmentation. For semi-supervised learning, we adopt the Mean Teacher paradigm [52], where the student optimizes joint losses while the teacher gener-ates pseudo-labels, which follows standard procedure [23, 48], with parameters updated via the student exponential moving average (EMA) [6, 43]. 
+
+3.1 Dataset Construction with Desne Mask Supervision 
+
+We introduce EDP-SAM to automatically generate and manually verify a set of high-quality masks, providing essential structural guidance for our segmentation-counting dual-tasks optimization. Since existing crowd counting datasets only contain point annotation data 
+
+pi = ( yi, x i), our primary task is to construct corresponding mask supervision datasets. Inspired by relevant research [38, 42, 54], we also employed the SAM model for automatic construction, supplemented by partial manual correction. As illustrated in Fig. 3, we fed both the original annotation points and super-pixels generated by SLIC [2] as dual-prompts into SAM. We then intersected Exclusivity-Guided Mask Learning 7RGB Image    
+
+> Point Annotation
+> SLIC Superpixel
+> NNEC
+> Crowd Mask
+> SAM
+> Initial Segmentation
+> Intersection
+> Artificial
+> Correction
+
+Fig. 3: Point-Superpixel Dual-Prompt SAM with NNEC Constraint Method 
+
+the segmentation output from SAM with the Nearest-Neighbor Exclusion Circle (NNEC) regions corresponding to each point. The reason for our design will be illustrated in the supplementary materials. Specifically, the purpose of applying NNEC constraint is to identify the max-imum mask area corresponding to each annotation, as the SAM often struggles to segment individual shapes in dense scenes, even when specific point prompts are provided. The specific calculation of NNEC radius is as follows: 
+
+ri = min   
+
+> j̸=i
+
+∥pi − pj ∥2, (1) where pi and pj are two point prompts indicating two head locations. Based on EDP-SAM and manual correction, we generate mask annotations for major crowd counting datasets for future crowd instance segmentation research. 
+
+3.2 Semi-supervised Crowd Instance Segmentation 
+
+Based on the mask annotations, we propose Exclusivity-Guided Mask Learning (XMask), a semi-supervised method for dense crowd instance segmentation that enforces spatial separation through a discriminative mask objective, coupled with Gaussian smoothing and differentiable center sampling for robust learning under limited supervision. As shown in Fig. 2, after obtaining a preliminary counting model, we trained an instance segmentation network within the same semi-supervised framework using the proposed XMask. 
+
+MaskHead Discriminative Loss This method proposes a feature embed-ding learning loss function for point-supervised instance segmentation. Unlike traditional per-pixel classification paradigms, we introduce NNEC adaptive ra-dius local circular region sampling and asymmetric marginal contrast constraints within the pixel embedding space. The whole process is visualized in Fig. 4. Specifically, given an input image I ∈ RH×W ×3 and its corresponding em-bedding feature map E ∈ RD×He×We where D is the feature dimension, a set of model predict point annotations P = {pi}Ni=1 where pi = ( yi, x i) denotes the coordinates of annotated points, and instance-level ground truth masks 
+
+M ∈ ZH×W 
+
+> ≥0
+
+.
+
+Depthwise Gaussian Smoothing. To mitigate high-frequency interpola-tion artifacts and local noise in sampled feature maps, we employ a separable depthwise Gaussian blur that enhances spatial coherence without compromis-ing embedding discriminability and the effectiveness is demonstrated in Sec. 4.3. 8 Huang et al. Predicted Points     
+
+> Feature Embedding
+> GT/ Pseudo Masks
+> Region of Interest
+> Smooth Feature
+> Embedding
+> Center
+> Feature Embedding
+> ROI of Points
+> Feature Embedding
+> Positive region -Pull Loss
+> Negative region -Push Loss
+
+Fig. 4: MaskHead Discriminative Loss. First, use points to obtain the corresponding ROIs for computation. Based on the pseudo/ground truth mask, dividing the ROIs into positive and negative regions. After applying Gaussian smoothing, extract the center feature and compute pixel-level L2 distance within feature map. Finally, apply pull and push force losses separately. 
+
+Given a kernel size k and standard deviation σ, we construct discrete coordinates 
+
+u and a normalized one-dimensional Gaussian kernel: 
+
+g(u) = exp 
+
+
+
+− u2
+
+> 2σ2
+
+P 
+
+> u′
+
+exp 
+
+
+
+− u′2
+
+> 2σ2
+
+ , u ∈
+
+
+
+−
+
+ k
+
+2
+
+
+
+, . . . , 
+
+ k
+
+2
+
+ 
+
+. (2) Utilizing the separable property of two-dimensional isotropic Gaussian func-tions G(u, v ) = g(u) g(v), we decompose a two-dimensional convolution into a cascade of two one-dimensional convolutions: 
+
+ˆE ∗ G = ( ˆE ∗ gx) ∗ gy . (3) Next, depthwise convolution is applied, enabling the same Gaussian kernel to be applied independently to each channel. Specifically, the smoothed embedding feature map ˜E is obtained by performing channel-wise convolutions sequentially along the horizontal and vertical directions Eqs. (4) and (5), and the convolu-tional weights W are fixed to g.
+
+˜E(1) = DWConv2d   ˜E, W x ∈ RD×1×1×k, pad = (0 , ⌊k/ 2⌋), (4) 
+
+˜E′ = DWConv2d   ˜E(1) , W y ∈ RD×1×k×1, pad = ( ⌊k/ 2⌋, 0) . (5) 
+
+Adaptive Region-Aware Instantiation. To reasonably assign computa-tional regions to each instance, we employ adaptive radius calculation based on the NNEC between points. This approach automatically infers the local super-vision range for each point according to the spatial distribution of annotated points. First, we calculate the Euclidean distance matrix between all annotated points in the sample. If there is exactly one annotated point, the radius degen-erates into a global scale estimate. Radius for each point is defined as: Exclusivity-Guided Mask Learning 9…Invalid Pseudo -Mask Valid Pseudo -Mask Low Probability Pred Points 
+
+Fig. 5: Pseudo-Mask Selection. We utilize a low threshold to obtain pseudo points, thereby generating all possible masks and ensuring the reliability of background. Then, based on the probability, we select the mask associated with the highest probability as the final valid mask. 
+
+ri =
+
+
+
+min   
+
+> j̸=i
+
+Dij , N ≥ 2min( H, W ) · 0.5, N = 1 
+
+, Dij = ∥pi − pj ∥2. (6) We then define the spatial coordinate grid G, so the area contributing to the calculation for each final point is: 
+
+Ci(y, x ) = 1 [∥G(y, x ) − pi∥2 ≤ ri] , G ∈ RH×W ×2. (7) Therefore, for each point, the corresponding GT or pseudo-mask is used to segment positive and negative sample regions within the candidate area: 
+
+R+ 
+
+> i
+
+= Ci ∩ { (y, x ) | M(y, x ) = ℓi} , R− 
+
+> i
+
+= Ci ∩ { (y, x ) | M(y, x )̸ = ℓi} . (8) 
+
+Differentiable Center Sampling. Next, to obtain the embedding vector at each annotation point as the instance prototype, we use differentiable grid sampling, and ¯pi is the normalized coordinate, placing the annotation point at the sub-pixel position. Thus, the formulation of the center feature is: 
+
+ci = GridSample( ˜E, ¯pi) ∈ RD , ¯pi = 2 · pi
+
+(W − 1, H − 1) − 1. (9) Consequently, the final calculation of maskhead discriminative loss is com-bined with Pull force Loss and Push force Loss: 
+
+Li = 1
+
+|R i|
+
+X
+
+> (y,x )∈R i
+
+h
+
+αy,x 
+
+ ˜Eflat (y, x ) − ci 2
+
+− (τ − αy,x · δ)
+
+i 
+
+> +
+
+, (10) where, [x]+ = max( x, 0) serves as the hinge function, and αy,x ∈ { +1 , −1}
+
+denotes the region label, with +1 for positive pixels and −1 for negative pixels. 
+
+τ and δ are hyperparameters obtained from the experiment shown in supplement. 10 Huang et al. 
+
+Instance Segmentation Generation During the inference stage and pseudo-mask generation, given the feature map E ∈ RD×H×W output by the trained em-bedding network and the predicted human location point prompts P = {pi}Ni=1 ,the overall generation of crowd segmentation is aligned with the aforementioned loss calculation. However, we observed that during the early stages of training, the generated pseudo-masks often exhibited incomplete clipping. To mitigate this issue, we propose incorporating additional spatial discriminative information by introducing a normalized squared geometric distance as a spatial regularization term. The computed embedding distance and geometric distance are fused into a joint energy function as follows: 
+
+Ei(y, x ) = ˜E + λ · ∥G(y, x ) − pi∥22
+
+(ri + ϵ)2 , (11) where λ is the geometry weight. Defining τg as an energy threshold in the in-ference, the final segmentation S(y,x) of the instance for the entire image is as follows: 
+
+S(y, x ) = 
+
+(
+
+i, if Ei(y, x ) < τ g
+
+0, otherwise , (12) where i is the id number of each point. 
+
+3.3 Mask Constraint Counting 
+
+Given that region masks still exhibit inaccuracies and lack semantic informa-tion, we propose incorporating mask constraints, utilizing the generated instance mask as a pseudo-mask. As illustrated in Fig. 2, we introduce mask-constraint optimization as the last step to formulate the whole feedback framework. To mitigate teacher uncertainty in pseudo-mask generation, we perform in-stance segmentation on points with confidence above a low threshold, while only masks exceeding a higher threshold are retained as valid for loss computation. This strategy improves the reliability of pseudo-mask learning, as visualized in Fig. 5. Based on this, we designed two computational methods as follows: 
+
+Background Penalty Loss. The purpose of this loss function is to ensure that no response is present in the background region. As described in Eq. (13), gradients are induced only when the prediction for true background pixels is positive, driving them toward zero or negative values, and those that are al-ready negative do not contribute additional loss. Here, Ω0 = {p | Mgt (p) = 0 }
+
+denotes the background pixel geometry, and ˆf ∈ RH×W represents the bilinear interpolation output upscaled to the original image resolution. 
+
+Lbg = 1
+
+|Ω0|
+
+X
+
+> p∈Ω0
+
+max  0, ˆf (p). (13) 
+
+Foreground Constraint Loss. To enforce instance-level consistency within each mask, we constrain both the aggregated foreground response and the num-ber of activated pixels, with the one-point constraint serving as the primary Exclusivity-Guided Mask Learning 11 
+
+objective. The foreground constraint loss is defined as: 
+
+Lfg = 1
+
+|Kv |
+
+X
+
+> k∈Kv
+
+  N + 
+
+> k
+
+− 1 + λ |Sk − 1| , (14) 
+
+Sk = X
+
+> p∈Ωk
+
+max(0 , ˆf (p)) , N + 
+
+> k
+
+= X
+
+> p∈Ωk
+
+1[ ˆf (p) > 0] , (15) where Kv denotes the set of valid instance IDs after pseudo-label filtering, and 
+
+Ωk = {p | Mgt (p) = k} represents the pixel set for the k-th instance. Prior to this, we also attempted to use existing segmentation large models (such as SAM [21] and FastSAM [66]) as a method for generating pseudo-masks. However, their prohibitive inference cost in crowded scenes limits practicality. 
+
+## 4 Experiments 
+
+We evaluate the proposed method for crowd instance segmentation and counting on three crowd counting datasets: ShTech A [65], UCF-QNRF [18], and JHU++ [47]. Following P2R [30], DAC [27], and OT-M [29], three protocols are applied: 5%, 10%, and 40% of labeled data, with the remaining crowd images involved in training without annotations. The labeled samples in each percentage are chosen to align with DAC [27]. In ablation studies, we evaluated the impact of different architectures and hyperparameters to demonstrate the validity of our framework and the performance of our results. 
+
+Settings For all three datasets, the random crop with a size of 256 ×256 is implemented, and we limit the shorter side of each image to 1536 and 2048 for UCF-QNRF [18] and JHU++ [47], respectively while ShTech A [65] is still the original size. For data augmentation, labeled data is directly input into the student model, while unlabeled data is weakly augmented for the teacher model and strongly augmented for the student model. 
+
+4.1 Semi-supervised Crowd Instance Segmentation 
+
+This section demonstrates semi-supervised crowd instance segmentation per-formance in three datasets. As shown in Fig. 6, our XMask approach is com-pared with three different point-prompt methods. All methods utilize identical point predictions from a unified semi-supervised counting model, ensuring con-sistent localization quality and isolating the segmentation module’s contribution. Our approach demonstrates excellent performance in crowd segmentation tasks, achieving high recall masks across all test datasets. This is achieved through the utilization of predicted point constraints and the design of exclusivity feature learning methods. As a baseline, FastSAM [66] reformulates SAM into a real-time framework to generate class-agnostic masks with prompt-guided refinement. The FastSAM-only variant assigns each point to the smallest candidate mask covering it. In 12 Huang et al. FastSAM FastSAM + NNEC XMask ( no NNEC) XMask (ours) Ground Truth 
+
+Fig. 6: Visualization of masks generated by FastSAM-based, XMask, and ground truth generated by EDP-SAM. Through feature learning, our method demonstrates strong robustness in human segmentation, potentially segmenting other irrelevant objects compared to FastSAM. Furthermore, incorporating NNEC enhances the segmenta-tion’s dimensional adaptability. 
+
+Table 1: Semi-supervised crowd instance segmentation comparison on IoU@0.5.                                                       
+
+> Methods NNEC ShTech A [65] UCF-QNRF [18] JHU++ [47] 5% 10% 40% 5% 10% 40% 5% 10% 40% FastSAM [66] 0.279 0.281 0.291 0.203 0.211 0.213 0.186 0.185 0.189 FastSAM [66] ✓0.287 0.290 0.300 0.223 0.229 0.233 0.197 0.182 0.201 point only ✓0.195 0.194 0.202 0.198 0.201 0.207 0.180 0.182 0.183 XMask(ours) 0.314 0.318 0.331 0.269 0.277 0.278 0.249 0.253 0.257 XMask (ours) ✓0.313 0.318 0.333 0.282 0.290 0.297 0.258 0.263 0.270
+
+contrast, FastSAM + NNEC introduces a conditional fallback strategy, using an NNEC-generated circular proxy when no valid mask is found. As presented in Tab. 1, we evaluate IoU@0.5 with segmentation generated by EDP-SAM. Our XMask method consistently achieves excellent performance with substantial improvements over baselines. Ablation between our method variants reveals the complementary role of the geometric prior: on denser datasets (UCF-QNRF [18] and JHU++ [47]), the NNEC-augmented version yields consistent improvements, validating the conditional circle fallback for points lacking valid mask coverage. XMask also demonstrates significant computational efficiency, averaging 0.17s per image on ShTech A compared to 1.01s for FastSAM [66] (5.9 × speedup). More efficiency comparisons are demonstrated in Sec. 4.3. To further strengthen the reliability of results, we conduct comprehensive hy-perparameter sensitivity analyses on XMask ( λ and τg in Eqs. (S1) and (S2)) and FastSAM [66] (IoU and conf), which are shown in the supplementary material. 
+
+4.2 Semi-Supervised Crowd Counting 
+
+We further evaluate the crowd counting accuracy against the previous state-of-the-art methods. Tab. 2 shows that our framework consistently outperforms across nearly all three benchmarks, with improvements particularly pronounced under limited annotated images. By leveraging reliable pseudo-masks and struc-tural consistency learning from XMask, our method outperforms P2R [30], the base counting model used in Stage 1. As visualization displayed in Fig. 7, our Exclusivity-Guided Mask Learning 13 Pred: 279 Pred: 1188 Pred: 206 Pred: 1151 Pred: 371     
+
+> GT: 277 GT: 1174 GT: 207 GT: 1155 GT: 373
+
+Fig. 7: Visualization of Counting results on ShTech A. The first row: GT location. The second row: predicted points. The third row: feature map from maskhead in our method. In both dense and normal crowd scenes, our method yields counting predictions that closely align with the ground-truth counts, while the learned feature maps maintain structural coherence with the semantic layout of crowd head regions. 
+
+approach delivers accurate counting predictions while enforcing structural co-herence between features and head-region semantics. Under the 5% setting, our creative framework achieves the best performance in nearly all protocols across all crowd datasets, demonstrating that the learned segmentation priors effectively compensate for limited supervision. As label ra-tios increase to 10% and 40%, our method maintains consistent gains, with notably substantial MSE improvements, indicating enhanced robustness against large estimation outliers. 
+
+4.3 Ablation study 
+
+Fig. 8: Our method consistently outper-forms SAM and FastSAM in segmentation efficiency across varying crowd densities, maintaining shorter processing times de-spite differences in density. 
+
+We then ablate the components in the proposed method and analyze the hy-perparameters. 
+
+Segmentation Efficiency. We conducted segmentation inference ex-periments on the ShTechA test dataset, which was divided into mul-tiple density intervals for comparison. As Shown in Fig. 8, compared to Fast-SAM and SAM, our method signifi-cantly improves segmentation speed, achieving less than 0.3 seconds per im-age across all density intervals, while demonstrating insensitivity to den-sity. Therefore, our approach is highly 14 Huang et al. 
+
+Table 2: Semi-supervised crowd counting performance comparison between recent methods and our framework on three datasets under various labeled protocols.                                                                                                                      
+
+> labeled Pct. Methods ShTech A [65] UCF-QNRF [18] JHU++ [47] MAE ↓MSE ↓MAE ↓MSE ↓MAE ↓MSE ↓
+> 5% MT [50] 104.7 33.2 172.4 284.9 101.5 363.5 L2R [34] 103.0 27.6 160.1 272.3 101.4 338.8 DAC [27] 85.4 134.5 120.2 209.3 82.2 294.9 OT-M [29] 83.7 133.3 118.4 195.4 82.7 304.5 P2R [30] 69.9 119.5 100.1 182.5 77.8 293.5 Ours 64.6 106.2 98.4 163.7 77.1 289.5
+> 10% MT [50] 319.3 94.5 156.1 245.5 250.3 90.2 L2R [34] 90.3 153.5 148.9 249.8 87.5 315.3 DAC [27] 74.9 115.5 109.0 187.2 75.9 282.3 OT-M [29] 80.1 118.5 113.1 186.7 73.0 280.6 P2R [30] 64.2 114.6 94.9 167.2 68.7 272.3 Ours 62.4 104.4 93.9 155.7 68.7 258.7
+> 40% MT [50] 88.2 151.1 147.2 249.6 121.5 388.9 L2R [34] 86.5 148.2 145.1 256.1 123.6 376.1 DAC [27] 67.5 110.7 91.1 153.4 65.1 260.0 OT-M [29] 70.7 114.5 100.6 167.6 72.1 272.0 P2R [30] 55.6 95.0 86.0 144.3 63.3 271.1 Ours 56.2 93.5 84.0 143.6 61.9 256.1
+
+advantageous for training efficiency when generating pseudo masks in semi-supervised settings. 
+
+Loss Function Comparison. In semi-supervised segmentation learning, we propose utilizing the maskhead discriminative loss. We compared it with several other segmentation losses on the ShTechA dataset with 5% labeled data, including Dice loss and Focal loss. Results in Tab. 3a demonstrate that our approach achieves the best performance in terms of mask IoU and F1 score. 
+
+Differentiable Center Sampling. Experiments on ShTech A (Tab. 3c) show that feature sampling slightly improves performance. Despite the modest gain, we adopt differentiable sampling over discrete extraction due to its sub-pixel precision and smoother gradient propagation, which lead to more stable and optimization-friendly feature embeddings. 
+
+Depthwise Gaussian Smoothing. This module applies Gaussian smooth-ing to feature embeddings before pairwise L2 distance computation, enhancing spatial coherence and reducing noisy activations. Tab. 3b shows that Gaussian filtering consistently improves segmentation performance and a kernel size of 7 with σ = 3 achieves the best results. 
+
+Trained Modules. In the final counting stage, we explore different fine-tuning strategies to balance performance and efficiency. As shown in Tab. 3d, unfreezing only the decoder achieves the best counting accuracy. Therefore, we adopt this setting as the default configuration. 
+
+## 5 Conclusion 
+
+In this work, we propose to supervise the semi-supervised crowd instance seg-mentation and counting based on mask supervision, which provides more struc-tural individual shape information than point annotation. First, we propose Exclusivity-Guided Mask Learning 15 
+
+Table 3: Comprehensive ablation studies on different components and settings. 
+
+(a) Loss function comparison on ShTech A. Dice loss calculate overlap-based ratio between prediction and ground truth, while Focal loss weighted cross-entropy focusing on hard samples.         
+
+> Loss IoU ↑F1 ↑
+> Dice loss 0.2381 0.0946 Focal loss 0.2893 0.2070 Ours 0.3119 0.2574
+
+(b) Gaussian Smoothing on ShTech A                                
+
+> Gaussian KσIoU ↑F1 ↑
+> //0.3050 0.2481
+> ✓71.5 0.3119 0.2574
+> ✓51.5 0.3111 0.2566
+> ✓91.5 0.3120 0.2577
+> ✓730.3130 0.2584
+> ✓530.3119 0.2575
+> ✓930.3130 0.2570
+
+(c) Differentiable Center Sampling on UCF                    
+
+> Sample 5% 10% 40% IoU ↑F1 ↑IoU ↑F1 ↑IoU ↑F1 ↑
+> 0.2806 0.1973 0.2888 0.2111 0.2955 0.2079
+> ✓0.2807 0.1976 0.2892 0.2129 0.2956 0.2079
+
+(d) Optimization Modules on ShTech A               
+
+> Head Backbone Params MAE ↓MSE ↓
+> ✓✓16.77M 68.1 106.8
+> ✓15.58M 70.2 111.3
+> ✓2.05M 64.6 106.2
+
+an Exclusion-Constrained Dual-Prompt SAM (EDP-SAM) to generate robust masks from point annotations. Next, we combine EDP-SAM with manual cor-rection to generate accurate mask annotations for the existing datasets. To better segment instances in crowded images, we propose Exclusivity-Guided Mask Learning (XMask) that enforces spatial separation through a discrimina-tive mask objective. Extensive experiments demonstrate that mask supervision effectively improves semi-supervised crowd instance segmentation and counting performance, offering a scalable solution to annotation scarcity. Future work will focus on improving boundary precision and refining point-generation strategies to achieve finer-grained segmentation quality. 
+
+## References 
+
+1. Abousamra, S., Hoai, M., Samaras, D., Chen, C.: Localization in the crowd with topological constraints. ArXiv abs/2012.12482 (2020), https : / / api . semanticscholar.org/CorpusID:229363720 
+
+2. Achanta, R., Shaji, A., Smith, K., Lucchi, A., Fua, P., Susstrunk, S.: Slic superpix-els compared to state-of-the-art superpixel methods. IEEE Trans. Pattern Anal. Mach. Intell. 34 (11), 2274–2282 (Nov 2012). https://doi.org/10.1109/TPAMI. 2012.120 , https://doi.org/10.1109/TPAMI.2012.120 
+
+3. Bai, M., Urtasun, R.: Deep watershed transform for instance segmentation. In: 2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR). pp. 2858–2866 (2017). https://doi.org/10.1109/CVPR.2017.305 
+
+4. Berrada, T., Couprie, C., Alahari, K., Verbeek, J.: Guided distillation for semi-supervised instance segmentation (2023), https://arxiv.org/abs/2308.02668 
+
+5. Brabandere, B.D., Neven, D., Gool, L.V.: Semantic instance segmentation with a discriminative loss function (2017), https://arxiv.org/abs/1708.02551 
+
+6. Cai, Z., Ravichandran, A., Maji, S., Fowlkes, C., Tu, Z., Soatto, S.: Exponen-tial moving average normalization for self-supervised and semi-supervised learning (2021), https://arxiv.org/abs/2101.08482 
+
+7. Cai, Z., Gao, Y., Zheng, Y., Zhou, N., Huang, D.: Crowd-sam: Sam as a smart annotator for object detection in crowded scenes (2024), https://arxiv.org/ abs/2407.11464 16 Huang et al. 8. Chen, J., Wang, Z.: Multi-task semi-supervised crowd counting via global to local self-correction (2023), https://doi.org/10.1016/j.patcog.2023.109506. 
+
+9. Chen, Y., Wang, Q., Yang, J., Chen, B., Xiong, H., Du, S.: Learning discriminative features for crowd counting. IEEE Transactions on Image Processing 33 , 3749–3764 (2024). https://doi.org/10.1109/tip.2024.3408609 , http://dx.doi.org/10. 1109/TIP.2024.3408609 
+
+10. Cheng, T., Wang, X., Huang, L., Liu, W.: Boundary-preserving mask r-cnn (2020), 
+
+https://arxiv.org/abs/2007.08921 
+
+11. Chu, X., Zheng, A., Zhang, X., Sun, J.: Detection in crowded scenes: One proposal, multiple predictions (2020), https://arxiv.org/abs/2003.09163 
+
+12. Ding, H., Qiao, S., Yuille, A., Shen, W.: Deeply shape-guided cascade for instance segmentation (2021), https://arxiv.org/abs/1911.11263 
+
+13. Filipiak, D., Zapała, A., Tempczyk, P., Fensel, A., Cygan, M.: Polite teacher: Semi-supervised instance segmentation with mutual learning and pseudo-label thresh-olding (2022), https://arxiv.org/abs/2211.03850 
+
+14. Ge, Z., Jie, Z., Huang, X., Xu, R., Yoshie, O.: Ps-rcnn: Detecting secondary human instances in a crowd via primary object suppression (2020), https://arxiv.org/ abs/2003.07080 
+
+15. Gu, Z., Chen, H., Xu, Z., Lan, J., Meng, C., Wang, W.: Diffusioninst: Diffusion model for instance segmentation (2022), https://arxiv.org/abs/2212.02773 
+
+16. He, K., Gkioxari, G., Dollár, P., Girshick, R.: Mask r-cnn (2018), https://arxiv. org/abs/1703.06870 
+
+17. Hu, J., Chen, C., Cao, L., Zhang, S., Shu, A., Jiang, G., Ji, R.: Pseudo-label alignment for semi-supervised instance segmentation (2023), https://arxiv.org/ abs/2308.05359 
+
+18. Idrees, H., Tayyab, M., Athrey, K., Zhang, D., Al-Maadeed, S., Rajpoot, N., Shah, M.: Composition loss for counting, density map estimation and localization in dense crowds (2018), https://arxiv.org/abs/1808.01050 
+
+19. Kang, K., Wang, X.: Fully convolutional neural networks for crowd segmentation (2014), https://arxiv.org/abs/1411.4464 
+
+20. Ke, L., Danelljan, M., Li, X., Tai, Y.W., Tang, C.K., Yu, F.: Mask transfiner for high-quality instance segmentation (2021), https://arxiv.org/abs/2111.13673 
+
+21. Kirillov, A., Mintun, E., Ravi, N., Mao, H., Rolland, C., Gustafson, L., Xiao, T., Whitehead, S., Berg, A.C., Lo, W.Y., Dollár, P., Girshick, R.: Segment anything (2023), https://arxiv.org/abs/2304.02643 
+
+22. Lalit, M., Tomancak, P., Jug, F.: Embedseg: Embedding-based instance seg-mentation for biomedical microscopy data. Medical Image Analysis 81 , 102523 (2022). https://doi.org/https://doi.org/10.1016/j.media.2022.102523 ,
+
+https://www.sciencedirect.com/science/article/pii/S1361841522001700 
+
+23. Lee, D.H.: Pseudo-label : The simple and efficient semi-supervised learning method for deep neural networks (2013), https://api.semanticscholar.org/CorpusID: 18507866 
+
+24. Li, C., Hu, X., Abousamra, S., Chen, C.: Calibrating uncertainty for semi-supervised crowd counting (2023), https://arxiv.org/abs/2308.09887 
+
+25. Li, Y., Zhang, X., Chen, D.: Csrnet: Dilated convolutional neural networks for understanding the highly congested scenes (2018), https://arxiv.org/abs/1802. 10062 
+
+26. Liang, Z., Li, Z., Xu, S., Tan, M., Jia, K.: Instance segmentation in 3d scenes using semantic superpoint tree networks (2021), https://arxiv.org/abs/2108.07478 
+
+27. Lin, H., Ma, Z., Hong, X., Wang, Y., Su, Z.: Semi-supervised crowd counting via density agency (2022), https://arxiv.org/abs/2209.02955 Exclusivity-Guided Mask Learning 17 28. Lin, H., Ma, Z., Ji, R., Wang, Y., Su, Z., Hong, X., Meng, D.: Semi-supervised counting via pixel-by-pixel density distribution modelling (2024), https://arxiv. org/abs/2402.15297 
+
+29. Lin, W., Chan, A.B.: Optimal transport minimization: Crowd localization on den-sity maps for semi-supervised counting. In: Proceedings of the IEEE/CVF Con-ference on Computer Vision and Pattern Recognition (CVPR). pp. 21663–21673 (June 2023) 30. Lin, W., Zhao, C., Chan, A.B.: Point-to-region loss for semi-supervised point-based crowd counting (2025), https://arxiv.org/abs/2505.21943 
+
+31. Liu, S., Jia, J., Fidler, S., Urtasun, R.: Sgn: Sequential grouping networks for in-stance segmentation. In: 2017 IEEE International Conference on Computer Vision (ICCV). pp. 3516–3524 (2017). https://doi.org/10.1109/ICCV.2017.378 
+
+32. Liu, S., Qi, L., Qin, H., Shi, J., Jia, J.: Path aggregation network for instance segmentation. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) (June 2018) 33. Liu, S., Huang, D., Wang, Y.: Adaptive nms: Refining pedestrian detection in a crowd (2019), https://arxiv.org/abs/1904.03629 
+
+34. Liu, X., van de Weijer, J., Bagdanov, A.D.: Leveraging unlabeled data for crowd counting by learning to rank (2018), https://arxiv.org/abs/1803.03095 
+
+35. Liu, X., Weijer, J.v.d., Bagdanov, A.D.: Exploiting unlabeled data in cnns by self-supervised learning to rank. IEEE Transactions on Pattern Analysis and Machine Intelligence 41 (8), 1862–1878 (Aug 2019). https://doi.org/10.1109/tpami. 2019.2899857 , http://dx.doi.org/10.1109/TPAMI.2019.2899857 
+
+36. Liu, Y., Liu, L., Wang, P., Zhang, P., Lei, Y.: Semi-supervised crowd counting via self-training on surrogate tasks (2020), https://arxiv.org/abs/2007.03207 
+
+37. Liu, Y., Shi, M., Zhao, Q., Wang, X.: Point in, box out: Beyond counting persons in crowds (2019), https://arxiv.org/abs/1904.01333 
+
+38. Ma, J., He, Y., Li, F., Han, L., You, C., Wang, B.: Segment anything in medical images. Nature Communications 15 (1) (Jan 2024). https://doi.org/10.1038/ s41467-024-44824-z , http://dx.doi.org/10.1038/s41467-024-44824-z 
+
+39. Ma, Z., Wei, X., Hong, X., Gong, Y.: Bayesian loss for crowd count estimation with point supervision (2019), https://arxiv.org/abs/1908.03684 
+
+40. Meng, Y., Zhang, H., Zhao, Y., Yang, X., Qian, X., Huang, X., Zheng, Y.: Spatial uncertainty-aware semi-supervised crowd counting (2021), https://arxiv.org/ abs/2107.13271 
+
+41. Molina, J.M., Llerena, J.P., Usero, L., Patricio, M.A.: Advances in instance seg-mentation: Technologies, metrics and applications in computer vision. Neurocom-put. 625 (C) (Apr 2025). https://doi.org/10.1016/j.neucom.2025.129584 ,
+
+https://doi.org/10.1016/j.neucom.2025.129584 
+
+42. Montalvo, J., García-Martín, A., Carballeira, P., SanMiguel, J.C.: Unsupervised class generation to expand semantic segmentation datasets. Journal of Imaging 
+
+11 (6) (2025). https://doi.org/10.3390/jimaging11060172 , https://www.mdpi. com/2313-433X/11/6/172 
+
+43. Morales-Brotons, D., Vogels, T., Hendrikx, H.: Exponential moving average of weights in deep learning: Dynamics and benefits (2024), https://arxiv.org/abs/ 2411.18704 
+
+44. Ren, S., He, K., Girshick, R., Sun, J.: Faster r-cnn: Towards real-time object detec-tion with region proposal networks (2016), https://arxiv.org/abs/1506.01497 
+
+45. Sam, D.B., Peri, S.V., Sundararaman, M.N., Kamath, A., Babu, R.V.: Locate, size and count: Accurately resolving people in dense crowds via detection (2020), 
+
+https://arxiv.org/abs/1906.07538 18 Huang et al. 46. Shang, C., Wu, Q., Meng, F., Xu, L.: Instance segmentation by learning deep feature in embedding space. In: 2019 IEEE International Conference on Image Processing (ICIP). pp. 2444–2448 (2019). https://doi.org/10.1109/ICIP.2019. 8803021 
+
+47. Sindagi, V.A., Yasarla, R., Patel, V.M.: Jhu-crowd++: Large-scale crowd counting dataset and a benchmark method (2020), https://arxiv.org/abs/2004.03597 
+
+48. Sohn, K., Berthelot, D., Li, C.L., Zhang, Z., Carlini, N., Cubuk, E.D., Kurakin, A., Zhang, H., Raffel, C.: Fixmatch: Simplifying semi-supervised learning with consistency and confidence (2020), https://arxiv.org/abs/2001.07685 
+
+49. Song, Q., Wang, C., Jiang, Z., Wang, Y., Tai, Y., Wang, C., Li, J., Huang, F., Wu, Y.: Rethinking counting and localization in crowds:a purely point-based framework (2021), https://arxiv.org/abs/2107.12746 
+
+50. Springenberg, J.T., Dosovitskiy, A., Brox, T., Riedmiller, M.: Striving for simplic-ity: The all convolutional net (2015), https://arxiv.org/abs/1412.6806 
+
+51. Stewart, R., Andriluka, M.: End-to-end people detection in crowded scenes (2015), 
+
+https://arxiv.org/abs/1506.04878 
+
+52. Tarvainen, A., Valpola, H.: Mean teachers are better role models: Weight-averaged consistency targets improve semi-supervised deep learning results (2018), https: //arxiv.org/abs/1703.01780 
+
+53. Ulmer, M., Boerdijk, W., Triebel, R., Durner, M.: Conditional latent diffusion models for zero-shot instance segmentation (2025), https://arxiv.org/abs/2508. 04122 
+
+54. Wang, D., Zhang, J., Du, B., Xu, M., Liu, L., Tao, D., Zhang, L.: Samrs: Scaling-up remote sensing segmentation dataset with segment anything model (2023), https: //arxiv.org/abs/2305.02034 
+
+55. Wang, X., Zhan, Y., Zhao, Y., Yang, T., Ruan, Q.: Semi-supervised crowd counting with spatial temporal consistency and pseudo-label filter. IEEE Trans. Cir. and Sys. for Video Technol. 33 (8), 4190–4203 (Aug 2023). https://doi.org/10.1109/ TCSVT.2023.3241175 , https://doi.org/10.1109/TCSVT.2023.3241175 
+
+56. Wang, X., Xiao, T., Jiang, Y., Shao, S., Sun, J., Shen, C.: Repulsion loss: Detecting pedestrians in a crowd (2018), https://arxiv.org/abs/1711.07752 
+
+57. Wang, Z., Li, Y., Wang, S.: Noisy boundaries: Lemon or lemonade for semi-supervised instance segmentation? 2022 IEEE/CVF Conference on Computer Vi-sion and Pattern Recognition (CVPR) pp. 16805–16814 (2022), https://api. semanticscholar.org/CorpusID:247748694 
+
+58. Wang, Z., Li, Y., Wang, S.: Noisy boundaries: Lemon or lemonade for semi-supervised instance segmentation? (2022), https://arxiv.org/abs/2203.13427 
+
+59. Xun, Z., Ku, Y.: Multi-expert diffusion segmentation for semi-supervised 3d med-ical image segmentation (2026), https://doi.org/10.20944/preprints202601. 0942.v1 
+
+60. Ying, H., Huang, Z., Liu, S., Shao, T., Zhou, K.: Embedmask: Embedding cou-pling for instance segmentation. In: Zhou, Z.H. (ed.) Proceedings of the Thirtieth International Joint Conference on Artificial Intelligence, IJCAI-21. pp. 1266–1273. International Joint Conferences on Artificial Intelligence Organization (8 2021). 
+
+https://doi.org/10.24963/ijcai.2021/175 , https://doi.org/10.24963/ ijcai.2021/175 , main Track 61. Yoon, H., Shin, H., Hong, E., Choi, H., Cho, H., Jeong, D., Kim, S.: Sˆ4m: Boosting semi-supervised instance segmentation with sam (2025), https://arxiv.org/abs/ 2504.05301 Exclusivity-Guided Mask Learning 19 62. Zhang, G., Lu, X., Tan, J., Li, J., Zhang, Z., Li, Q., Hu, X.: Refinemask: Towards high-quality instance segmentation with fine-grained features (2021), https:// arxiv.org/abs/2104.08569 
+
+63. Zhang, S., Ke, W., Liu, S., Hong, X., Zhang, T.: Boosting semi-supervised crowd counting with scale-based active learning. In: Proceedings of the 32nd ACM In-ternational Conference on Multimedia. p. 8681–8690. MM ’24, Association for Computing Machinery, New York, NY, USA (2024). https://doi.org/10.1145/ 3664647.3680976 , https://doi.org/10.1145/3664647.3680976 
+
+64. Zhang, Y., Lv, B., Xue, L., Zhang, W., Liu, Y., Fu, Y., Cheng, Y., Qi, Y.: Semisam+: Rethinking semi-supervised medical image segmentation in the era of foundation models (2025), https://arxiv.org/abs/2502.20749 
+
+65. Zhang, Y., Zhou, D., Chen, S., Gao, S., Ma, Y.: Single-image crowd count-ing via multi-column convolutional neural network. 2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR) pp. 589–597 (2016), https: //api.semanticscholar.org/CorpusID:4545310 
+
+66. Zhao, X., Ding, W., An, Y., Du, Y., Yu, T., Li, M., Tang, M., Wang, J.: Fast segment anything (2023), https://arxiv.org/abs/2306.12156 
+
+67. Zou, Y., Liu, Z., Gu, Y., Du, B., Xu, Y.: Consistent-point: Consistent pseudo-points for semi-supervised crowd counting and localization. arXiv preprint arXiv:2503.12441 (2025), https://doi.org/10.48550/arXiv.2503.12441 20 Huang et al. 
+
+## A Implementation Details 
+
+Data pre-processing. During training, all images are cropped to a resolution of 256 × 256. For labeled samples, each cropped image is horizontally flipped with a probability of 0.5 and randomly rescaled using a factor ranging from 0.7 to 1.3. For unlabeled samples, weak augmentations follow the same strategy as labeled data, while strong augmentations include color jittering (brightness, contrast, saturation, hue), grayscale conversion, Gaussian blur, and Cutout. 
+
+training process. In all experiments, we train the model for 1500 epochs with a batch size of 16. Only labeled data are used in the first 50 epochs for initialization in the first and second steps, and in the mask constraint optimiza-tion step, we do not initialize the training. Adam serves as the optimizer, with a learning rate of 5e-5 for decoder (point prediction head and mask head), 1e-5 for backbone in the first and second steps, while in the last step, the learning rate is set to various values depending on the specific dataset and labeled percentage. Additionally, in the mask constraint stage, we set the low probability threshold to 0.1 and the high threshold to 0.95 to guarantee the validation of the pseudo constraint. 
+
+A.1 XMask Training Settings Hyperparameters in MaskHead Discriminative Loss. For the hyperpa-rameters of the mask discriminative loss shown above, we tested training mask configurations with different label percentages on the ShTech A dataset using pre-trained counting model weights. Based on the ground-truth mask, we com-puted the L2 distance between the embeddings produced by the maskhead for regions inside and outside the mask, using the existing weights. As shown in Tab. S1, the L2 feature distance between within and between instances is around 0.6. There, our XMask training threshold is 0.6, and the margin is 0.1. 
+
+Hyperparameters in Pseudo Masks Generation. Aligning with descrip-tion in Sec. A.2, there are two parameters λ and τg in the generation of pseudo masks. According to Fig. S1, we set λ = 1.0 and τg = 0.8 in XMask training, and the trained model achieved the highest IoU@0.5 and F1. 
+
+A.2 Segmentation Inference Settings 
+
+In order to strengthen the reliability and equality of our segmentation compar-ison, we conducted experiments on hyperparameters in both FastSAM and our approach to achieve the best performance with high-recall segmentation. 
+
+XMask(ours). The generation of each mask S(y,x) matched with corre-sponding point relates two parameters τg and λ:
+
+Ei(y, x ) = ˜E + λ · ∥G(y, x ) − pi∥22
+
+(ri + ϵ)2 , (S1) 
+
+S(y, x ) = 
+
+(
+
+i, if Ei(y, x ) < τ g
+
+0, otherwise , (S2) Exclusivity-Guided Mask Learning 21              
+
+> Fig. S1: Experiment hyperparameters of Pseudo Mask generation in the training of XMask on ShTech A. We evaluated IoU@0.5 and F1 of XMask with different settings of λand τg, and choose 1.0 and 0.8 respectively in the final XMask training.
+> Table S1: Loss threshold test on ShTech A. Before XMask training, we tested the initial L2 feature distance on the untrained feature map with ground truth masks. Labeled-Pct. Average L2 Feature Distance within same instance between different instances 40% 0.630 0.560 10% 0.600 0.570 5% 0.610 0.550
+
+where i is the id number of each point, Ei(y, x ) is the energy and G(y, x ) is the position of pixels in circles matched with each points, ˜E is the feature distance with center feature, pi presents the center points location and ri is radius of circle of each points, and here circles is generated by NNEC method. Therefore, we experimented with these two parameters to obtain the best segment performance that has the highest IoU@0.5 in our XMask model. As presented in Fig. S2, three graphs in the first row compare the performance under different settings of XMask, and the result shows that when λ = 1.1 and 
+
+τg = 0.8, our model achieves the best with the highest IoU@0.5. Additionally, when λ = 1.0 and τg = 0.2, XMask (without NNEC) shows the highest IoU@0.5. Finally, we chose the settings above to evaluate our model in three datasets. 
+
+FastSAM. There are two significant parameters in FastSAM, conf and iou ,used to segment everything from the input picture. conf (confidence thresh-old) determines the minimum confidence score required for a predicted mask to be retained Predictions with confidence values lower than the specified conf 
+
+threshold are discarded. Increasing this value results in fewer but more reliable masks, while decreasing it allows more candidate masks to be kept. iou (Inter-section over Union threshold) is used in the NMS process to remove redundant or highly overlapping masks. A higher iou threshold allows more overlapping masks to coexist, whereas a lower threshold resulting in the filtering stricter and more redundant predictions. 22 Huang et al. 
+
+Similarly, we experimented with IoU@0.5 in various FastSAM settings. As shown in Fig. S2, we evaluated the performance on the ShTech A dataset. In the left bar graph, we tested the labeled semi-supervised trained model at 5%, 10% and 40%. We then obtained the predicted point location and gave the point prompts to FastSAM. We tested the IoU@0.5 of the FastSAM output without the NNEC constraint against the ground truth. We evaluated conf from 0.05 to 0.5 and iou from 0.3 0.5 0.7 and 0.95, higher values corresponding to darker shades of bar color in the figure. Results show that these three different percentages performance simultaneously in different settings. Subsequently, we just experimented 10% in a wider range, as in the right figure. When conf 
+
+is smaller than 0.01 and iou is 0.3 and 0.5, IoU@0.5 changes within a small range. Therefore, considering the high quality and accuracy of the final mask, we selected conf = 0.5 and iou = 0.01 as FastSAM baseline setting. 
+
+Fig. S2: Experiments of Hyperparameters used in Segmentation Task on ShTech A                            
+
+> (a) FastSAM Parameters. To obtain competitive IoU @0 .5in Point-prompt Instance Segmentation Task, we evaluated conf and iou . Left figure illustrates the performance between different protocols are similar, right figure shows 10% results on a larger scale. Considering both the high quality of the final generated mask and high IoU, we selected conf = 0 .5and iou = 0 .01 in FastSAM. XMask
+> XMask
+> Without
+> NNEC
+> ShTech A -5% ShTech A -10% ShTech A -40%
+> (b) XMask Parameters. The generation of XMask segmentation relate to threshold τgand geometry weight λ. According to the results, we selected τg= 1.1 and λ= 0.8 in NNEC applied method, τg
+> = 1.0 and λ= 0.2 in without NNEC to generate Instance Segmentation. Exclusivity-Guided Mask Learning 23
+
+## B Additional Experiments of EDP-SAM 
+
+B.1 hyperparameter in SLIC. 
+
+Before implementing SLIC to generate superpixel prompt, we tested how super-pixel performance changes as n segments various, representing the approximate number in the segmented output. As shown in Fig. S3, we choose n = 1000 to generate superpixel prompts, finally resulting in accurate and complete masks. Subsequently, we will use a superpixel as one of our prompts given to SAM. N = 10 N = 100 N = 500 N = 1000 N = 2000  
+
+> Fig. S3: Experiments on number of segment comparison to generate superpixel by SLIC. We implement n = 1000 in our approach, because smaller number leads to inaccurate mask without semantic, and larger number results in broken masks.
+
+B.2 Framework of EDP-SAM. 
+
+As mentioned in the main part, our method NNEC point and superpixels dual-prompt SAM (EDP-SAM) consists of two prompts with regional constraint. To illustrate the effictiveness of our design, we show a comparison in Fig. S4. In the left table, we compared point prompt, superpixel prompt and our dual-prompt that combines two of them with NNEC constraint. Using only the point prompt leads to broken masks, as shown in the first set of mask results, especially person located near the scene. Conversely, using only the superpixel prompt results in fewer masks than the true count of people in the crowd. However, our proposed dual-prompt approach solves these problems by generating accurate and complete masks using SAM. In the right table, we analyzed the beneficial effect of NNEC constraint. With point annotations, we initially proposed two methods: exclusion circle with the closest distance and the half of closest distance as radius, which means the latter are disjoint circles. Firstly, as shown in the last row, if there is no regional constraint, mask especially for the identity in the distance will in a bad situation, with strange size. Comparing the first and second rows, disjoint circles perform worse when crowds overlap, but ours will solve this problem. 24 Huang et al. Points      
+
+> Superpixel
+> Point + Superpixel
+> Dual prompt
+> (ours)
+> NNEC
+> (ours )
+> Disjoint
+> No
+> Prompt Constraint Visualizatio nMask Result Visualizatio nMask Result
+
+Fig. S4: Prompt and Constraint Ablation Study in EDP-SAM. The left table illustrates that our dual-prompt input results in both complete and accurate (in count) masks, and the right table shows the effectiveness of regional constraint and our NNEC circle lead to better masks with complete crowd head. 
+
+Artificial Correction. After getting the intersection from SAM output and NNEC constraint, we apply an artificial correction to create a reliable and accu-rate mask ground truth dataset. As shown in Fig. S5, there are several problems in the initial intersection results. For example, broken masks with missing items (e.g., sunglasses), incomplete head coverage, or masks without human regions. Before Before After After      
+
+> Correct broken and redundant masks Remove inaccurate masks
+
+Fig. S5: Examples of Artificial Correction in EDP-SAM. 
+
+## C Semi-Supervised Counting Visualization Exclusivity-Guided Mask Learning 25 
+
+Fig. S6: Visualization of Semi-supervised Counting Comparison with GT

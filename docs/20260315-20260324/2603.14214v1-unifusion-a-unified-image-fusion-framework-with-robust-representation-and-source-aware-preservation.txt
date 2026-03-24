@@ -1,0 +1,302 @@
+Title: UniFusion: A Unified Image Fusion Framework with Robust Representation and Source-Aware Preservation
+
+URL Source: https://arxiv.org/pdf/2603.14214v1
+
+Published Time: Tue, 17 Mar 2026 05:41:14 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# UniFusion: A Unified Image Fusion Framework with Robust Representation and Source-Aware Preservation 
+
+## Xingyuan Li 1* , Songcheng Du 2* , Yang Zou 2, HaoYuan Xu 3, Zhiying Jiang 4†, Jinyuan Liu 31 Zhejiang University, 2 Northwest Polytechnical University, 
+
+3 Dalian University of Technology, 4 Dalian Maritime University 
+
+xingyuan lxy@163.com, dusongcheng@mail.nwpu.edu.cn “How to achieve unified fusion while 
+
+minimizing info. loss ?”
+
+Challenge UniFusion     
+
+> Fusion 1
+> Image
+> pairs
+> Task 1
+> Task N Fusion N
+> Fusion
+> results
+> Detect.
+> Percept.
+> Info.
+> loss
+> Fusion
+> Fused
+> info.
+> Fail to
+> traceback
+> One fusion
+> model per task
+> ：Optimal Solution
+> ：Optimal Reconstruction
+> Fusion
+> Fused
+> info.
+> Modality-
+> consistent info.
+> Reconstruction
+> alignment Segment.
+> Detect.
+> Fusion
+> Input TC-MoA Ours
+
+Improvements       
+
+> MI
+> 4.268
+> 3.466
+> 0.899
+> 0.870
+> 34.332
+> 30.547
+> VIF SD
+> TC-MoA Ours TC-MoA Ours TC-MoA Ours
+> Low-level Upper-level Bi-level Bi-level Modeling
+
+Figure 1. Overview of the proposed bilevel optimization framework for unified image fusion task. (Left) Conventional approaches are typically designed for task-specific scenarios and struggle to effectively preserve source information during the fusion process, leading to inconsistent modality representation and information loss. (Middle) Our UniFusion formulates fusion as a bilevel optimization problem. The lower-level reconstruction branch learns modality-consistent representations through self-reconstruction, while the upper-level fusion branch adaptively integrates them into a unified representation that effectively enhances semantic preservation and structural integrity. 
+
+(Right) Quantitative and qualitative results demonstrate that our method consistently outperforms TC-MoA across multiple metrics. 
+
+## Abstract 
+
+Image fusion aims to integrate complementary informa-tion from multiple source images to produce a more in-formative and visually consistent representation, benefiting both human perception and downstream vision tasks. De-spite recent progress, most existing fusion methods are de-signed for specific tasks (i.e., multi-modal, multi-exposure, or multi-focus fusion) and struggle to effectively preserve source information during the fusion process. This limi-tation primarily arises from task-specific architectures and the degradation of source information caused by deep-layer propagation. To overcome these issues, we pro-pose UniFusion , a unified image fusion framework de-signed to achieve cross-task generalization. First, lever-aging DINOv3 for modality-consistent feature extraction, UniFusion establishes a shared semantic space for diverse inputs. Second, to preserve the understanding of each 
+
+*These authors contributed equally. †Corresponding author. 
+
+source image, we introduce a reconstruction-alignment loss to maintain consistency between fused outputs and in-puts. Finally, we employ a bilevel optimization strategy to decouple and jointly optimize reconstruction and fu-sion objectives, effectively balancing their coupling rela-tionship and ensuring smooth convergence. Extensive ex-periments across multiple fusion tasks demonstrate UniFu-sion’s superior visual quality, generalization ability, and adaptability to real-world scenarios. Code is available at https://github.com/dusongcheng/UniFusion. 
+
+## 1. Introduction 
+
+Image fusion seeks to integrate complementary information from multiple source images into a single, informative, and visually coherent representation [64, 71]. As a fundamental problem in computer vision, it plays a critical role in en-hancing scene understanding, facilitating robust decision-making, and supporting downstream tasks such as object detection [31], medical diagnosis [14], autonomous naviga-tion [29], and low-light surveillance [57]. 
+
+> arXiv:2603.14214v1 [cs.CV] 15 Mar 2026
+
+Driven by the rapid progress in deep learning, im-age fusion has undergone remarkable advances in recent years [56, 63, 66]. Most methods are primarily designed for specific fusion scenarios, including Infrared and Visi-ble Image Fusion (IVIF) [30, 61, 62], multi-exposure fu-sion [11, 39], multi-focus fusion [1, 50], and medical image fusion [26, 40]. These methods employ customized designs and utilize diverse architectures such as CNNs [21], autoen-coders, and GANs to extract features for image fusion [37]. However, these task-specific methods have limited general-ization capabilities and struggle to adapt to diverse fusion requirements, prompting researchers to explore general fu-sion frameworks. To adapt to diverse tasks, recent general image fusion methods aim to handle multiple heterogeneous inputs and fusion tasks with a single model, exhibiting diverse devel-opment trends in recent years. Transformer-based architec-tures [34, 64] leverage self-attention mechanisms to model global dependencies across modalities and process differ-ent types of image pairs through unified feature interac-tion modules [32]; diffusion model-based methods [13, 65] iteratively denoise to generate high-quality fusion results through universal data distributions; other methods [51, 57] construct unified representation spaces by designing task-agnostic fusion modules and shared feature extractors. Although these methods have achieved significant break-throughs in fusion quality and semantic understanding, the generalization capabilities of existing general fusion sys-tems remain limited. These approaches generally employ shared backbones and task-agnostic fusion modules to build a common representation space. While promising, their generalization capability is still constrained by two key fac-tors: (1) the lack of a principled, modality-consistent feature extraction mechanism that can robustly encode heteroge-neous signals under diverse conditions, and (2) the difficulty in preserving critical information from each source image during deep feature propagation, which leads to information degradation and sub-optimal fusion quality across tasks. To address these limitations, we propose UniFusion, a robust and unified image fusion framework that enhances the understanding and preservation of source information while achieving superior cross-task generalization. First, we incorporate the powerful self-supervised visual repre-sentation capability of DINOv3 [44] to construct a gen-eralizable feature extraction backbone, enabling modality-consistent and robust feature learning across diverse image types. Second, we introduce a reconstruction-alignment mechanism that leverages intermediate features to recon-struct source images, enforcing strong information retention and ensuring faithful semantic alignment during fusion. Fi-nally, we formulate fusion and reconstruction as a bilevel optimization problem, decoupling and jointly optimizing the two objectives to achieve an improved balance between information preservation and fusion quality. Comprehen-sive experiments across multi-modal, multi-exposure, and multi-focus tasks validate the effectiveness and generaliza-tion ability of UniFusion. Our main contributions are sum-marized as follows: 
+
+• A unified fusion architecture with strong cross-task gen-eralization. We present a universal fusion framework that effectively addresses the generalization limitations of ex-isting fusion models. 
+
+• Modality consistent feature extraction and reconstruction aligned fusion. We design a universal feature extrac-tor based on DINOv3 and introduce a reconstruction-alignment mechanism that enforces consistent under-standing and preservation of source information. 
+
+• Bilevel optimization for balanced fusion and source fi-delity. We formulate fusion and reconstruction as a bilevel optimization problem, achieving superior fusion performance while better retaining structural, semantic, and modality-specific information from source images. 
+
+## 2. Related work 
+
+2.1. Task-specific Image Fusion Methods 
+
+Image fusion is a fundamental enhancement technique and a long-standing research focus [35, 70]. Within this field, mainstream schemes, particularly task-specific ones, can be classified into the following categories. 
+
+Infrared-visible Image Fusion : This task aims to inte-grate thermal information from infrared images [24] with texture details from visible images [19]. Early deep learning approaches include supervised convolutional neu-ral networks [28]. To mitigate misalignment, generation-registration-fusion pipelines [47] and spatial-frequency in-tegration networks [3, 68] have been developed. 
+
+Medical Image Fusion : This task focuses on preserv-ing distinct tissue characteristics from multi-modal medical data (e.g., CT/MRI) to support clinical diagnosis, with a fo-cus on content-aware feature preservation [8, 15]. Das et al. proposed a content-aware GAN [2] for this purpose. Tang et al. developed FATFusion [45], a dual-branch Transformer framework that explicitly models the distinct properties of functional and anatomical modalities. 
+
+Multi-exposure Image Fusion : This task focuses on syn-thesizing a high-dynamic-range image from a sequence of captures of the same scene under varying exposures [6, 23]. The core challenge lies in achieving balanced brightness and preserving fine details. Xu et al. proposed MEF-GAN [53], and Zhang et al. further optimized this with MFF-GAN [58]. Ouyang et al.[39] combine GCNs and lightweight CNNs for real-time applications. 2.2. General Image Fusion Methods 
+
+While task-specific methods demonstrate strong perfor-mance within their domains by leveraging specialized pri-ors, they often operate in isolation, overlooking the poten-tial synergies and common underlying principles across dif-ferent fusion tasks. This limitation has motivated the de-velopment of unified frameworks that aim to capture these inherent associations. 
+
+Advanced Architecture-based Methods : This line of re-search focuses on building unified frameworks by leverag-ing the complementary strengths of CNNs and Transform-ers [5, 67]. Liu et al. proposed CSR [33] using a convo-lutional sparse representation. Subsequently, U2Fusion pi-oneered an all-in-one approach [51]. Ma et al. developed SwinFusion [34], a cross-domain Swin Transformer frame-work. Duan et al. designed a hybrid CNN-Transformer ar-chitecture [4] with online knowledge distillation. 
+
+Large Model and Emerging Paradigm-based Methods :Recent trends explore integrating capabilities from large models [17, 25, 36, 49], such as text guidance [22, 42, 54], diffusion models [48], and adapter modules [43], to en-hance semantic awareness and handle cross-task disparities. Building upon these advances, Yi et al. introduced Text-IF [57], a text-guided framework. Zhu et al. proposed TC-MoA [69], which uses a task-specific routing network to unify multiple fusion tasks. 
+
+## 3. Method 
+
+3.1. Overview 
+
+We propose a unified image fusion framework that lever-ages the semantic representation capability of DINOv3 to achieve modality-consistent and generalizable feature inte-gration. As illustrated in Fig. 2, two frozen DINOv3 back-bones are employed to extract semantically rich features from each modality, while lightweight adapters are intro-duced to modulate domain-specific characteristics and re-duce distributional discrepancies. The adapted features are then fused through several cross-attention modules that dy-namically model inter-modality dependencies and empha-size complementary information. To avoid information loss and semantic drift, each adapter is paired with a reconstruc-tion branch that decodes its adapted embedding back to the original input and is supervised independently. Finally, the entire framework is jointly optimized under a hybrid ob-jective that balances semantic alignment, reconstruction fi-delity, and fusion consistency, ensuring both effective infor-mation preservation and semantic-level integration across diverse fusion scenarios. 
+
+3.2. Semantic Prior Adaptation with DINOv3 
+
+To achieve modality-consistent and generalizable feature representation, we employ DINOv3, a self-supervised Vi-sion Transformer pretrained on large-scale natural im-ages, as the universal semantic backbone. Unlike conven-tional modality-specific encoders that are prone to over-fitting and fail to generalize across domains, DINOv3 of-fers object-centric priors and long-range contextual de-pendencies, which provide a strong foundation for cross-modal representation learning. Given an input image Im ∈
+
+RH×W ×3 from modality m, the image is first divided into non-overlapping patches and linearly projected into d-dimensional token embeddings. These tokens are propa-gated through L transformer layers of the frozen DINOv3 encoder, from which a subset of intermediate feature maps is extracted to form a semantic hierarchy that jointly en-codes local structural cues and global contextual semantics. Despite its strong generalization, DINOv3 is pretrained on large-scale natural images, and its latent space may not perfectly align with modality-specific characteristics. To address this domain discrepancy, we introduce alightweight, hierarchical Adapter that performs progressive feature recalibration across multiple semantic scales. Conceptually, the Adapter functions as a progressive feature translator, refining multi-level ViT representations into modality-aligned embeddings. It employs a cas-cade of multi-stage fusion and upsampling operations, in which transformer features extracted from multiple lay-ers ( f (l2), f (l5), f (l8), f (l11 )) are sequentially integrated through a residual hierarchy. Each fusion stage aggregates global semantic cues from deeper layers with fine-grained structural details from shallower ones, enabling a smooth semantic–structural transition across scales. This hierarchi-cal integration not only enhances representational fidelity but also enforces distributional consistency across modali-ties, providing a robust and unified feature space for subse-quent fusion and reconstruction. 
+
+3.3. Reconstruction Alignment 
+
+Although the proposed dual-branch architecture effec-tively adapts pretrained DINOv3 representations to diverse modalities, direct fusion of such embeddings may still suf-fer from semantic drift and information loss. As features from heterogeneous sources are projected into a shared la-tent space, modality-specific cues, such as texture in visi-ble images or radiometric contrast in infrared ones, tend to weaken, leading to suboptimal alignment and degraded re-construction fidelity. Existing image fusion methods predominantly empha-size the similarity between the fused output and the source images, often adopting pixel-level or appearance-based su-pervision to preserve visual details. However, such low-level constraints tend to bias the model toward reproduc-ing superficial texture or intensity patterns, rather than capturing deeper semantic correspondences across modali-ties. Consequently, these often overfit to appearance details Reconstruction  
+
+> Reconstruction
+> Cross Attention
+> ×4
+> QQ
+> Mod ality Fusion
+> Cross Attention
+> Up-Conv Up-Conv Up-Conv Up-Conv Up-Conv Up-Conv Up-Conv Up-Conv Upsample & Conv 3
+> ×3
+> Input
+> Input
+> Fusion Results
+> Rec
+> Rec
+
+(a) UniFusion: Unified Image Fusion Framework  
+
+> Start Suboptimal Point Optimal Point
+> Reconstruction Alignment Response
+> Gradient Ascent :Optimization:
+
+Problem Formulation Reconstruction  
+
+> Gradient Descent :Optimization:
+
+Modal ity Fusion 
+
+(b) Dual Interaction Network 
+
+> Dinov3 Encoder
+> Dinov3 Encoder
+> Adapter
+> Layers: 2,5,8,11
+> Adapter
+> Layers: 2,5,8,11
+> Decoder
+> Decoder
+> Decoder
+
+(c) Adapter Figure 2. Overview of the proposed UniFusion framework. 
+
+while failing to maintain high-level consistency. To mitigate this issue, we introduce a reconstruction-alignment mechanism that explicitly regularizes the fusion process through self-reconstruction constraints. The core idea is to ensure that the encoded latent representation re-tains sufficient modality-specific information to reconstruct the original inputs, thereby enforcing semantic fidelity and preventing information loss. Concretely, for each modality m, the adapter produces a calibrated feature map ˆFm, which is passed through a lightweight reconstruction branch composed of a few Trans-former layers and a projection head: 
+
+¯Im = Rm( ˆFm) (1) where Rm(·) denotes the reconstruction function. 
+
+3.4. Bilevel Optimization 
+
+To jointly optimize semantic reconstruction and modality fusion operating at different temporal dynamics, we for-mulate the learning process as a bilevel optimization prob-lem. In this hierarchical formulation, the inner loop rapidly updates reconstruction-oriented representations to capture modality-specific semantics, while the outer loop gradu-ally adjusts the fusion strategy based on the evolving fea-ture space. This two-layer interaction facilitates stable co-adaptation between feature encoding and fusion, ultimately achieving a balanced tradeoff between semantic consistency and structural fidelity in the final fused result. Formally, let ϕ denote the parameters of the adapter and reconstruction subnetworks responsible for modality-specific representation, and θ represent the parameters of the fusion network. Given an image pair ( Ix, Iy ), the feature encoding and reconstruction processes can be expressed as: 
+
+zx, z y = E(Ix, I y ; ϕ), ˆIx = Rx(zx; ϕ), ˆIy = Ry (zy ; ϕ),
+
+(2) while the fusion result is obtained by: 
+
+If = F (zx, z y ; θ). (3) The overall training objective is then formulated as a bilevel optimization problem: 
+
+ϕ∗ = arg min  
+
+> ϕ
+
+Lrec (ϕ), θ ∗ = arg min  
+
+> θ
+
+Lfuse (θ; ϕ∗) (4) The inner-level objective focuses on reconstructing each modality to preserve semantic and structural fidelity, guid-ing the encoders to produce features that are rich in modality-aware cues. The outer-level objective then learns an optimal fusion strategy based on these representations, ensuring complementary information is integrated effec-tively. In practice, directly solving this nested optimization is computationally expensive. Therefore, we employ a first-order alternating scheme, where the two parameter sets are updated sequentially within each iteration: 
+
+ϕt+1 = ϕt − ηL∇ϕt Lrec (ϕt),θt+1 = θt − ηU ∇θt Lfuse (θt; ϕt+1 ), (5) where ηL and ηU denote the learning rates for the inner and outer levels, respectively, typically satisfying ηL > η U to ensure faster representation adaptation. To further enhance the temporal stability of the fusion dynamics, we introduce an exponential moving average (EMA) regularization on the outer parameters: 
+
+θEMA  
+
+> t+1
+
+= α θ EMA  
+
+> t
+
++ (1 − α) θt+1 , (6) where α ∈ [0 , 1) controls the momentum of the update. 
+
+## 4. Experiment 
+
+4.1. Experimental Setting 
+
+Dataset. We evaluate the proposed framework across four representative image fusion tasks, including in-frared–visible image fusion (IVIF), medical image fusion (MIF), multi-exposure image fusion (MEF), and multi-focus image fusion (MFF). For IVIF, experiments are conducted on three widely adopted benchmark datasets: M3FD [28], TNO [46], and RoadScene [52], which collec-tively cover diverse illumination, object, and background conditions. For MIF tasks, we employ the Medical Harvard dataset 3. The MEF and MFF tasks are evaluated using the MEFB [59] and MFIF [60] benchmarks, respectively. The MFIF collection integrates multiple sub-datasets, including Lytro [38], MFFW [55], and MFI-WHU [58], offering a comprehensive evaluation of multi-focus fusion under var-ied scene configurations. 
+
+Implementation Details. Our experiments are performed on an NVIDIA RTX 5090 GPU. The batch size is set to 16, and each fusion task is trained for 10,000 iterations. Dur-ing training, images are randomly cropped into 128×128 patches and normalized to the range [0,1] [20, 41]. Model parameters are optimized using the Adam optimizer, with the learning rate initialized to 2 × 10 −4 and decayed ex-ponentially during training [7, 10]. The fusion network consists of four Cross-Attention Blocks, while each recon-struction branch includes four Transformer Blocks. The fu-sion optimization follows the loss formulation of SwinFu-sion [34], ensuring fair comparison and stable convergence across different fusion tasks. In addition, we incorporate a reconstruction loss in a self-supervised manner, where each source image is reconstructed from the fused representation using an L1 loss. 
+
+Benchmarks. We compare our method against ten recent state-of-the-art image fusion approaches, includ-ing CDDFuse [64], CoCoNet [31], DeFuse [27], LRR-Net [18], MGDN [9], ReCoNet [12], SwinFusion [34], U2Fusion [51], UMFusion [47], and TC-MoA [69]. 
+
+4.2. Evaluation on Multi-Modal Image Fusion 
+
+Quantitative Comparisons. We quantitatively evaluate the fusion performance using four widely adopted metrics: Mu-tual Information (MI), Visual Information Fidelity (VIF), 
+
+> 3http://www.med.harvard.edu/AANLIB/home.html
+
+Qabf and Qy , as shown in Tab. 1. Our method con-sistently outperforms existing general-purpose fusion algo-rithms across multiple infrared–visible fusion benchmarks, demonstrating strong generalizability and modality compat-ibility. Notably, the improvements in VIF, Qabf and Qy ,which are closely related to human visual perception and in-formation preservation, indicate that the fused images gen-erated by our framework retain richer structural and seman-tic details from the source inputs. In addition, the higher MI value further confirms that our method effectively maintains both mutual information characteristics, leading to more perceptually faithful and information-rich fusion results. 
+
+Qualitative Comparisons. As illustrated in Fig. 4, our method exhibits superior visual performance compared with other approaches. For qualitative analysis, we selected two representative samples from the M3FD and RoadScene datasets, covering diverse scenarios to ensure a comprehen-sive evaluation. The proposed method more effectively pre-serves fine texture details from the original images, such as the textures of building windows and the intricate structures at the ends of tree branches, whereas other methods tend to blur these features. Moreover, our approach highlights hu-man contours more clearly and better maintains the mutual information between visible and infrared images. These results demonstrate the clear advantages of our method in terms of qualitative performance. Additional results on downstream perception tasks, in-cluding object detection and semantic segmentation [16], are provided in the Appendix to further validate the effec-tiveness of our fusion method. 
+
+4.3. Evaluation on Medical Image Fusion 
+
+Quantitative Comparisons. We conduct quantitative ex-periments on the MIF dataset using five standard metrics, as illustrated in Fig. 3. The results visualize the distribu-tion of all test samples, along with their mean and median values, revealing stable improvements across most indica-tors. The consistently high median scores indicate that our method maintains reliable fusion quality across diverse clin-ical cases, validating its robustness and effectiveness in pre-serving complementary modality information. 
+
+Qualitative Comparisons. The visual comparisons of PET–MRI fusion results are presented in Fig. 5. Compet-ing methods often blur anatomical structures or lose soft-tissue details when PET lacks functional content, reflecting insufficient semantic alignment. In contrast, our method preserves the rich structural information from MRI while accurately integrating PET functional cues. This benefit arises from the DINOv3-guided semantic priors and hierar-chical adapter design, which enable precise cross-modality calibration. Consequently, the fused images achieve both structural clarity and functional expressiveness, supporting more reliable medical interpretation. Dataset M3FD Dataset T&R Dataset MEFB Dataset Method MI ↑ VIF ↑ Qabf ↑ Qy ↑ MI ↑ VIF ↑ Qabf ↑ Qy ↑ MI ↑ VIF ↑ CC ↑ PSNR ↑
+
+CDDFuse[64] 3.776 0.839 0.610 0.978 3.102 0.732 0.489 0.945 6.575 1.430 0.837 56.809 CoCoNet [31] 2.621 0.721 0.378 0.826 2.576 0.602 0.362 0.781 4.607 1.091 0.858 58.007 DeFuse [27] 2.924 0.612 0.332 0.959 2.991 0.667 0.393 0.968 5.238 1.164 0.813 58.209 LRRNet [18] 2.763 0.629 0.495 0.950 2.766 0.577 0.352 0.781 5.946 1.110 0.885 58.970 MGDN [9] 2.832 0.750 0.618 0.961 2.810 0.701 0.552 0.968 4.935 1.148 0.838 58.516 ReCoNet [12] 3.009 0.682 0.485 0.937 2.972 0.624 0.375 0.958 5.583 1.074 0.854 57.700 SwinFusion [34] 2.945 0.618 0.480 0.936 3.325 0.747 0.467 0.974 5.318 1.459 0.894 59.009 U2Fusion [51] 2.723 0.688 0.535 0.860 2.592 0.660 0.488 0.918 5.809 1.284 0.902 58.890 UMFusion [47] 3.099 0.675 0.399 0.861 2.893 0.711 0.470 0.937 6.326 1.293 0.889 58.881 TC-MoA [69] 3.466 0.870 0.636 0.983 3.038 0.787 0.558 0.962 4.889 1.406 0.885 59.152 Ours 4.268 0.899 0.637 0.982 3.599 0.805 0.565 0.980 6.861 1.484 0.906 59.219  
+
+> Table 1. Quantitative comparison on M 3FD, TNO, RoadScene, and MEFB datasets. The best and second best results are highlighted in
+> bold and underline.
+> Figure 3. Quantitative comparison on MIF (top) and MFIF (bottom) datasets. The plots illustrate the distribution of all test samples across five evaluation metrics, where “–” and “ ◦” indicate the median and mean values, respectively.
+
+4.4. Evaluation on Multi-Exposure Fusion 
+
+Quantitative Comparisons. We quantitatively evaluate the multi-exposure image fusion performance using four widely adopted metrics: Mutual Information (MI), Visual Information Fidelity (VIF), CC, and PSNR, as shown in Tab. 1. Our model achieves the SOTA results among gen-eral image fusion approaches, consistently outperforming competing models across most metrics. In particular, the substantial improvement in MI and VIF scores highlights the strong task adaptability of UniFusion, which effectively reconciles task-specific objectives while mitigating poten-tial conflicts between them. Moreover, the higher CC and PSNR scores demonstrate that our method preserves struc-tural fidelity, fine-grained textures, and overall perceptual quality more effectively. 
+
+Qualitative Comparisons. As illustrated in Fig. 6, our method consistently produces visually superior fusion re-sults compared with existing SOTA approaches. It pre-serves fine texture details and maintains accurate color consistency across varying illumination levels, resulting in clearer and more balanced fused images. These results fur-ther substantiate the advantages of our method in producing visually coherent and information-rich outputs. 
+
+4.5. Evaluation on Multi-Focus Fusion 
+
+Quantitative Comparisons. We further assess UniFusion on the MFIF dataset to test its generalization to the multi-focus fusion (MFF) task. As shown in Fig. 3, our method consistently ranks among the top two across all five metrics, even without task-specific fine-tuning. This demonstrates its strong adaptability to unseen domains and effectiveness in preserving salient details across multiple focal depths. Input (Infrared & Visi ble) SwinFusion U2Fusion UMFusion Ours Ours (full size) TC-MoA CDDFuse CoCoNet DeFuse MGDN LRRNet         
+
+> Input (Infrared & Visi ble) SwinFusion U2Fusion UMFusion Ours Ours (full size) TC-MoA CDDFuse CoCoNet DeFuse MGDN LRRNet
+
+Figure 4. Visual comparison of infrared and visual image fusion results with SOTA methods on M 3FD (top) and T &R (bottom) datasets. CDDFuse CoCoNet DeFuse MGDN LRRNet MRI    
+
+> SwinFusion U2Fusion UMFusion Ours TC-MoA PET
+
+Figure 5. Visual comparison of medical image fusion results with SOTA methods on MIF dataset. CDDFuse CoCoNet DeFuse MGDN LRRNet           
+
+> SwinFusion U2Fusion UMFusion Ours TC-MoA Input (Under- & Over-Exposed)
+> CDDFuse CoCoNet DeFuse MGDN LRRNet
+> SwinFusion U2Fusion UMFusion Ours TC-MoA Input ( Far - & Near -Focus)
+
+Figure 6. Visual comparison of multi-exposure image fusion and multi-focus image fusion results with SOTA methods on MEFB and MFIF datasets. 
+
+Qualitative Comparisons. Representative examples from the MFIF dataset are shown in Fig. 6. Our results ex-hibit sharper transitions and more consistent focus across regions, retaining fine textures in both near- and far-focus areas. In contrast, TC-MoA shows blur in distant regions, while LRRNet distorts near-focus details. These results highlight the superior perceptual quality and balanced fu-sion achieved by our method. 
+
+4.6. Ablation Study 
+
+To evaluate the effectiveness and necessity of each core component in the proposed framework, we conducted a se-ries of ablation experiments on three representative datasets, namely M3FD, MEFB, and MFIF. As summarized in Tab. 2, we designed four carefully constructed model vari-ants to isolate and assess the contributions of key modules and training strategies. In addition, we further provide qual-itative visualizations of representative samples to intuitively illustrate the influence of each module on fusion quality. As shown in Fig. 7, the full model produces clearer structural details, richer textures, and more natural visual effects com-pared to the ablated variants, confirming the effectiveness of the proposed components in enhancing both perceptual fidelity and information preservation. 
+
+w/o Adapter. In this variant, the two modality-specific adapters were removed and replaced with simple up-sampling operations for feature alignment. Without the adapter’s ability to dynamically modulate modality-specific information, the model struggled to balance two input modality representations. This resulted in a noticeable de-cline in overall fusion quality, particularly in measures re-lated to information preservation and perceptual consis-tency. The results suggest that the adapter serves as an es-sential bridge between heterogeneous modalities, facilitat-ing more coherent spatial feature integration. 
+
+w/o DINOv3 Encoder. To examine the role of the pre-trained semantic encoder, the DINOv3 encoder was re-placed with a standard four-layer Transformer encoder. A clear degradation was observed across all datasets, espe-cially in metrics reflecting semantic fidelity and perceptual sharpness (e.g., MI, VIF, and Qabf ). These results indicate that the DINOv3 encoder introduces rich high-level seman-tic priors, which guide the model in aligning features from different modalities and improving the overall perceptual Input (Infrared & Visi ble) w/o Adapter w/o DINOv3 w/o Recon. Ours Ours (full size) w/o Bilevel Optim. Figure 7. Visual comparison of fusion results for different ablation variants on representative samples from the M 3FD dataset. 
+
+Dataset M3FD Dataset MEFB Dataset MFIF Dataset Configurations MI ↑ VIF ↑ Qabf ↑ Qy ↑ MI ↑ VIF ↑ CC ↑ PSNR ↑ MI ↑ VIF ↑ CC ↑ Qabf ↑
+
+w/o Adapter 3.646 0.863 0.520 0.911 5.512 1.232 0.489 57.934 5.375 0.969 0.959 0.532 w/o DINOv3 encoder 3.681 0.879 0.602 0.946 5.709 1.334 0.362 58.537 5.624 0.901 0.947 0.491 w/o Reconstruction 3.846 0.870 0.587 0.932 6.434 1.396 0.393 58.779 5.838 1.013 0.961 0.579 w/o Bilevel Optimization 3.924 0.876 0.621 0.959 6.374 1.424 0.393 58.960 6.021 1.032 0.964 0.583 Ours 4.268 0.899 0.637 0.982 6.861 1.484 0.906 59.219 6.253 1.159 0.973 0.685 
+
+Table 2. Ablation studies on M 3FD, MEFB and MFIF datasets. The best and second best results are highlighted in bold .Ours : IR Feature Ours : Vis Feature           
+
+> w/o Rec :IR Feature w/o Rec :Vis Feature w/o Rec : Fusion Result
+> Ours : Fusion Result Vis Image Sample
+> IR Image Sample
+
+Figure 8. Visualization of encoded features and fusion results with and without the reconstruction alignment module (“Ours” vs “w/o Rec”). The feature maps are extracted from the encoders for the visible and infrared modalities, respectively. 
+
+realism of the fused images. 
+
+w/o Reconstruction. In this configuration, the recon-struction branches for both modalities were removed, and the network was trained solely with the fusion objective. Without reconstruction supervision, the model tended to overfit to shared content and neglect modality-specific in-formation, leading to reduced texture clarity and weaker cross-modality complementarity. This demonstrates that reconstruction plays a crucial role in retaining modality-dependent details and maintaining balanced feature fusion. To further verify the effectiveness of this module, we visualize the encoded features from the encoders for both the visible and infrared modalities, as well as the final fu-sion outputs. As shown in Fig. 8, without the recon-struction alignment, the encoded features lose part of their modality-specific semantic representations, such as struc-tural and color-related information. In contrast, our full model (Ours) maintains more faithful modality characteris-tics in the encoded features, which translates into clearer de-tails and more consistent semantic preservation in the fused results. These results confirm that the reconstruction align-ment module effectively regularizes feature learning, en-couraging balanced preservation of modality-dependent and shared information, and thus plays a pivotal role in achiev-ing high-quality fusion. 
+
+w/o Bilevel Optimization. Finally, we removed the bilevel optimization strategy. The performance declined consis-tently across all datasets, with more pronounced drops in metrics associated with information richness (MI metric) and visual quality (VIF metric). This confirms that bilevel optimization effectively decouples the reconstruction and fusion objectives, stabilizing the training process and en-abling more reliable feature disentanglement. 
+
+## 5. Conclusion 
+
+We propose UniFusion, a unified image fusion framework that achieves superior cross-task generalization while preserving source information fidelity. Unlike existing fusion methods that only focus on combining comple-mentary features, we propose a reconstruction-alignment mechanism that ensures consistent understanding and preservation of source information, allowing modality-specific cues to be retained and aligned throughout the fusion process. Combined with the self-supervised semantic priors of DINOv3, a DINOv3-based feature ex-tractor, and bilevel optimization, it achieves co-adaptation between representation learning and fusion strategy, ef-fectively balancing the trade-off between fusion quality and source information fidelity. Experiments across multi-modal, multi-exposure, and multi-focus tasks show that UniFusion achieves state-of-the-art performance. References 
+
+[1] Odysseas Bouzos, Ioannis Andreadis, and Nikolaos Mi-tianoudis. A convolutional neural network-based conditional random field model for structured multi-focus image fusion robust to noise. IEEE Transactions on Image Processing , 32: 2915–2930, 2023. 2 [2] Manisha Das, Deep Gupta, and Ashwini Bakde. An end-to-end content-aware generative adversarial network based method for multimodal medical image fusion. In Data an-alytics for intelligent systems: Techniques and solutions ,pages 7–1. IOP Publishing Bristol, UK, 2024. 2 [3] Songcheng Du, Yang Zou, Zixu Wang, Xingyuan Li, Ying Li, Changjing Shang, and Qiang Shen. Unsupervised hyper-spectral image super-resolution via self-supervised modality decoupling. International Journal of Computer Vision , 134: 152, 2026. 2 [4] Zhao Duan, Xiaoliu Luo, and Taiping Zhang. Combining transformers with cnn for multi-focus image fusion. Expert Systems with Applications , 235:121156, 2024. 3 [5] Chengyu Fang, Chunming He, Longxiang Tang, Yuelin Zhang, Chenyang Zhu, Yuqi Shen, Chubin Chen, Guoxia Xu, and Xiu Li. Integrating extra modality helps seg-mentor find camouflaged objects well. arXiv preprint arXiv:2502.14471 , 2025. 3 [6] Chengyu Fang, Heng Guo, Zheng Jiang, Chunming He, Xiu Li, and Minfeng Xu. Photon: Speedup volume understand-ing with efficient multimodal large language models. In 
+
+ICLR , 2026. 2 [7] Zijian Gao, Kele Xu, Xingxing Zhang, Huiping Zhuang, Tianjiao Wan, Bo Ding, Xinjun Mao, and Wang Huaimin. Rethinking obscured sub-optimality in analytic learning for exemplar-free class-incremental learning. IEEE Transac-tions on Circuits and Systems for Video Technology , 36(10): 1123–1136, 2025. 5 [8] Haozhen Gong, Xiaozhong Ji, Yuansen Liu, Wenbin Wu, Xiaoxiao Yan, Jingjing Liu, Kai Wu, Jiazhen Pan, Bail-iang Jian, Jiangning Zhang, et al. Med-cmr: A fine-grained benchmark integrating visual evidence and clinical logic for medical complex multimodal reasoning. arXiv preprint arXiv:2512.00818 , 2025. 2 [9] Yuanshen Guan, Ruikang Xu, Mingde Yao, Lizhi Wang, and Zhiwei Xiong. Mutual-guided dynamic network for image fusion. In Proceedings of the 31st ACM international con-ference on multimedia , pages 1779–1788, 2023. 5, 6 [10] Yongxin Guo, Hao Lu, Onur C Koyun, Zhengjie Zhu, Muhammet Fatih Demir, and Metin Nafi Gurcan. Momen-tum memory for knowledge distillation in computational pathology. arXiv preprint arXiv:2602.21395 , 2026. 5 [11] Shantanu Sen Gupta, Shifat Hossain, and Ki-Doo Kim. Hdr-like image from pseudo-exposure image fusion: A genetic algorithm approach. IEEE Transactions on Consumer Elec-tronics , 67(2):119–128, 2021. 2 [12] Zhanbo Huang, Jinyuan Liu, Xin Fan, Risheng Liu, Wei Zhong, and Zhongxuan Luo. Reconet: Recurrent correction network for fast and efficient multi-modality image fusion. In European conference on computer Vision , pages 539–555. Springer, 2022. 5, 6 [13] Zefeng Huang, Shen Yang, Jin Wu, Lei Zhu, and Jin Liu. Fu-siondiff: A unified image fusion network based on diffusion probabilistic models. Computer Vision and Image Under-standing , 244:104011, 2024. 2 [14] Qizhen Lan, Aaron Choi, Jun Ma, Bo Wang, Zhaog-ming Zhao, Xiaoqian Jiang, and Yu-Chun Hsu. From performance to practice: Knowledge-distilled segmenta-tor for on-premises clinical workflows. arXiv preprint arXiv:2601.09191 , 2026. 1 [15] Qizhen Lan, Yu-Chun Hsu, Nida Saddaf Khan, and Xiaoqian Jiang. Reco-kd: Region-and context-aware knowledge dis-tillation for efficient 3d medical image segmentation. arXiv preprint arXiv:2601.08301 , 2026. 2 [16] Bingyu Li, Da Zhang, Zhiyuan Zhao, Junyu Gao, and Xue-long Li. Stitchfusion: Weaving any visual modalities to en-hance multimodal semantic segmentation. In Proceedings of the 33rd ACM International Conference on Multimedia ,pages 1308–1317, 2025. 5 [17] Boyi Li, Yifan Shen, Yuanzhe Liu, Yifan Xu, Jiateng Liu, Xinzhuo Li, Zhengyuan Li, Jingyuan Zhu, Yunhan Zhong, Fangzhou Lan, et al. Toward cognitive supersens-ing in multimodal large language model. arXiv preprint arXiv:2602.01541 , 2026. 3 [18] Hui Li, Tianyang Xu, Xiao-Jun Wu, Jiwen Lu, and Josef Kit-tler. Lrrnet: A novel representation learning guided fusion network for infrared and visible images. IEEE transactions on pattern analysis and machine intelligence , 45(9):11040– 11052, 2023. 5, 6 [19] Huafeng Li, Zengyi Yang, Yafei Zhang, Wei Jia, Zheng-tao Yu, and Yu Liu. Mulfs-cap: Multimodal fusion-supervised cross-modality alignment perception for unreg-istered infrared-visible image fusion. IEEE Transactions on Pattern Analysis and Machine Intelligence , 47(5):3673– 3690, 2025. 2 [20] Jiaojiao Li, Songcheng Du, Chaoxiong Wu, Yihong Leng, Rui Song, and Yunsong Li. Drcr net: Dense residual channel re-calibration network with non-local purification for spec-tral super resolution. In Proceedings of the IEEE/CVF con-ference on computer vision and pattern recognition , pages 1259–1268, 2022. 5 [21] Jiaojiao Li, Songcheng Du, Rui Song, Yunsong Li, and Qian Du. Progressive spatial information-guided deep aggrega-tion convolutional network for hyperspectral spectral super-resolution. IEEE Transactions on Neural Networks and Learning Systems , 36(1):1677–1691, 2023. 2 [22] Xingyuan Li, Yang Zou, Jinyuan Liu, Zhiying Jiang, Long Ma, Xin Fan, and Risheng Liu. From text to pixels: Acontext-aware semantic synergy solution for infrared and visible image fusion. arXiv preprint arXiv:2401.00421 ,2023. 3 [23] Xingyuan Li, Jinyuan Liu, Zhixin Chen, Yang Zou, Long Ma, Xin Fan, and Risheng Liu. Contourlet residual for prompt learning enhanced infrared image super-resolution. In European Conference on Computer Vision , pages 270– 288. Springer, 2024. 2 [24] Xingyuan Li, Zirui Wang, Yang Zou, Zhixin Chen, Jun Ma, Zhiying Jiang, Long Ma, and Jinyuan Liu. Difiisr: A diffu-sion model with gradient guidance for infrared image super-resolution. In Proceedings of the Computer Vision and Pat-tern Recognition Conference , pages 7534–7544, 2025. 2 [25] Yuqi Li, Junhao Dong, Chuanguang Yang, Shiping Wen, Pi-otr Koniusz, Tingwen Huang, Yingli Tian, and Yew-Soon Ong. Mmt-ard: Multimodal multi-teacher adversarial dis-tillation for robust vision-language models. arXiv preprint arXiv:2511.17448 , 2025. 3 [26] Nannan Liang. Medical image fusion with deep neural net-works. Scientific Reports , 14(1):7972, 2024. 2 [27] Pengwei Liang, Junjun Jiang, Xianming Liu, and Jiayi Ma. Fusion from decomposition: A self-supervised decomposi-tion approach for image fusion. In European conference on computer vision , pages 719–735. Springer, 2022. 5, 6 [28] Jinyuan Liu, Xin Fan, Zhanbo Huang, Guanyao Wu, Risheng Liu, Wei Zhong, and Zhongxuan Luo. Target-aware dual adversarial learning and a multi-scenario multi-modality benchmark to fuse infrared and visible for object detection. In Proceedings of the IEEE/CVF conference on computer vi-sion and pattern recognition , pages 5802–5811, 2022. 2, 5 [29] Jinyuan Liu, Zhu Liu, Guanyao Wu, Long Ma, Risheng Liu, Wei Zhong, Zhongxuan Luo, and Xin Fan. Multi-interactive feature learning and a full-time multi-modality benchmark for image fusion and segmentation. In Proceed-ings of the IEEE/CVF international conference on computer vision , pages 8115–8124, 2023. 1 [30] Jinyuan Liu, Xingyuan Li, Zirui Wang, Zhiying Jiang, Wei Zhong, Wei Fan, and Bin Xu. Promptfusion: Harmonized semantic prompt learning for infrared and visible image fu-sion. IEEE/CAA Journal of Automatica Sinica , 2024. 2 [31] Jinyuan Liu, Runjia Lin, Guanyao Wu, Risheng Liu, Zhongxuan Luo, and Xin Fan. Coconet: Coupled con-trastive learning network with multi-level feature ensemble for multi-modality image fusion. International Journal of Computer Vision , 132(5):1748–1775, 2024. 1, 5, 6 [32] Jinyuan Liu, Bowei Zhang, Qingyun Mei, Xingyuan Li, Yang Zou, Zhiying Jiang, Long Ma, Risheng Liu, and Xin Fan. Dcevo: Discriminative cross-dimensional evolutionary learning for infrared and visible image fusion. In Proceed-ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 2226–2235, 2025. 2 [33] Yu Liu, Xun Chen, Rabab K Ward, and Z Jane Wang. Image fusion with convolutional sparse representation. IEEE signal processing letters , 23(12):1882–1886, 2016. 3 [34] Jiayi Ma, Linfeng Tang, Fan Fan, Jun Huang, Xiaoguang Mei, and Yong Ma. Swinfusion: Cross-domain long-range learning for general image fusion via swin transformer. 
+
+IEEE/CAA Journal of Automatica Sinica , 9(7):1200–1217, 2022. 2, 3, 5, 6 [35] Yue Ma, Kunyu Feng, Zhongyuan Hu, Xinyu Wang, Yucheng Wang, Mingzhe Zheng, Xuanhua He, Chenyang Zhu, Hongyu Liu, Yingqing He, et al. Controllable video generation: A survey. arXiv preprint arXiv:2507.16869 ,2025. 2 [36] Yue Ma, Yingqing He, Hongfa Wang, Andong Wang, Leqi Shen, Chenyang Qi, Jixuan Ying, Chengfei Cai, Zhifeng Li, Heung-Yeung Shum, et al. Follow-your-click: Open-domain regional image animation via motion prompts. In Proceed-ings of the AAAI Conference on Artificial Intelligence , pages 6018–6026, 2025. 3 [37] Yue Ma, Zhikai Wang, Tianhao Ren, Mingzhe Zheng, Hongyu Liu, Jiayi Guo, Mark Fong, Yuxuan Xue, Zixi-ang Zhao, Konrad Schindler, et al. Fastvmt: Eliminat-ing redundancy in video motion transfer. arXiv preprint arXiv:2602.05551 , 2026. 2 [38] Mansour Nejati, Shadrokh Samavi, and Shahram Shirani. Multi-focus image fusion using dictionary-based sparse rep-resentation. Information fusion , 25:72–84, 2015. 5 [39] Yuncan Ouyang, Hao Zhai, Hanyue Hu, Xiaohang Li, and Zhi Zeng. Fusiongcn: Multi-focus image fusion using su-perpixel features generation gcn and pixel-level feature re-construction cnn. Expert Systems with Applications , 262: 125665, 2025. 2 [40] Mojtaba Safari, Ali Fatemi, and Louis Archambault. Med-fusiongan: multimodal medical image fusion using an unsu-pervised deep generative adversarial network. BMC Medical Imaging , 23(1):203, 2023. 2 [41] Jiang Shao, Xinbo Zhao, Xiaochun Zou, and Xiaolin Ye. Egohiermask: Hierarchical semantic-prior guided masked autoencoder for egocentric action recognition. In Proceed-ings of the 33rd ACM International Conference on Multime-dia , pages 8711–8720, 2025. 5 [42] Yifan Shen, Yuanzhe Liu, Jingyuan Zhu, Xu Cao, Xiaofeng Zhang, Yixiao He, Wenming Ye, James Matthew Rehg, and Ismini Lourentzou. Fine-grained preference optimiza-tion improves spatial reasoning in vlms. arXiv preprint arXiv:2506.21656 , 2025. 3 [43] Yu Shi, Yu Liu, Juan Cheng, Z Jane Wang, and Xun Chen. Vdmufusion: A versatile diffusion model-based unsuper-vised framework for image fusion. IEEE Transactions on Image Processing , 34:441–454, 2024. 3 [44] Oriane Sim´ eoni, Huy V Vo, Maximilian Seitzer, Federico Baldassarre, Maxime Oquab, Cijo Jose, Vasil Khalidov, Marc Szafraniec, Seungeun Yi, Micha¨ el Ramamonjisoa, et al. Dinov3. arXiv preprint arXiv:2508.10104 , 2025. 2 [45] Wei Tang and Fazhi He. Fatfusion: A functional–anatomical transformer for medical image fusion. Information Process-ing & Management , 61(4):103687, 2024. 2 [46] Alexander Toet and Maarten A Hogervorst. Progress in color night vision. Optical Engineering , 51(1):010901–010901, 2012. 5 [47] Di Wang, Jinyuan Liu, Xin Fan, and Risheng Liu. Unsuper-vised misaligned infrared and visible image fusion via cross-modality image generation and registration. arXiv preprint arXiv:2205.11876 , 2022. 2, 5, 6 [48] Zirui Wang, Jiayi Zhang, Tianwei Guan, Yuhan Zhou, Xingyuan Li, Minjing Dong, and Jinyuan Liu. Efficient rec-tified flow for image fusion. In The Thirty-ninth Annual Con-ference on Neural Information Processing Systems , 2025. 3 [49] Yanbin Wei, Jiangyue Yan, Chun Kang, Yang Chen, Hua Liu, James Kwok, and Yu Zhang. Dynamicgtr: Leveraging graph topology representation preferences to boost vlm capabilities on graph qas. arXiv preprint arXiv:2602.21864 , 2026. 3 [50] Bin Xiao, Haifeng Wu, and Xiuli Bi. Dtmnet: A discrete tchebichef moments-based deep neural network for multi-focus image fusion. In Proceedings of the IEEE/CVF In-ternational Conference on Computer Vision , pages 43–51, 2021. 2 [51] Han Xu, Jiayi Ma, Junjun Jiang, Xiaojie Guo, and Haibin Ling. U2fusion: A unified unsupervised image fusion net-work. IEEE transactions on pattern analysis and machine intelligence , 44(1):502–518, 2020. 2, 3, 5, 6 [52] Han Xu, Jiayi Ma, Zhuliang Le, Junjun Jiang, and Xiaojie Guo. Fusiondn: A unified densely connected network for image fusion. In Proceedings of the AAAI conference on artificial intelligence , pages 12484–12491, 2020. 5 [53] Han Xu, Jiayi Ma, and Xiao-Ping Zhang. Mef-gan: Multi-exposure image fusion via generative adversarial networks. 
+
+IEEE Transactions on Image Processing , 29:7203–7216, 2020. 2 [54] Jiyang Xu, Qi Wang, Xin Xiong, Di Gai, Ruihua Zhou, and Dong Wang. Clip-driven view-aware prompt learning for unsupervised vehicle re-identification. In Proceedings of the AAAI Conference on Artificial Intelligence , pages 8896– 8904, 2025. 3 [55] Shuang Xu, Xiaoli Wei, Chunxia Zhang, Junmin Liu, and Jiangshe Zhang. Mffw: A new dataset for multi-focus image fusion. arXiv preprint arXiv:2002.04780 , 2020. 5 [56] Zengyi Yang, Yafei Zhang, Huafeng Li, and Yu Liu. Instruction-driven fusion of infrared–visible images: Tailor-ing for diverse downstream tasks. Information Fusion , 121: 103148, 2025. 2 [57] Xunpeng Yi, Han Xu, Hao Zhang, Linfeng Tang, and Ji-ayi Ma. Text-if: Leveraging semantic text guidance for degradation-aware and interactive image fusion. In Proceed-ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 27026–27035, 2024. 1, 2, 3 [58] Hao Zhang, Zhuliang Le, Zhenfeng Shao, Han Xu, and Jiayi Ma. Mff-gan: An unsupervised generative adversarial net-work with adaptive and gradient joint constraints for multi-focus image fusion. Information Fusion , 66:40–53, 2021. 2, 5[59] Xingchen Zhang. Benchmarking and comparing multi-exposure image fusion algorithms. Information Fusion , 74: 111–131, 2021. 5 [60] Xingchen Zhang. Deep learning-based multi-focus image fusion: A survey and a comparative study. IEEE Transac-tions on Pattern Analysis and Machine Intelligence , 44(9): 4819–4838, 2021. 5 [61] Wenda Zhao, Shigeng Xie, Fan Zhao, You He, and Huchuan Lu. Metafusion: Infrared and visible image fusion via meta-feature embedding from object detection. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 13955–13965, 2023. 2 [62] Zixiang Zhao, Shuang Xu, Chunxia Zhang, Junmin Liu, Pengfei Li, and Jiangshe Zhang. Didfuse: Deep image de-composition for infrared and visible image fusion. arXiv preprint arXiv:2003.09210 , 2020. 2 [63] Zixiang Zhao, Jiangshe Zhang, Shuang Xu, Zudi Lin, and Hanspeter Pfister. Discrete cosine transform network for guided depth map super-resolution. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 5697–5707, 2022. 2 [64] Zixiang Zhao, Haowen Bai, Jiangshe Zhang, Yulun Zhang, Shuang Xu, Zudi Lin, Radu Timofte, and Luc Van Gool. Cddfuse: Correlation-driven dual-branch feature decompo-sition for multi-modality image fusion. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 5906–5916, 2023. 1, 2, 5, 6 [65] Zixiang Zhao, Haowen Bai, Yuanzhi Zhu, Jiangshe Zhang, Shuang Xu, Yulun Zhang, Kai Zhang, Deyu Meng, Radu Timofte, and Luc Van Gool. Ddfm: denoising diffusion model for multi-modality image fusion. In Proceedings of the IEEE/CVF international conference on computer vision ,pages 8082–8093, 2023. 2 [66] Zixiang Zhao, Jiangshe Zhang, Xiang Gu, Chengli Tan, Shuang Xu, Yulun Zhang, Radu Timofte, and Luc Van Gool. Spherical space feature decomposition for guided depth map super-resolution. In Proceedings of the IEEE/CVF Interna-tional Conference on Computer Vision , pages 12547–12558, 2023. 2 [67] Zixiang Zhao, Haowen Bai, Jiangshe Zhang, Yulun Zhang, Kai Zhang, Shuang Xu, Dongdong Chen, Radu Timofte, and Luc Van Gool. Equivariant multi-modality image fusion. In 
+
+Proceedings of the IEEE/CVF conference on computer vi-sion and pattern recognition , pages 25912–25921, 2024. 3 [68] Man Zhou, Jie Huang, Keyu Yan, Danfeng Hong, Xiuping Jia, Jocelyn Chanussot, and Chongyi Li. A general spatial-frequency learning framework for multimodal image fusion. 
+
+IEEE Transactions on Pattern Analysis and Machine Intelli-gence , 2024. 2 [69] Pengfei Zhu, Yang Sun, Bing Cao, and Qinghua Hu. Task-customized mixture of adapters for general image fusion. In 
+
+Proceedings of the IEEE/CVF conference on computer vi-sion and pattern recognition , pages 7099–7108, 2024. 3, 5, 6[70] Yang Zou, Zhixin Chen, Zhipeng Zhang, Xingyuan Li, Long Ma, Jinyuan Liu, Peng Wang, and Yanning Zhang. Con-tourlet refinement gate framework for thermal spectrum dis-tribution regularized infrared image super-resolution. Inter-national Journal of Computer Vision , 134(1):23, 2026. 2 [71] Yang Zou, Jun Ma, Zhidong Jiao, Xingyuan Li, Zhiying Jiang, and Jinyuan Liu. Toward real-world infrared image super-resolution: A unified autoregressive framework and benchmark dataset. arXiv preprint arXiv:2603.04745 , 2026. 1

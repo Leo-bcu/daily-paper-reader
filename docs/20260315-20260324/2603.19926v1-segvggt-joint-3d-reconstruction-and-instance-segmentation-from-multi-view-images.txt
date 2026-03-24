@@ -1,0 +1,523 @@
+Title: SegVGGT: Joint 3D Reconstruction and Instance Segmentation from Multi-View Images
+
+URL Source: https://arxiv.org/pdf/2603.19926v1
+
+Published Time: Mon, 23 Mar 2026 00:56:46 GMT
+
+Number of Pages: 30
+
+Markdown Content:
+# SegVGGT: Joint 3D Reconstruction and Instance Segmentation from Multi-View Images 
+
+Jinyuan Qu 1,3∗, Hongyang Li 2,3∗, and Lei Zhang 3† 
+
+> 1
+
+Tsinghua University  
+
+> 2
+
+South China University of Technology  
+
+> 3
+
+International Digital Economy Academy (IDEA) 
+
+Abstract. 3D instance segmentation methods typically rely on high-quality point clouds or posed RGB-D scans, requiring complex multi-stage processing pipelines, and are highly sensitive to reconstruction noise. While recent feed-forward transformers have revolutionized multi-view 3D reconstruction, they remain decoupled from high-level semantic understanding. In this work, we present SegVGGT, a unified end-to-end framework that simultaneously performs feed-forward 3D reconstruction and instance segmentation directly from multi-view RGB images. By introducing object queries that interact with multi-level geometric fea-tures, our method deeply integrates instance identification into the visual geometry grounded transformer. To address the severe attention disper-sion problem caused by the massive number of global image tokens, we propose the Frame-level Attention Distribution Alignment (FADA) strat-egy. FADA explicitly guides object queries to attend to instance-relevant frames during training, providing structured supervision without extra inference overhead. Extensive experiments demonstrate that SegVGGT achieves the state-of-the-art performance on ScanNetv2 and ScanNet200, outperforming both recent joint models and RGB-D-based approaches, while exhibiting strong generalization capabilities on ScanNet++. 
+
+# 1 Introduction 
+
+Understanding 3D scenes at the instance level is fundamental for embodied per-ception [11], robotics [65], AR/VR [19, 38], and autonomous navigation [57]. Among various scene understanding tasks, 3D instance segmentation plays a central role, as it provides object-level geometric representations that support reasoning and interaction. Current state-of-the-art 3D instance segmentation methods [15, 23, 25, 29, 31, 39, 46] predominantly rely on carefully reconstructed and post-processed point clouds or high-quality posed RGB-D scans as inputs, as shown in Fig. 1 (a). However, their overall pipeline typically involves multiple stages, including multi-view data acquisition, camera registration, fusion and re-construction, and point cloud denoising before segmentation can be performed. These fragmented workflows are usually time-consuming and considerably in-crease the system complexity, and their applicability is further limited when depth sensors are unavailable or reconstruction quality is imperfect.  
+
+> ⋆
+
+Equal contribution. Work done during an internship at IDEA Research.  
+
+> †
+
+Corresponding author. 
+
+> arXiv:2603.19926v1 [cs.CV] 20 Mar 2026
+
+2 J. Qu et al. Multi-view Images       
+
+> VGGT 2.5
+> 30.2
+> 31.9
+> ScanNet200
+> Validation Set (mAP)
+> Camera sDepth map sInstance masks
+> Traditional 3D
+> Reconstruction
+> Complex
+> Post
+> Processing
+> (a)
+> (b)
+> (c) (d)
+> Point Cloud
+> Segmentator Pre-seg
+> into
+> Superpoints
+> Downsample
+> & z-up
+> & Rescale
+> SegVGGT
+> Recon. & Seg.
+
+Fig. 1: Comparison of different 3D instance segmentation pipelines. (a) Seg-mentation methods that rely on high-quality point clouds require complex and time-consuming processing, limiting their applicability. (b) Feed-forward 3D reconstruction improves efficiency, but leads to severely degraded segmentation performance. (c) Our proposed SegVGGT performs 3D reconstruction and instance segmentation simultane-ously in a single forward pass, achieving superior segmentation quality. (d) 3D instance segmentation performance on the ScanNet200 validation set. 
+
+Recent advances in 3D reconstruction have shifted the paradigm from tra-ditional multi-stage pipelines [35, 44, 45] to one-stage feed-forward transformer-based models [20, 26, 52, 53, 55], significantly improving reconstruction efficiency. These approaches eliminate the need for iterative optimization and expensive post-processing, making large-scale 3D reconstruction practical. Nevertheless, they primarily focus on geometry estimation and remain disconnected from high-level semantic understanding. Consequently, 3D scene reconstruction and 3D semantic understanding are still treated as two relatively independent problems. A straightforward strategy is to decompose the pipeline into two stages, where a feed-forward model first performs 3D reconstruction, followed by a point cloud-based segmentation model, as illustrated in Fig. 1 (b). However, such an approach normally suffers from two major limitations. First, segmentation performance is highly sensitive to reconstruction quality. Feed-forward reconstructions without heavy post-processing often contain noise and misalignment, causing point cloud segmentation methods to degrade significantly. Second, decoupling reconstruc-tion and segmentation limits the potential of leveraging geometric reasoning to enhance instance-level understanding, leading to suboptimal performance. Although several recent works [21,28,66] have explored joint modeling of 3D reconstruction and segmentation, existing approaches still exhibit some limita-tions. Some of them retain a two-stage paradigm, treating the geometric foun-dation model [3] as a frozen backbone and additionally introducing DINOv2 [37] and MaskFormer [6] for segmentation, which leads to suboptimal joint learning. Others train an instance feature head solely with contrastive learning, which requires costly clustering during inference, cannot directly predict semantic cat-egories, and often produces inaccurate segmentation boundaries. In this work, we propose SegVGGT, a unified end-to-end framework which jointly performs feed-forward 3D reconstruction and 3D instance segmentation directly from multi-view RGB images, as shown in Fig. 1 (c). Our key insight is SegVGGT 3
+
+that instance understanding can be deeply integrated into the visual geometry grounded transformer. To this end, we initialize a set of object queries and let them perform cross-attention with global image tokens after global self-attention in each transformer layer, enabling instance-level representations to progressively evolve together with multi-level geometric features throughout the network. This tight coupling allows object queries to leverage both low-level spatial cues and high-level geometric abstractions. We further employ a semantic feature head [41] to produce cross-view consistent instance-level features, from which 3D instance masks are derived through dot products with the global object queries. However, a typical scene may contain 10 4 ∼ 10 5 image tokens, and directly introducing object queries to interact with global image tokens without explicit guidance poses significant optimization challenges. We empirically observe that the attention between queries and tokens becomes highly dispersed in this set-ting. By contrast, transformer-based 3D instance segmentation models [25,39,46] commonly employ mechanisms such as mask-attention or positional embeddings to guide object queries to attend to specific regions. To address this issue within our unified 3D reconstruction and segmentation framework, we propose a Frame-level Attention Distribution Alignment (FADA) strategy. Specifically, we intro-duce an additional supervision and incorporate a corresponding cost into the Hungarian matching process, encouraging object queries to assign higher atten-tion weights to frames that contain the associated instance while interacting with global image tokens. This mechanism provides a structured supervision for cross-frame attention without incurring additional inference overhead. Extensive experiments validate the effectiveness of SegVGGT. On the Scan-Netv2 [7] and ScanNet200 [43] benchmarks, our method achieves the state-of-the-art segmentation performance compared with both joint 3D reconstruction and segmentation models and RGB-D scan-based methods, demonstrating its superiority. Moreover, without any additional training, we evaluate its perfor-mance on ScanNet++ [61]. Under the same setting, our method even surpasses approaches trained with ScanNet++, indicating strong generalization capability. In summary, our contributions are threefold: 1) We present SegVGGT, a unified framework that simultaneously performs feed-forward 3D reconstruction and 3D instance segmentation directly from multi-view RGB images. 2) We in-tegrate instance identification into the visual geometry grounded transformer through object queries and introduce the Frame-level Attention Distribution Alignment (FADA) strategy to efficiently solve the attention dispersion problem over massive image tokens without incurring inference overhead. 3) We achieve the state-of-the-art performance on ScanNetv2 and ScanNet200, surpassing re-cent joint models and even methods relying on posed RGB-D scans. Moreover, SegVGGT demonstrates strong generalization capabilities on ScanNet++. 
+
+# 2 Related Works 
+
+3D Instance Segmentation on Point Clouds. 3D instance segmentation aims to assign both semantic labels and distinct instance identities to 3D geom-4 J. Qu et al. 
+
+etry. Early works either adopt a proposal-based paradigm that first generates 3D bounding box proposals and subsequently predicts instance masks [8, 13, 22, 59, 62], or follow a grouping-based strategy that clusters points into instances based on learned similarity without explicit proposal generation [5,17,18,30,50,54,64]. Recently, transformer-based methods [1,23,25,29,31,32,36,39,46,47,51,63] have become dominant by directly predicting instance masks with object queries. These methods primarily operate on high-quality point clouds, which often re-quire complex post-processing. ODIN [15] instead takes posed RGB-D scans as input, yet still assumes access to reconstructed 3D geometry. Consequently, when only RGB images are available, these approaches are not directly applicable. 
+
+Feed-forward 3D Reconstruction. Traditional 3D reconstruction frameworks typically follow a multi-stage pipeline involving feature matching, Structure-from-Motion (SfM) [12, 44], and Multi-View Stereo (MVS) [45]. While being ro-bust, these systems involve complex heuristic tuning and intensive computation, often requiring separate optimization phases to resolve geometric inconsisten-cies. Recent advances, such as DUSt3R [53] and its variants [16,26], have shifted to a feed-forward paradigm that directly regresses dense point maps from image pairs. VGGT [52] and its successors [20, 55] further propose architectures capa-ble of processing hundreds of frames in a single forward pass to predict multiple geometric attributes, substantially improving efficiency and scalability. Despite these advances, existing works focus primarily on geometric estimation and do not explicitly consider semantic or instance-level scene understanding. 
+
+Joint 3D Reconstruction and Segmentation. Recently, there has been growing interest in bridging reconstruction and understanding in a unified model. LSM [9] and Uni3R [48] extend geometric foundation models [52, 53] with 3D Gaussian Splatting heads to produce semantic features, but they lack instance-level awareness. SIU3R [58] further incorporates instance perception, but sup-ports only two-view inputs. PanSt3R [66] follows a two-stage paradigm, using a frozen MUSt3R [3] model for scene reconstruction and treating it as a back-bone combined with DINOv2 [37] to extract features, which are then fed into a separate Mask2Former [6] for panoptic segmentation, leading to suboptimal joint learning. IGGT [28] and UNITE [21] perform segmentation by training an instance-level feature head with contrastive learning. However, they require computationally expensive clustering [33] during inference, which may yield in-accurate segmentation boundaries, and rely on additional VLMs [10, 27, 40] to predict semantic categories. MVGGT [56] introduces the task of multi-view 3D referring expression segmentation along with a baseline model, aiming to recon-struct scenes from sparse views and segment the referred object. 
+
+# 3 Method 
+
+3.1 Overall Architecture 
+
+As illustrated in Fig. 2, SegVGGT takes N unposed RGB images (Ii)Ni=1 as input, where Ii ∈ R3×H×W and H × W denotes the resolution of images. Alongside the images, we also initialize a set of O learnable object queries (qj )Oj=1 , where SegVGGT 5Frame Attention   
+
+> ⋯
+> Global Attention
+> Cross
+> Attention
+> Self
+> Attention
+> Object Queries
+> Multi-view
+> Unposed
+> Images
+> ×�times
+> Q
+> K,V
+> Cameras
+> Depth maps
+> Instance-level
+> feature maps
+> Camera
+> Head
+> Instance masks
+> with categories
+> Frame-level Attention
+> Distribution Alignment
+> 3D Scene
+> Rec.
+> 3D Instance
+> Seg.
+> Matched
+> Query & Inst.
+> GT Pre.
+> Training Only
+> MLP  DPT DPT
+> LoRA
+> DINO
+
+Fig. 2: Overall architecture of SegVGGT. SegVGGT takes multi-view unposed RGB images as input and outputs the camera parameters, depth maps, and instance masks in a single forward pass. In the visual geometry grounded transformer, image tokens and object queries are progressively refined to capture both multi-view geom-etry and instance semantics. The green arrows indicate the components related to the 3D instance segmentation. During training, the Frame-level Attention Distribution Alignment (FADA) module regularizes the cross-attention weights via Jensen-Shannon Divergence loss Ljs , effectively mitigating the attention dispersion problem. 
+
+qj ∈ Rd and d denotes the feature dimension. Our unified transformer maps the input images to the corresponding camera parameters, depth maps, and instance-level feature maps in a single forward pass, while simultaneously updating the object queries. This process can be formulated as: 
+
+fθ
+
+
+
+(Ii)Ni=1 , (qj )Oj=1 
+
+
+
+=
+
+
+
+(gi, D i, F i)Ni=1 , (ˆ qj )Oj=1 
+
+
+
+, (1) Among the model outputs, gi ∈ R9 denotes the camera intrinsics and extrinsics, and Di ∈ RH×W is the depth map with the same resolution as the input image. 
+
+Fi ∈ Rd×h×w represents the instance-level feature map, whose spatial resolution is half of the input image, i.e., (h, w ) = ( H 
+
+> 2
+
+, W 
+
+> 2
+
+), to reduce memory consump-tion. (ˆ qj )Oj=1 denotes the optimized object queries after aggregating multi-level geometric features in the transformer. From these outputs, SegVGGT can seam-lessly derive instance segmentation masks with categories and obtain the final 3D reconstruction and 3D instance segmentation through simple unprojection. 
+
+3.2 Geometry Grounded Transformer with Instance Reasoning 
+
+To deeply integrate instance reasoning into the visual geometry grounded trans-former, we extend this architecture by introducing a set of learnable object queries (qj )Oj=1 . These queries are progressively refined across all the L layers in the transformer, enabling them to leverage both low-level spatial cues and high-level geometric abstractions to enhance instance awareness. Within the trans-former, image tokens and object queries are optimized jointly. The image tokens 6 J. Qu et al. 
+
+primarily capture multi-view geometric and semantic information and are used to regress dense outputs, while the object queries focus on instance-level under-standing and reasoning. 
+
+Update of Image Tokens. Each input image Ii is first processed by a frozen DINO [37] backbone to extract dense features, producing K image tokens de-noted as a matrix Ti ∈ RK×d. To construct a global representation of the 3D scene, the image tokens from all N views are concatenated along the sequence dimension to form an aggregated multi-view token matrix T ∈ R(N K )×d, where 
+
+T = [ T1; T2; . . . ; TN ]1. These tokens are then fed into the unified transformer, where features are fused and updated through alternating frame attention and global attention. We denote the multi-view image tokens after optimization by the l-th ( 1 ≤ l ≤ L) global attention layer as T (l), where T (0) corresponds to the original concatenated image tokens extracted by DINO. 
+
+Update of Object Queries. Different from prior works that focus solely on geometric estimation, SegVGGT aims to construct a transformer architecture that jointly captures geometric and instance-level information. To this end, we initialize O learnable object queries (qj )Oj=1 and update them throughout the transformer layers. Specifically, after the image tokens T (l) undergo global atten-tion for cross-view feature fusion, we insert a cross-attention module that enables the object queries to extract information from them. With the j-th object query acting as the query and the unified image tokens acting as the keys and values, this cross-attention process at the l-th layer can be formulated as: 
+
+A(l) 
+
+> j
+
+= Softmax 
+
+
+
+q(l−1)  
+
+> j
+
+(T (l))⊤/√d
+
+
+
+, q′(l) 
+
+> j
+
+= q(l−1)  
+
+> j
+
++ A(l) 
+
+> j
+
+T (l), (2) where A(l) 
+
+> j
+
+∈ R1×(N K ) represents the global cross-attention weight map of the 
+
+j-th query over all multi-view image tokens, and q′(l) 
+
+> j
+
+∈ R1×d denotes the in-termediate query updated by the cross-attention. Subsequently, a self-attention layer among the queries is applied to further enhance their feature representa-tions, yielding the final output q(l) 
+
+> j
+
+for the current layer. 
+
+3.3 Synchronous 3D Decoding and Training Objective 
+
+Following the L layers of the geometry grounded transformer, the enriched image tokens T (L) and object queries q(L) 
+
+> j
+
+are fed into the decoding heads to yield the final 3D scene reconstruction and instance segmentation. 
+
+Geometry Predictions. To reconstruct the multi-view geometry, we follow VGGT [52] by employing a Camera Head to regress the camera parameters 
+
+(gi)Ni=1 , and a DPT [41] head to predict the dense depth maps (Di)Ni=1 .
+
+Instance Predictions. For instance-level understanding, a separate semantic DPT head is introduced to decode the image tokens into cross-view consistent instance-level feature maps Fi ∈ Rd×h×w. Meanwhile, each optimized query   
+
+> 1In practice, each image is also augmented with a camera token and four register tokens, which are omitted here and in Fig. 2 for clarity. SegVGGT 7
+
+ˆqj = q(L) 
+
+> j
+
+predicts semantic logits cj ∈ RC+1 via an MLP classification head, where C is the number of instance categories. To generate the multi-view 2D masks, we compute the dot product between each object query ˆqj and the dense feature maps (Fi)Ni=1 . The probability mask Mj,i ∈ [0 , 1] h×w for the j-th query on the i-th view is formulated as: 
+
+Mj,i = σ  ˆq⊤ 
+
+> j
+
+Fi
+
+ , (3) where σ denotes the sigmoid function. During inference, a pre-defined threshold 
+
+τm is applied to binarize Mj,i . With the synchronously predicted camera param-eters gi and depth maps Di, these binarized 2D masks can be directly unpro-jected into a unified 3D coordinate space, elegantly yielding the final 3D instance segmentation without relying on any complex point cloud post-processing. 
+
+Training Objective. The overall training objective Ltotal is composed of the geometric loss, the instance loss, and our proposed attention alignment loss: 
+
+Ltotal = Lgeo + Linst + λjs Ljs . (4) For 3D scene reconstruction, Lgeo = λcamera Lcamera + λdepth Ldepth is used to supervise the predicted camera parameters (g)Ni=1 and depth maps (Di)Ni=1 .Both Lcamera and Ldepth directly follow the design in VGGT [52], and their detailed formulations are omitted here for brevity. Notably, we adopt a pre-trained VGGT model with frozen parameters as a teacher model to provide geometric supervision, which aims to mitigate overfitting of geometry predictions to noise and biases in the training data. For 3D instance segmentation, we follow DETR [4] and employ the Hun-garian algorithm [24] to match object queries with ground-truth instances, en-abling end-to-end training with classification and mask supervision. Interest-ingly, we observe that by simply flattening the predicted multi-view masks 
+
+Mj ∈ [0 , 1] N ×H×W of each query into a 1D sequence mj ∈ [0 , 1] N HW , the rep-resentation becomes mathematically equivalent to a 3D point cloud mask. By applying the identical operation to the multi-view consistent 2D ground-truth masks, we can seamlessly inherit the matching cost and loss formulations from point cloud segmentation methods [23, 47]. Specifically, the pair-wise matching cost Cj,k between the j-th prediction and the k-th ground truth is defined as: 
+
+Cj,k = −λcls cj,c k + λmask 
+
+ BCE (mj , m gt k ) + Dice (mj , m gt k ) + λjs Cjs j,k , (5) where cj,c k denotes the predicted probability of the j-th query belonging to the target class ck, and mgt k ∈ { 0, 1}N HW is the flattened ground-truth mask. Here, BCE (·, ·) and Dice (·, ·) represent the binary cross-entropy and dice loss with Laplace smoothing [34]. Crucially, Cjs j,k represents our proposed frame-level at-tention alignment cost based on the Jensen-Shannon divergence, which explicitly encourages queries to match with instances that geometrically align with their attention priors (detailed in Sec. 3.4). Once the optimal assignment is estab-lished, the instance loss Linst is computed over the matched pairs as a weighted sum of the classification loss and the mask segmentation losses: 
+
+Linst = λcls Lcls + λmask (Lbce + Ldice ) . (6) 8 J. Qu et al. 
+
+Finally, Ljs is our proposed frame-level attention alignment loss, which acts as a structural regularization during training and will be detailed in Sec. 3.4. 
+
+3.4 Frame-level Attention Distribution Alignment 
+
+A typical 3D scene inherently involves a massive number of aggregated multi-view image tokens (e.g., N K ≈ 10 4 ∼ 10 5) in our architecture. In such a high-dimensional space, the cross-attention weights of the object queries tend to be-come highly dispersed across the entire sequence. However, due to occlusion and limited fields of view, a specific 3D instance is typically visible in only a sparse subset of the N views. This mismatch further amplifies attention dispersion. Without explicit constraints, the unguided object queries normally struggle to localize the correct views and are prone to absorbing irrelevant background noise, leading to optimization challenges and suboptimal performance. To bridge this gap, we propose the Frame-level Attention Distribution Align-ment (FADA) module to provide an explicit global-to-local guidance. Our core insight is to directly align the queries’ attention distribution with the actual visibility of the target instances across the multi-view frames. Instead of solely applying this constraint at the final output, we employ deep supervision across the intermediate transformer layers to progressively refine the queries’ geomet-ric awareness. Specifically, at the l-th transformer layer, we extract the cross-attention weight map A(l) 
+
+> j
+
+∈ R1×(N K ) of the j-th query obtained from Equa-tion (2). Since A(l) 
+
+> j
+
+is a normalized probability distribution over all tokens, we can naturally obtain the predicted frame-level attention distribution ˆp(l) 
+
+> j
+
+∈ [0 , 1] N
+
+by marginalizing the weights over the spatial dimension of each view. For the 
+
+i-th view Ii, its aggregated attention score is calculated as: 
+
+ˆp(l) 
+
+> j,i
+
+= X
+
+> t∈view i
+
+A(l)
+
+> j,t
+
+. (7) Meanwhile, for a ground-truth instance k, we deterministically construct its target visibility distribution pgt k ∈ [0 , 1] N . Specifically, the target probability pgt k,i 
+
+for the i-th view Ii is defined proportionally to the number of pixels the instance occupies in that frame relative to its total pixel count across all N views. This area-proportional distribution ensures that frames containing a larger visible portion of the target instance receive correspondingly higher attention priors, while unobserved frames are naturally assigned a probability of zero. To mea-sure the alignment between the predicted attention focus and the ground-truth visibility, we utilize the Jensen-Shannon (JS) divergence. Unlike the Kullback-Leibler (KL) divergence, the JS divergence is symmetric, inherently bounded, and numerically stable for distributions containing zero probabilities. The pro-posed FADA module plays a dual role in our end-to-end framework. 
+
+Prior-guided Matching. During the bipartite matching phase, we incorporate the JS divergence across all L transformer layers as a structural prior. To ensure numerical stability across different sequence lengths and network depths, the SegVGGT 9
+
+matching cost Cjs j,k is normalized by the total number of frames N and layers L:
+
+Cjs j,k = 1
+
+L · N
+
+> L
+
+X
+
+> l=1
+
+JS (pgt k ∥ ˆp(l) 
+
+> j
+
+). (8) This explicitly encourages queries to be assigned to instances that intrinsically align with their geometric attention focus throughout the entire progressive re-finement process, easing the optimization difficulty. 
+
+Attention Regularization. After the optimal matching M is established, we apply the alignment loss Ljs to penalize distribution inconsistency between matched pairs. Consistent with the matching cost, the overall alignment loss is averaged over all layers and frames: 
+
+Ljs = 1
+
+|M| · L · N
+
+X
+
+> (j,k )∈M
+> L
+
+X
+
+> l=1
+
+JS (pgt k ∥ ˆp(l) 
+
+> j
+
+). (9) By imposing this structured deep guidance both in the assignment and op-timization stages, SegVGGT enforces the object queries to firmly anchor on instance-relevant frames during progressive cross-view feature fusion. Notably, the computational overhead introduced by this module is negligible during train-ing. Rather than requiring additional parameterized layers, it directly reuses the cross-attention weights inherently computed by the transformer. Furthermore, operating at the frame level significantly reduces the dimensionality of calcula-tion, making it highly efficient. Crucially, as this module acts strictly as a regu-larization mechanism during training, it is completely removed during inference and introduces no additional computational cost or network parameters. 
+
+# 4 Experiments 
+
+4.1 Experiment Setup Datasets. We evaluate SegVGGT on three widely adopted indoor datasets: ScanNetv2 [7], ScanNet200 [43], and ScanNet++ [61]. ScanNetv2 comprises 1,613 3D indoor scenes with dense semantic and instance annotations, cover-ing 20 semantic classes and 18 instance categories. Following the official split, it contains 1,201 training scenes, 312 validation scenes, and 100 test scenes. Scan-Net200 shares the same underlying scenes and data splits as ScanNetv2, but significantly expands the label space from 20 to 200 fine-grained semantic cat-egories, among which 198 are instance categories. It exhibits a severe long-tail distribution, presenting a much greater challenge for instance-level understand-ing. ScanNet++ is a recently introduced high-fidelity dataset comprising 856, 50, and 50 scenes for training, validation, and testing, respectively, with 84 categories for evaluating 3D instance segmentation. All three datasets provide point clouds, RGB-D images, and corresponding camera intrinsics and extrinsics. In these ex-periments, we train and evaluate on ScanNetv2 and ScanNet200, respectively, 10 J. Qu et al. 
+
+while ScanNet++ is used exclusively to assess the generalization capability of our method without any fine-tuning on it. 
+
+Implementation Details. We build SegVGGT upon the VGGT [52] architec-ture with L = 24 and initialize it with pre-trained weights. During training, the DINO backbone is kept frozen. To optimize computational efficiency, we employ LoRA [14] to fine-tune the frame attention and global attention modules, while fully training the newly introduced parameters. For each training iteration, we randomly sample 2-24 frames per scene as input. For geometric supervision, we utilize a frozen, pre-trained VGGT as a teacher model to distill robust depth maps and camera parameters. The instance segmentation branch is supervised using multi-view consistent 2D masks provided by the datasets, which are gen-erated by projecting the 3D instance annotations onto the respective 2D frames. We train the models separately on ScanNetv2 and ScanNet200 using 8 NVIDIA A100 GPUs, taking approximately 2 days per dataset. For more implementation details, please refer to the appendix. 
+
+Evaluation Metrics. We follow the standard evaluation metric for 3D instance segmentation and report mean Average Precision (mAP), defined as the area under the precision-recall curve across multiple Intersection-over-Union (IoU) thresholds. Concretely, mAP is averaged over IoU thresholds from 50% to 95% with a step of 5%, providing a comprehensive measure of segmentation quality. We also report mAP 50 and mAP 25 at fixed IoU thresholds of 50% and 25%, respectively, to evaluate performance under different localization tolerances. 
+
+Evaluation Settings. To comprehensively evaluate SegVGGT, we compare it against state-of-the-art 3D instance segmentation methods under two primary input modalities: 1) Point Cloud-based Methods [15, 23, 25, 31, 32, 39, 46]. As the dominant paradigm, these approaches predominantly operate on point clouds sampled from benchmark meshes, constituting a privileged setting with direct access to accurate 3D geometry. This avoids reconstruction artifacts and pro-jection inconsistencies, while assuming pre-reconstructed 3D inputs that may not be readily available in practical deployments. ODIN [15] instead takes posed RGB-D scans provided by the benchmark as input. Although less restrictive, it still relies on additional modalities beyond RGB images. 2) RGB Image-based Methods [28,66]. Approaches in this category, including ours, tackle a more prac-tical yet challenging setting by predicting 3D instances purely from 2D images. Since ground-truth instance masks are defined on the official 3D meshes, pre-dicted multi-view masks must be mapped to these benchmark point clouds for evaluation. We utilize the ground-truth depth maps and camera poses during this mapping stage for fair comparison. Nevertheless, this projection step in-evitably introduces noise and misalignments, placing RGB-based approaches at an inherent disadvantage compared to point cloud-based baselines. 
+
+4.2 Comparison with Point Cloud-Based Methods 
+
+We first perform a class-aware comparison with standard point cloud-based 3D instance segmentation methods on the ScanNetv2 and ScanNet200 validation sets (Table 1). We categorize baselines by input modalities. While conventional SegVGGT 11                                                                                                    
+
+> Table 1: Comparison of SegVGGT with point cloud-based methods. Input modalities are denoted as follows: P (point cloud from the benchmark), I (RGB images), D (depth maps), and C (camera parameters). †indicates that the method first performs 3D reconstruction from the input images with VGGT [52], and then performs 3D instance segmentation on the reconstructed point cloud. ScanNetv2 ScanNet200 Method Input Modality mAP mAP 50 mAP 25 mAP mAP 50 mAP 25
+> Mask3D [46] P55.2 73.7 85.3 27.4 37.0 42.3 QueryFormer [32] P56.5 74.2 83.3 28.1 37.1 43.4 MAFT [25] P59.9 76.5 -29.2 38.2 43.3 SPFormer [47] P56.3 73.9 82.9 ---SGIFormer-L [60] P61.0 81.2 88.9 29.2 39.4 44.2 OneFormer3D [23] P59.3 78.1 86.4 30.2 40.9 44.6 Relation3D [31] P62.5 80.2 87.0 31.6 41.2 45.6 OpenMask3D [49] P & I & D & C ---15.4 19.9 23.1 Open-YOLO 3D [2] P & I & D & C ---24.7 31.7 36.2 SegDINO3D [39] P & I & D & C 64.0 81.5 88.9 40.2 52.4 58.6
+> ODIN [15] I & D & C 50.0 71.0 83.6 31.5 45.3 53.1 OneFormer3D †[23] I5.4 10.2 17.4 2.5 4.1 6.4
+> Ours I50.4 71.7 87.0 31.9 45.7 53.7
+
+methods directly operate on benchmark-provided point clouds and some incor-porate additional modalities, ODIN [15] avoids pre-reconstructed meshes but still relies on accurate sensor point clouds to provide geometric information for inference. In contrast, SegVGGT is the only method relying exclusively on un-posed 2D RGB images (uniformly sampled every 20 frames as input). This im-poses the most stringent evaluation challenges, including inevitable projection misalignments and entirely unobserved ground-truth regions. 
+
+Methods without Benchmark Point Clouds. Among methods lacking di-rect access to the benchmark point clouds (bottom of Table 1), SegVGGT achieves state-of-the-art results across all metrics on both datasets, despite op-erating under the strictest input constraints. To further validate the necessity of a unified architecture, we construct a naive two-stage pipeline that com-bines VGGT [52] with a widely used point cloud segmentation model, One-Former3D [23]. We observe a drastic performance degradation, with mAP on ScanNet200 decreasing from 30.2 to 2.5. This drop is partially caused by evalua-tion projection errors, but more fundamentally, it highlights that existing point cloud segmentation methods are overly sensitive to reconstruction noise and heavily rely on pristine geometry and cumbersome post-processing. 
+
+Methods on Benchmark Point Clouds. When compared to methods di-rectly segmenting the benchmark point clouds, SegVGGT exhibits a gap in the strict mAP metric on ScanNetv2, but surpasses most approaches under the looser mAP 25 threshold and achieves performance comparable to Relation3D [31]. Con-sistent with observations in ODIN [15], we attribute this gap under strict met-12 J. Qu et al.                                   
+
+> Table 2: Comparison of SegVGGT with RGB image-based methods.
+> ScanNetv2 ScanNet200 ScanNet++ Method mAP mAP 50 mAP 25 mAP mAP 50 mAP 25 mAP mAP 50 mAP 25
+> PanSt3R [66] 26.9 52.6 63.9 20.8 41.4 59.0 9.2 22.4 36.2 IGGT [28] 29.2 43.0 55.1 28.2 42.4 55.3 11.5 21.3 36.0
+> Ours 62.9 87.4 97.4 53.7 80.2 89.9 13.3 33.9 56.4
+
+rics to inevitable projection errors that lead to misalignments with the ground-truth point clouds during evaluation. The strong mAP 25 performance indi-cates that our model retains robust instance identification capability despite the evaluation mismatch. On the significantly more challenging ScanNet200 benchmark, our method showcases a compelling advantage in handling fine-grained categories, outperforming all pure point cloud-based methods. While SegDINO3D [39] achieves higher metrics, it relies on richer input modalities and additionally incorporates a powerful pre-trained 2D perception model [42]. In contrast, our RGB-only framework achieves robust performance with a much more elegant and practical deployment setup. 
+
+4.3 Comparison with RGB Image-Based Methods 
+
+We further compare our method with recent RGB image-based approaches, PanSt3R [66] and IGGT [28], which concurrently perform 3D reconstruction and instance segmentation. Because IGGT relies on a clustering algorithm [33] to generate instance masks and cannot directly predict semantic categories, we conduct evaluations under a class-agnostic setting to ensure a fair comparison. Furthermore, due to the slow inference speed of the baseline methods, full-set evaluation is computationally expensive. To address this, we randomly sample 10 scenes from the validation set of each benchmark and apply uniform down-sampling to the input frames for all methods: a 40 × rate for ScanNetv2 and ScanNet200, and a 160 × rate for the denser ScanNet++ scenes. As shown in Table 2, SegVGGT achieves state-of-the-art performance across all datasets. Specifically, it delivers substantial improvements on the ScanNetv2 and ScanNet200 benchmarks, demonstrating the efficacy of our model in purely vision-based 3D scene understanding. To further validate its robustness and gen-eralization capability, we evaluate our model on the high-fidelity ScanNet++ dataset. Notably, while the baseline methods are trained on massive datasets that explicitly include ScanNet++ training scenes, our model is trained solely on ScanNet200 and applied to ScanNet++ without any fine-tuning. Despite this setting, SegVGGT consistently outperforms these baselines across all metrics. Particularly in localization precision, our method outperforms IGGT by 20.4 on the mAP 25 metric, demonstrating strong cross-dataset generalization abil-ity. Overall, these results highlight the structural advantages of our query-based unified framework. By deeply coupling instance reasoning with geometric fea-tures, it effectively addresses the insufficient joint modeling present in PanSt3R, SegVGGT 13 68 72 76 64  
+
+> Layer23
+> RGB
+> Image
+> without
+> FADA
+> with
+> FADA
+> Fig. 3: Visualization of the FADA module’s effect. We visualize the similarity map between the query corresponding to the TV instance and the image tokens in the last cross-attention layer. Without the FADA module, the query attention is dis-persed across the entire scene. After introducing FADA, the query focuses much more accurately on the TV, indicating that FADA improves the model’s ability to attend to target instances and thereby enhances instance segmentation performance.
+
+while elegantly bypassing the high-cost and heuristically-tuned post-clustering required by IGGT during inference. 
+
+4.4 Ablation Studies and Analysis 
+
+We conduct ablation studies on the ScanNet200 validation set to evaluate the effectiveness of different components in our method. 
+
+Ablation on FADA Module. As described in Sec. 3.4, we introduce the FADA module to mitigate the attention dispersion problem. To evaluate its effective-ness, we investigate its impact by decoupling its dual roles: attention regular-ization through the loss term and prior-guided matching through the cost term. As shown in the first row of Table 3, without any explicit guidance, the base-line model only achieves 26.7 mAP, indicating that unguided queries struggle to accurately segment instances. By introducing the JS divergence as a regulariza-tion loss during training, the performance substantially improves by +4.4 mAP, as shown in row 2. This significant gain validates that structurally aligning the attention distribution with target visibility effectively mitigates the attention dispersion issue. Furthermore, incorporating the JS divergence into the Hungar-ian matching cost yields the best performance of 31.9 mAP, as shown in row 3. This confirms that leveraging geometric attention priors to guide bipartite matching successfully reduces optimization difficulty, thereby further enhancing the overall accuracy and localization precision. In addition, we further analyze the effect of the FADA module through visu-alization. We train two models, one with the FADA module and one without it, and identify the query with the highest score for the TV instance in the same scene. As shown in Fig. 3, we visualize the similarity maps between the selected query and the global image tokens in the last cross-attention layer, and present four views. The results show that without the FADA module, the query atten-tion is highly dispersed and often focuses on incorrect regions. In contrast, after 14 J. Qu et al.                               
+
+> Table 3: Ablation on the FADA mod-ule. We decouple the FADA module into loss supervision and cost function. Row Loss Cost mAP mAP 50 mAP 25
+> 1✗✗26.7 39.2 48.6 2✓✗31.1 45.7 52.3 3✓✓31.9 45.7 53.7 Table 4: Ablation on where to in-sert query interaction
+> Inserted Layers mAP mAP 50 mAP 25
+> Early 12 23.8 36.9 45.6 Late 12 30.5 45.1 53.0 Interleaved 30.4 44.5 51.8 All 24 31.9 45.7 53.7
+
+introducing the FADA module, the query attention accurately concentrates on the TV instance. This observation further confirms that the FADA module ef-fectively mitigates attention dispersion and guides the queries to focus on the target instance, thereby improving instance segmentation performance. 
+
+Ablation on Multi-level Geometric Features. In SegVGGT, object queries are progressively updated through cross-attention with image tokens. To validate the necessity of this deep integration, we ablate the insertion locations of these query interactions within the 24-layer transformer. As illustrated in Table 4, constraining interactions only to the early 12 layers yields a poor mAP of 23.8, as early tokens primarily capture local 2D appearance cues without an estab-lished multi-view geometric consensus. Conversely, interacting solely with the late 12 layers improves the mAP to 30.5, highlighting the critical role of global 3D geometric information for instance reasoning. Similarly, interleaving 12 in-teraction layers throughout the network yields 30.4 mAP. Ultimately, inserting the interaction modules across all 24 layers achieves the optimal performance. This clearly demonstrates that object queries benefit most when they continu-ously co-evolve with the image tokens, seamlessly absorbing multi-level features ranging from low-level spatial details to high-level geometric structures. 
+
+# 5 Conclusion 
+
+In this work, we presented SegVGGT, a unified feed-forward framework that simultaneously performs 3D scene reconstruction and 3D instance segmentation directly from unposed multi-view RGB images in a single forward pass. By deeply integrating object queries into a visual geometry grounded transformer, instance-level representations progressively co-evolve with multi-view geometric features, enabling tight coupling between geometry estimation and instance reasoning. To address the severe attention dispersion arising from massive global image tokens, we propose the Frame-level Attention Distribution Alignment (FADA) module, which serves a dual role as a structured bipartite matching prior and an attention regularization loss, explicitly anchoring queries to instance-relevant frames without any extra inference overhead. Extensive experiments demonstrate that SegVGGT achieves state-of-the-art performance among RGB image-based methods, surpasses prominent point cloud-native baselines on the challenging ScanNet200 benchmark, and exhibits strong generalization on ScanNet++. SegVGGT 15 
+
+# References 
+
+1. Al Khatib, S., El Amine Boudjoghra, M., Lahoud, J., Khan, F.S.: 3D Instance Segmentation via Enhanced Spatial and Semantic Supervision. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 541–550 (2023) 2. Boudjoghra, M.E.A., Dai, A., Lahoud, J., Cholakkal, H., Anwer, R.M., Khan, S., Khan, F.S.: Open-YOLO 3D: Towards Fast and Accurate Open-Vocabulary 3D Instance Segmentation. arXiv preprint arXiv:2406.02548 (2024) 3. Cabon, Y., Stoffl, L., Antsfeld, L., Csurka, G., Chidlovskii, B., Revaud, J., Leroy, V.: MUSt3R: Multi-view Network for Stereo 3D Reconstruction. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 1050–1060 (2025) 4. Carion, N., Massa, F., Synnaeve, G., Usunier, N., Kirillov, A., Zagoruyko, S.: End-to-End Object Detection with Transformers. In: Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part I 16. pp. 213–229. Springer (2020) 5. Chen, S., Fang, J., Zhang, Q., Liu, W., Wang, X.: Hierarchical Aggregation for 3D Instance Segmentation. In: Proceedings of the IEEE/CVF International Confer-ence on Computer Vision. pp. 15467–15476 (2021) 6. Cheng, B., Misra, I., Schwing, A.G., Kirillov, A., Girdhar, R.: Masked-attention Mask Transformer for Universal Image Segmentation. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 1290–1299 (2022) 7. Dai, A., Chang, A.X., Savva, M., Halber, M., Funkhouser, T., Nießner, M.: Scan-Net: Richly-Annotated 3D Reconstructions of Indoor Scenes. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 5828–5839 (2017) 8. Engelmann, F., Bokeloh, M., Fathi, A., Leibe, B., Nießner, M.: 3D-MPA: Multi-Proposal Aggregation for 3D Semantic Instance Segmentation. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 9031– 9040 (2020) 9. Fan, Z., Zhang, J., Cong, W., Wang, P., Li, R., Wen, K., Zhou, S., Kadambi, A., Wang, Z., Xu, D., et al.: Large Spatial Model: End-to-end Unposed Images to Semantic 3D. Advances in neural information processing systems 37 , 40212–40229 (2024) 10. Ghiasi, G., Gu, X., Cui, Y., Lin, T.Y.: Scaling Open-Vocabulary Image Segmen-tation with Image-Level Labels. In: European conference on computer vision. pp. 540–557. Springer (2022) 11. Gu, Q., Kuwajerwala, A., Morin, S., Jatavallabhula, K.M., Sen, B., Agarwal, A., Rivera, C., Paul, W., Ellis, K., Chellappa, R., et al.: ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning. In: 2024 IEEE Inter-national Conference on Robotics and Automation (ICRA). pp. 5021–5028. IEEE (2024) 12. Hartley, R., Zisserman, A.: Multiple View Geometry in Computer Vision. Cam-bridge university press (2003) 13. Hou, J., Dai, A., Nießner, M.: 3D-SIS: 3D Semantic Instance Segmentation of RGB-D Scans. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 4421–4430 (2019) 14. Hu, E.J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., Chen, W., et al.: LoRA: Low-Rank Adaptation of Large Language Models. Iclr 1(2), 3(2022) 16 J. Qu et al. 15. Jain, A., Katara, P., Gkanatsios, N., Harley, A.W., Sarch, G., Aggarwal, K., Chaud-hary, V., Fragkiadaki, K.: ODIN: A Single Model for 2D and 3D Segmentation. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 3564–3574 (2024) 16. Jang, W., Weinzaepfel, P., Leroy, V., Agapito, L., Revaud, J.: Pow3R: Empowering Unconstrained 3D Reconstruction with Camera and Scene Priors. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 1071–1081 (2025) 17. Jiang, H., Yan, F., Cai, J., Zheng, J., Xiao, J.: End-to-End 3D Point Cloud Instance Segmentation Without Detection. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 12796–12805 (2020) 18. Jiang, L., Zhao, H., Shi, S., Liu, S., Fu, C.W., Jia, J.: PointGroup: Dual-Set Point Grouping for 3D Instance Segmentation. In: Proceedings of the IEEE/CVF con-ference on computer vision and Pattern recognition. pp. 4867–4876 (2020) 19. Jiang, L., Mao, Y., Xu, L., Lu, T., Ren, K., Jin, Y., Xu, X., Yu, M., Pang, J., Zhao, F., et al.: AnySplat: Feed-forward 3D Gaussian Splatting from Unconstrained Views. ACM Transactions on Graphics (TOG) 44 (6), 1–16 (2025) 20. Keetha, N., Müller, N., Schönberger, J., Porzi, L., Zhang, Y., Fischer, T., Knapitsch, A., Zauss, D., Weber, E., Antunes, N., et al.: Mapanything: Universal Feed-forward Metric 3d Reconstruction. arXiv preprint arXiv:2509.13414 (2025) 21. Koch, S., Wald, J., Matsuki, H., Hermosilla, P., Ropinski, T., Tombari, F.: Unified Semantic Transformer for 3D Scene Understanding. arXiv preprint arXiv:2512.14364 (2025) 22. Kolodiazhnyi, M., Vorontsova, A., Konushin, A., Rukhovich, D.: Top-Down Beats Bottom-Up in 3D Instance Segmentation. In: Proceedings of the IEEE/CVF Win-ter Conference on Applications of Computer Vision. pp. 3566–3574 (2024) 23. Kolodiazhnyi, M., Vorontsova, A., Konushin, A., Rukhovich, D.: OneFormer3D: One Transformer for Unified Point Cloud Segmentation. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 20943– 20953 (2024) 24. Kuhn, H.W.: The hungarian method for the assignment problem. Naval research logistics quarterly 2(1-2), 83–97 (1955) 25. Lai, X., Yuan, Y., Chu, R., Chen, Y., Hu, H., Jia, J.: Mask-Attention-Free Trans-former for 3D Instance Segmentation. In: Proceedings of the IEEE/CVF Interna-tional Conference on Computer Vision. pp. 3693–3703 (2023) 26. Leroy, V., Cabon, Y., Revaud, J.: Grounding Image Matching in 3D with MASt3R. In: European conference on computer vision. pp. 71–91. Springer (2024) 27. Li, B., Weinberger, K.Q., Belongie, S., Koltun, V., Ranftl, R.: Language-driven Semantic Segmentation. arXiv preprint arXiv:2201.03546 (2022) 28. Li, H., Zou, Z., Liu, F., Zhang, X., Hong, F., Cao, Y., Lan, Y., Zhang, M., Yu, G., Zhang, D., et al.: IGGT: Instance-Grounded Geometry Transformer for Semantic 3D Reconstruction. arXiv preprint arXiv:2510.22706 (2025) 29. Li, H., Qu, J., Zhang, L.: OVSeg3R: Learn Open-vocabulary Instance Segmentation from 2D via 3D Reconstruction. arXiv preprint arXiv:2509.23541 (2025) 30. Liang, Z., Li, Z., Xu, S., Tan, M., Jia, K.: Instance Segmentation in 3D Scenes Using Semantic Superpoint Tree Networks. In: Proceedings of the IEEE/CVF in-ternational conference on computer vision. pp. 2783–2792 (2021) 31. Lu, J., Deng, J.: Relation3D: Enhancing Relation Modeling for Point Cloud In-stance Segmentation. In: Proceedings of the Computer Vision and Pattern Recog-nition Conference. pp. 8889–8899 (2025) SegVGGT 17 32. Lu, J., Deng, J., Wang, C., He, J., Zhang, T.: Query Refinement Transformer for 3D Instance Segmentation. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 18516–18526 (2023) 33. McInnes, L., Healy, J.: Accelerated Hierarchical Density Based Clustering. In: 2017 IEEE international conference on data mining workshops (ICDMW). pp. 33–42. IEEE (2017) 34. Milletari, F., Navab, N., Ahmadi, S.A.: V-Net: Fully Convolutional Neural Net-works for Volumetric Medical Image Segmentation. In: 2016 fourth international conference on 3D vision (3DV). pp. 565–571. Ieee (2016) 35. Mur-Artal, R., Tardós, J.D.: ORB-SLAM2: An Open-Source SLAM System for Monocular, Stereo, and RGB-D Cameras. IEEE transactions on robotics 33 (5), 1255–1262 (2017) 36. Nguyen, P., Ngo, T.D., Kalogerakis, E., Gan, C., Tran, A., Pham, C., Nguyen, K.: Open3DIS: Open-Vocabulary 3D Instance Segmentation with 2D Mask Guidance. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 4018–4028 (2024) 37. Oquab, M., Darcet, T., Moutakanni, T., Vo, H., Szafraniec, M., Khalidov, V., Fer-nandez, P., Haziza, D., Massa, F., El-Nouby, A., et al.: DINOv2: Learning Robust Visual Features without Supervision. arXiv preprint arXiv:2304.07193 (2023) 38. Park, K.B., Kim, M., Choi, S.H., Lee, J.Y.: Deep Learning-based Smart Task Assistance in Wearable Augmented Reality. Robotics and Computer-Integrated Manufacturing 63 , 101887 (2020) 39. Qu, J., Li, H., Chen, X., Liu, S., Shi, Y., Ren, T., Jing, R., Zhang, L.: SegDINO3D: 3D Instance Segmentation Empowered by Both Image-Level and Object-Level 2D Features. arXiv preprint arXiv:2509.16098 (2025) 40. Radford, A., Kim, J.W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G., Askell, A., Mishkin, P., Clark, J., et al.: Learning Transferable Visual Models From Natural Language Supervision. In: International conference on machine learning. pp. 8748–8763. PmLR (2021) 41. Ranftl, R., Bochkovskiy, A., Koltun, V.: Vision Transformers for Dense Prediction. In: Proceedings of the IEEE/CVF international conference on computer vision. pp. 12179–12188 (2021) 42. Ren, T., Chen, Y., Jiang, Q., Zeng, Z., Xiong, Y., Liu, W., Ma, Z., Shen, J., Gao, Y., Jiang, X., et al.: DINO-X: A Unified Vision Model for Open-World Object Detection and Understanding. arXiv preprint arXiv:2411.14347 (2024) 43. Rozenberszki, D., Litany, O., Dai, A.: Language-Grounded Indoor 3D Semantic Segmentation in the Wild. In: European Conference on Computer Vision. pp. 125– 141. Springer (2022) 44. Schönberger, J.L., Frahm, J.M.: Structure-from-Motion Revisited. In: Conference on Computer Vision and Pattern Recognition (CVPR) (2016) 45. Schönberger, J.L., Zheng, E., Pollefeys, M., Frahm, J.M.: Pixelwise View Selection for Unstructured Multi-View Stereo. In: European Conference on Computer Vision (ECCV) (2016) 46. Schult, J., Engelmann, F., Hermans, A., Litany, O., Tang, S., Leibe, B.: Mask3D: Mask Transformer for 3D Semantic Instance Segmentation. In: 2023 IEEE Inter-national Conference on Robotics and Automation (ICRA). pp. 8216–8223. IEEE (2023) 47. Sun, J., Qing, C., Tan, J., Xu, X.: Superpoint Transformer for 3D Scene Instance Segmentation. In: Proceedings of the AAAI Conference on Artificial Intelligence. vol. 37, pp. 2393–2401 (2023) 18 J. Qu et al. 48. Sun, X., Jiang, H., Liu, L., Nam, S., Kang, G., Wang, X., Sui, W., Su, Z., Liu, W., Wang, X., et al.: Uni3R: Unified 3D Reconstruction and Semantic Understand-ing via Generalizable Gaussian Splatting from Unposed Multi-View Images. arXiv preprint arXiv:2508.03643 (2025) 49. Takmaz, A., Fedele, E., Sumner, R.W., Pollefeys, M., Tombari, F., Engelmann, F.: OpenMask3D: Open-Vocabulary 3D Instance Segmentation. arXiv preprint arXiv:2306.13631 (2023) 50. Vu, T., Kim, K., Luu, T.M., Nguyen, T., Yoo, C.D.: SoftGroup for 3D Instance Segmentation on Point Clouds. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 2708–2717 (2022) 51. Wang, D., Liu, J., Gong, H., Quan, Y., Wang, D.: CompetitorFormer: Competitor Transformer for 3D Instance Segmentation. arXiv preprint arXiv:2411.14179 (2024) 52. Wang, J., Chen, M., Karaev, N., Vedaldi, A., Rupprecht, C., Novotny, D.: VGGT: Visual Geometry Grounded Transformer. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 5294–5306 (2025) 53. Wang, S., Leroy, V., Cabon, Y., Chidlovskii, B., Revaud, J.: DUSt3R: Geometric 3D Vision Made Easy. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 20697–20709 (2024) 54. Wang, X., Liu, S., Shen, X., Shen, C., Jia, J.: Associatively Segmenting Instances and Semantics in Point Clouds. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 4096–4105 (2019) 55. Wang, Y., Zhou, J., Zhu, H., Chang, W., Zhou, Y., Li, Z., Chen, J., Pang, J., Shen, C., He, T.: π3: Permutation-Equivariant Visual Geometry Learning. arXiv preprint arXiv:2507.13347 (2025) 56. Wu, C., Wang, H., Ji, J., Yao, Y., Du, C., Kang, J., Fu, Y., Cao, L.: MVGGT: Multimodal Visual Geometry Grounded Transformer for Multiview 3D Referring Expression Segmentation. arXiv preprint arXiv:2601.06874 (2026) 57. Xie, C., Xiang, Y., Mousavian, A., Fox, D.: Unseen Object Instance Segmenta-tion for Robotic Environments. IEEE Transactions on Robotics 37 (5), 1343–1359 (2021) 58. Xu, Q., Wei, D., Zhao, L., Li, W., Huang, Z., Ji, S., Liu, P.: SIU3R: Simultaneous Scene Understanding and 3D Reconstruction Beyond Feature Alignment. arXiv preprint arXiv:2507.02705 (2025) 59. Yang, B., Wang, J., Clark, R., Hu, Q., Wang, S., Markham, A., Trigoni, N.: Learn-ing Object Bounding Boxes for 3D Instance Segmentation on Point Clouds. Ad-vances in neural information processing systems 32 (2019) 60. Yao, L., Wang, Y., Liu, M., Chau, L.P.: SGIFormer: Semantic-guided and Geometric-enhanced Interleaving Transformer for 3D Instance Segmentation. IEEE Transactions on Circuits and Systems for Video Technology 35 (3), 2276–2288 (2024) 61. Yeshwanth, C., Liu, Y.C., Nießner, M., Dai, A.: ScanNet++: A High-Fidelity Dataset of 3D Indoor Scenes. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 12–22 (2023) 62. Yi, L., Zhao, W., Wang, H., Sung, M., Guibas, L.J.: GSPN: Generative Shape Proposal Network for 3D Instance Segmentation in Point Cloud. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 3947–3956 (2019) 63. Yin, Y., Liu, Y., Xiao, Y., Cohen-Or, D., Huang, J., Chen, B.: SAI3D: Segment Any Instance in 3D Scenes. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 3292–3302 (2024) SegVGGT 19 64. Zhang, B., Wonka, P.: Point Cloud Instance Segmentation Using Probabilistic Em-beddings. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 8883–8892 (2021) 65. Zhuang, C., Li, S., Ding, H.: Instance Segmentation Based 6D Pose Estimation of Industrial Objects Using Point Clouds for Robotic Bin-picking. Robotics and Computer-Integrated Manufacturing 82 , 102541 (2023) 66. Zust, L., Cabon, Y., Marrie, J., Antsfeld, L., Chidlovskii, B., Revaud, J., Csurka, G.: PanSt3R: Multi-view Consistent Panoptic Segmentation. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 5856–5866 (2025) 20 J. Qu et al. 
+
+# A Appendix 
+
+The appendix is organized as follows. Sec. A.1 presents a detailed efficiency anal-ysis of SegVGGT, including scalability evaluations with varying input lengths and runtime comparisons against recent joint reconstruction and segmentation methods. Sec. A.2 provides additional ablation studies examining the contri-butions of joint optimization and unified architecture design. Sec. A.3 provides more complete visualizations illustrating the effect of the FADA module on cross-attention maps across transformer layers. Sec. A.4 supplements the implementa-tion details in the main paper with full specifications of model configuration, data augmentation, optimization strategy, and loss function weights. Sec. A.5 elabo-rates on the evaluation protocols, including the 2D-to-3D mapping strategy and the setup of the two-stage and RGB image-based baselines. Sec. A.6 evaluates the geometric reconstruction capabilities of our method, demonstrating that the joint training paradigm maintains robust 3D geometry without negative trans-fer. Finally, Sec. A.7 discusses the current limitations of SegVGGT and outlines promising directions for future work, and Sec. A.8 presents qualitative results on joint 3D reconstruction and instance segmentation. 
+
+A.1 Efficiency Analysis 
+
+In this subsection, we analyze the efficiency of SegVGGT and provide a detailed comparison with existing methods that jointly perform 3D reconstruction and instance segmentation. 
+
+Evaluation Protocol. All efficiency evaluations are conducted on a single NVIDIA A100 GPU. For a fair assessment, we define the total runtime as the duration from receiving a sequence of multi-view RGB images to producing all information required for unified 3D scene understanding. This includes geome-try reconstruction outputs such as depth maps and camera poses, or point maps depending on the method, together with the final 3D instance masks. We mea-sure the inference time and post-processing time separately. To ensure stable profiling, we execute 1 warmup run followed by 3 repeated runs and report the average time. For SegVGGT and IGGT [28], we set the chunk size of the DPT head to 8 to balance memory usage and inference speed. The input image reso-lutions align with the official settings of each method: 518 × 392 for our method, 
+
+504 × 336 for IGGT, and 512 × 512 for PanSt3R [66]. 
+
+Scalability Analysis of SegVGGT. We first evaluate the scalability of our approach by varying the number of input frames from 10 to 200. As shown in Table 5, the inference time is decomposed into the transformer aggregator and the decoding heads. The post-processing stage, which converts the raw model outputs into the final 3D reconstruction and instance segmentation results, is highly efficient in our framework. In practice, it only requires the object queries to predict semantic categories and compute dot products with the instance-level feature maps to produce masks, together with lightweight score calculations. Compared with conventional pipelines that rely on extensive post-processing to obtain refined 3D geometry before performing instance segmentation, our SegVGGT 21 
+
+method avoids these costly stages and instead performs 3D reconstruction and instance segmentation jointly in a single feed-forward process, resulting in low computational overhead that scales well with the input length. Consequently, processing a standard sequence of 100 frames takes only 15.9 seconds in total, indicating strong system-level efficiency.                                
+
+> Table 5: Scalability and efficiency analysis of SegVGGT. We report the runtime breakdown, including aggregator, decoding heads, post-processing, total runtime, and peak reserved memory under different numbers of input frames. Input Frames Model Inference (s) Postprocess (s) Total Time (s) Memory (GB) Aggr. Heads Total 10 0.42 0.06 0.48 0.69 1.17 7.04 20 0.90 0.12 1.02 1.40 2.42 8.18 50 3.01 0.28 3.29 3.35 6.64 15.49 100 8.69 0.56 9.25 6.65 15.90 27.67 200 28.30 1.10 29.40 14.14 43.54 52.04
+
+Comparison with Previous Methods. In Table 6, we fix the input sequence length to 100 frames and compare the efficiency of SegVGGT against recent joint models, PanSt3R [66] and IGGT [28]. The results show clear differences in post-processing efficiency. While IGGT achieves slightly faster model inference, its overall runtime is dominated by the post-processing stage because instance masks are produced through iterative heuristic clustering. PanSt3R also requires substantial time for both inference and post-processing. Even when the proposed QUBO optimization module is disabled, the total runtime remains nearly 4×
+
+slower than ours. In contrast, our unified framework requires only 6.65 seconds for post-processing and achieves the fastest total runtime of 15.90 seconds.                      
+
+> Table 6: Efficiency comparison under 100 input frames. We benchmark the runtime and peak reserved memory against existing joint models. †denotes PanSt3R executed without its QUBO post-processing method. Method Model Inference (s) Postprocess (s) Total Time (s) Memory (GB) PanSt3R [66] 41.80 340.16 381.96 14.32
+> PanSt3R †[66] 41.80 17.83 59.63 14.32
+> IGGT [28] 7.52 1113.64 1121.16 35.21
+> Ours 9.25 6.65 15.90 27.67
+
+Regarding peak memory usage, PanSt3R consumes 14.32 GB of memory, compared with 27.67 GB for our method and 35.21 GB for IGGT. This dif-ference arises from the underlying 3D reconstruction architectures. PanSt3R is 22 J. Qu et al. 
+
+built upon MUSt3R [3], which avoids explicit global all-view attention interac-tions during inference. Although this design requires less memory, it limits global contextual modeling across multiple views and may lead to suboptimal perfor-mance. In contrast, our method employs global attention to maintain consistent multi-view representations, achieving an efficient trade-off between memory us-age and segmentation performance. 
+
+A.2 More Ablation Studies 
+
+In this subsection, we present additional ablation studies to further analyze the contributions of different components in SegVGGT and provide deeper insights into the design choices made in our approach, complementing the ablation studies discussed in Sec. 4.4. 
+
+Ablation on Joint Optimization. In our unified framework, the image tokens are processed by the pre-existing frame and global attention modules inherited from VGGT [52], while the object queries are updated via the newly introduced cross-attention and self-attention layers. To validate our training strategy, we in-vestigate whether the pre-existing geometric attention modules should be frozen or jointly fine-tuned alongside the instance reasoning branch. As shown in Table 7, freezing the frame and global attention layers strictly limits the image tokens to represent pure multi-view geometry, resulting in a suboptimal performance of 23.4 mAP. In contrast, by jointly fine-tuning these modules using LoRA as described in our implementation details in Sec. 4.1 and Sec. A.4, the performance increases to 31.9 mAP, bringing a substantial im-provement of +8.5 mAP. This significant gap reveals a crucial insight that 3D instance segmentation is not merely a downstream task built on top of frozen 3D geometry. Instead, allowing the underlying geometric image tokens to dy-namically adapt and become “instance-aware” during training is essential. This joint optimization ensures a synergistic co-evolution, where high-level semantic gradients inherently enhance the multi-view geometric representations, leading to far more accurate instance localization and segmentation.         
+
+> Table 7: Ablation on Joint Optimization. We evaluate the impact of jointly fine-tuning the pre-existing frame and global attention modules versus freezing them and only training the newly introduced instance reasoning parameters. Optimization Strategy mAP mAP 50 mAP 25
+> Freeze Frame & Global Attention 23.4 35.1 42.0 Joint Optimization (Ours) 31.9 45.7 53.7
+
+Ablation on Unified Architecture. To validate the necessity of deeply inte-grating instance understanding into the visual geometry grounded transformer, we compare SegVGGT against a decoupled two-stage alternative. In this base-line, we utilize VGGT [52] not only for 3D reconstruction but also to extract SegVGGT 23 
+
+multi-view geometric features, which are then fed into a separate mask decoder based on Mask2Former [6] to perform 3D instance segmentation. To ensure a fair comparison, we enable the fine-tuning of the VGGT parameters and apply the same learning rate and optimization strategy as used in our method.              
+
+> Table 8: Ablation on Unified Architecture. We compare our unified architecture with a decoupled two-stage alternative that performs 3D instance segmentation using a separate mask decoder based on Mask2Former [6]. (FT) denotes that the pre-trained VGGT backbone is jointly fine-tuned using LoRA [14] to ensure a fair comparison. Method mAP mAP 50 mAP 25
+> VGGT (FT) + Mask Decoder with 6 Layers 22.4 33.7 40.1 VGGT (FT) + Mask Decoder with 12 Layers 23.4 35.1 41.4 VGGT (FT) + Mask Decoder with 18 Layers 16.7 25.7 31.3
+> SegVGGT (Our Unified Architecture) 31.9 45.7 53.7
+
+As shown in Table 8, we vary the depth of this isolated mask decoder from 6 to 18 layers. The results clearly demonstrate that our unified architecture substantially outperforms the best-performing decoupled baseline (12 layers) by a massive margin of 8.5 mAP. Furthermore, we observe that naively increasing the capacity of the separated decoder from 12 to 18 layers leads to a severe performance degradation of 6.7 mAP, making it even worse than the 6-layer decoder. This sharp decline suggests that without progressive co-evolution with multi-view global tokens, a heavy and isolated mask decoder becomes difficult to optimize and leads to suboptimal performance. In contrast, by embedding object queries directly into the transformer blocks to seamlessly absorb multi-level geometric and spatial cues, SegVGGT achieves significantly more robust and accurate 3D instance segmentation. 
+
+A.3 More Visualizations of FADA Module 
+
+In this subsection, we provide more complete visualizations for Fig. 3 to further demonstrate the effectiveness of the Frame-level Attention Distribution Align-ment (FADA) module in mitigating the attention dispersion problem. As illustrated in Fig. 4, we visualize the similarity maps between the query corresponding to the TV instance and the image tokens from all input frames in the 15th and 23rd cross-attention layers. The results provide a clearer and more comprehensive view. Without the FADA module, the query attention is dispersed across different views of the entire scene, making it difficult to accurately focus on the target instance. In contrast, after introducing the FADA module, the query attention not only concentrates on the frames where the target instance appears but also accurately localizes the instance within those frames. This demonstrates that the FADA module enhances the model’s ability to focus on target instances, thereby improving instance segmentation performance. 24 J. Qu et al. RGB Image without FADA with FADA  
+
+> layer 15 layer 23
+> Fig. 4: Visualization of the FADA module’s effect. We visualize the similarity maps between the query corresponding to the TV instance and the image tokens in the 15th and 23th cross-attention layers. Without the FADA module, the query attention is dispersed across the entire scene. After introducing FADA, the query focuses much more accurately on the TV, indicating that FADA improves the model’s ability to attend to target instances and thereby enhances instance segmentation performance.
+
+Furthermore, comparing the attention maps at the 15th and 23rd layers re-veals an additional trend. Without the FADA module, the attention maps be-come more diffuse and less accurate as the depth increases. In contrast, with the FADA module, the attention progressively becomes more concentrated at deeper layers. This observation further indicates that the FADA module effec-tively guides the model to gradually focus on the target instance. We provide attention map visualizations of this query across all transformer layers in the with_FADA and without_FADA folders of the supplementary material for a more comprehensive illustration. 
+
+A.4 More Implementation Details 
+
+In this subsection, we provide additional implementation details of SegVGGT as a supplement to Sec. 4.1 to ensure full reproducibility. 
+
+Model Configuration and Data Augmentation. Consistent with previous transformer-based segmentation paradigms [25, 31, 47], we initialize the network with O = 400 learnable object queries. During training, the input images are resized to a long-edge resolution of 518. Following VGGT [52], to improve the SegVGGT 25 
+
+scale invariance of the model, we randomly augment the aspect ratio of the input images, sampling between 0.33 and 1.0. Regarding batch construction, while we randomly sample 2-24 frames per scene with appropriate view intervals, we limit the total number of images in a single training batch to a maximum of 48 to satisfy GPU memory constraints. Training is conducted on 8 NVIDIA A100 GPUs and takes approximately two days. 
+
+Optimization Strategy. The network is optimized using the AdamW optimizer with a cosine annealing learning rate schedule and linear warmup. Gradient clip-ping is applied to stabilize the training process. Specifically, the newly introduced parameters (e.g., cross-attention, self-attention, and DPT head for instance-level feature maps) are trained with a learning rate of 2 × 10 −4. Meanwhile, except for the DINO [37] backbone which remains frozen, the pre-existing parameters are fine-tuned with a lower learning rate of 6 × 10 −5 to prevent overfitting and ensure stable convergence. In addition, the frame attention and global atten-tion layers in the transformer are further fine-tuned with LoRA [14] to reduce training overhead, with the LoRA rank set to 32. 
+
+Loss and Cost Function Weights. For the overall training objective, the weighting coefficients balancing the geometric and instance learning tasks are empirically set as follows: λcamera = 5 .0, λdepth = 1 .0, λcls = 0 .5, λmask = 1 .0,and λjs = 0 .5. During the bipartite matching phase, the weights for the Hungar-ian matching cost function exactly match their corresponding loss counterparts. 
+
+A.5 More Evaluation Details 
+
+In this subsection, we provide additional evaluation details not covered in Sec. 4 to ensure complete transparency and full reproducibility of the results. 
+
+Mapping Protocol for Benchmark Evaluation. As discussed in the main text, the ground-truth instance annotations in the benchmarks are defined on the official 3D point clouds or meshes. To evaluate the 3D instance segmentation metric for our joint framework, we must map our predicted multi-view consistent 2D masks to the ground-truth 3D point clouds. To ensure a fair comparison, we employ a unified mapping strategy utilizing the ground-truth depth maps and camera poses. Specifically, for the predicted mask associated with the object query ˆqj , we project each 3D point from the ground-truth point cloud onto all sampled views. We then compute its visibility and determine whether the projected pixel falls within the predicted mask. Furthermore, the ground-truth labels in ScanNetv2 [7] and ScanNet200 [43] are provided at the segment level, an over-segmentation of the raw point cloud. Since most point cloud-based methods evaluated in Table 1 operate directly on these segments, we follow ODIN [15] to ensure strict fairness by performing majority voting among all points within each superpoint to determine its final predicted label, which is then assigned back to all its constituent 3D points. 
+
+Setup of the Two-Stage Baseline. In Table 1, we establish a fully decoupled two-stage baseline that performs both 3D reconstruction and instance segmen-tation from multi-view RGB images. This pipeline first employs VGGT [52] for 3D reconstruction, followed by OneFormer3D [23] for 3D instance segmentation 26 J. Qu et al. 
+
+on the reconstructed point cloud. To ensure a fair comparison, we apply ap-propriate post-processing to the reconstructed point cloud, including confidence filtering, downsampling, z-up alignment, and rescaling to the metric scale of the ground-truth point cloud. These steps aim to align the reconstructed geometry with the training data distribution of OneFormer3D. Throughout this process, we strictly preserve the mapping between each reconstructed 3D point and its source 2D pixels to follow the same evaluation protocol as our method. Despite these adjustments, the baseline exhibits a substantial performance degradation, suggesting that even a widely adopted point cloud-based method such as One-Former3D remains sensitive to reconstruction noise. This result indicates that, without extensive post-processing, decoupled pipelines may struggle to handle imperfect reconstructed geometry in real-world settings, further supporting the motivation behind our unified framework. 
+
+Setup of the RGB Image-Based Baselines. For the baselines evaluated in Table 2, we utilize their official open-source codebases and pre-trained models with default hyperparameter configurations. To ensure a fair comparison, the input image sequences, the 2D-to-3D mapping procedures, and the metric cal-culation protocols are kept identical to those used for our method. 
+
+A.6 Geometric Performance Analysis 
+
+While the primary focus of SegVGGT is to establish a unified framework for 3D instance segmentation, our model inherently produces dense multi-view geome-try. In this subsection, we further evaluate its geometric reconstruction capabil-ity using dense depth estimation as a proxy, showing that the method preserves strong 3D geometry while achieving efficient instance segmentation. 
+
+Evaluation Protocol. Following the evaluation protocol adopted by recent feed-forward reconstruction models [52, 53, 55], we randomly sample 10 scenes from the ScanNet test set and extract a sequence of 10 frames for each scene. We report the Absolute Relative Error (Abs Rel) and prediction accuracy at a threshold of δ < 1.25 . To evaluate geometric consistency across views rather than monocular depth estimation quality, a single global scale is estimated for each image sequence to align the predicted depth maps with the ground-truth depth before computing the metrics.              
+
+> Table 9: Geometric Performance on ScanNet. We evaluate multi-view geometric consistency using dense depth estimation. A single global scale is estimated for each input sequence to align predictions with ground-truth depth. Method Abs Rel ↓δ < 1.25 ↑
+> VGGT (Pre-trained) [52] 0.0297 0.989
+> Ours (Geometry fine-tuning only) 0.0311 0.986 Ours (Joint fine-tuning with instance segmentation) 0.0307 0.987 SegVGGT 27
+
+Results and Analysis. In Table 9, we compare three settings: (1) the origi-nal pre-trained VGGT model without any fine-tuning; (2) our architecture fine-tuned only for geometric reconstruction using Lgeo on the ScanNet200 [43] train-ing set; and (3) our full method jointly fine-tuned for both reconstruction and 3D instance segmentation. Note that settings (2) and (3) use the same training data and optimization strategies, differing only in the inclusion of instance segmen-tation supervision and the additional parameters of the segmentation branch. As expected, the pre-trained VGGT model achieves the strongest geometric performance, benefiting from its large-scale and diverse pre-training data. Fine-tuning solely for geometry task on the considerably smaller ScanNet200 dataset leads to a slight performance drop, which is likely due to partial overfitting caused by the limited scale and diversity of the training data. When jointly fine-tuned for both geometry and instance segmentation, the geometric performance is compa-rable to the geometry-only fine-tuning setting and shows a slight improvement. This observation suggests that introducing instance segmentation does not nega-tively affect geometric representation. Instead, the additional instance-level cues may provide useful structural information that helps maintain stable geomet-ric predictions under the same training data constraints. Overall, these findings highlight the potential of our unified paradigm. While focusing on 3D instance-level understanding, SegVGGT maintains reliable scene-level geometric recon-struction. Future work that incorporates more diverse and large-scale training data may further improve both geometric and semantic capabilities. 
+
+A.7 Limitations and Future Work 
+
+While SegVGGT presents an elegant and effective unified framework for joint 3D reconstruction and instance segmentation, it still exhibits some limitations that warrant further exploration. First, due to the inherent design of the underly-ing VGGT [52] architecture, the geometry estimated by our model from unposed RGB images does not recover the absolute metric scale of the real world. Resolv-ing this is crucial for physical downstream tasks such as autonomous navigation and robotic manipulation. Future work may explore fine-tuning with data that provides real-world scale, or extending instance segmentation to other geomet-ric foundation models [55] with metric scale. Notably, our architecture can be easily adapted to such models. Second, the current model is trained on a lim-ited number of indoor datasets with predefined, closed-set semantic categories. This restricts its ability to recognize novel objects or generalize to highly di-verse, in-the-wild environments. A promising future direction is to scale up the multi-view training data and integrate pre-trained VLMs, thereby extending our unified paradigm toward open-vocabulary 3D scene understanding. 
+
+A.8 Qualitative Performance 
+
+In this subsection, we present qualitative results to visually demonstrate the performance of SegVGGT in joint 3D reconstruction and instance segmentation. 28 J. Qu et al. RGB Images Instance Features Instance Mask Depth Maps  
+
+> Fig. 5: Qualitative 2D results on ScanNet200. Given multi-view RGB inputs, SegVGGT simultaneously predicts dense depth maps, cross-view consistent instance-level feature maps, and 2D instance masks. Spatially adjacent objects of the same class are clearly separated both in the feature space and in the resulting instance masks.
+
+Multi-View 2D Predictions. We first visualize the multi-view 2D predictions prior to 3D unprojection. As shown in Fig. 5, we sample three viewpoints with sufficient viewpoint separation from a scene in ScanNet200 [43]. Our model con-currently predicts accurate dense depth maps and discriminative instance-level feature maps. By applying PCA to project the high-dimensional features into the RGB color space, we observe that features belonging to different instances are clearly separated. Notably, the model learns distinct feature representations even for spatially adjacent objects sharing the same semantic category. Moreover, the predicted instance-level feature maps remain consistent across views, which leads to multi-view consistent instance masks. Consequently, simply computing the dot product between these dense features and the object queries efficiently yields precise 2D instance masks with sharp boundaries, as shown in the last column. These visualizations intuitively demonstrate the strong multi-view ge-ometry reasoning and instance-level understanding capabilities of SegVGGT. 
+
+Unified 3D Scene Reconstruction and Segmentation. By simply unpro-jecting the aforementioned 2D predictions in Fig. 5 into a unified 3D coordinate space, we obtain the final 3D scene reconstruction and instance segmentation without requiring complex post-processing. Fig. 6 presents a qualitative compar-ison between our predictions and the ground truth. SegVGGT reconstructs the scene geometry while producing accurate instance segmentation results. Con-sistent with the 2D feature visualizations, our method separates and assigns SegVGGT 29 
+
+distinct instance IDs to spatially clustered objects of the same semantic class, demonstrating the advantage of our framework. Predictions Ground Truth  
+
+> Fig. 6: Qualitative 3D results on ScanNet200. By directly unprojecting the 2D predictions, our method yields high-quality 3D scene reconstructions and precise in-stance segmentations. Note that instance colors are randomly assigned for visualization purposes and do not necessarily correspond between the prediction and ground truth.
+
+Qualitative Comparison on ScanNet++. We further compare the quali-tative performance of SegVGGT with the recent joint reconstruction and seg-mentation baseline IGGT [28] on a complex scene from the high-fidelity Scan-Net++ [61] dataset. Notably, while IGGT is trained on a dataset that explicitly includes ScanNet++ scenes, our model is evaluated in a zero-shot setting with-out fine-tuning on any ScanNet++ data. As illustrated in Fig. 7, two challenging regions containing spatially adjacent instances of the same semantic category are highlighted using blue and green boxes. Since IGGT generates instance masks through a clustering process over predicted features, closely located objects with similar features may be grouped together, leading to under-segmentation where multiple instances are merged into a single prediction. We also note that, due to the absence of ScanNet++ training data, the reconstructed geometry pro-duced by our model exhibits slight noise near object boundaries. Nevertheless, our query-based method still partitions these adjacent objects into distinct in-stances, suggesting stronger instance-level understanding. Overall, these visual-ization results indicate that our proposed framework maintains stable instance segmentation performance under cross-dataset evaluation and demonstrates a certain degree of generalization capability. 30 J. Qu et al. Ours IGGT 
+
+Fig. 7: Qualitative comparison with IGGT on ScanNet++. The blue and green bounding boxes highlight spatially adjacent instances of the same semantic class. While the clustering-based IGGT struggles to separate these closely located objects, our SegVGGT accurately disambiguates and segments them into distinct instances.

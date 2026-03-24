@@ -1,16 +1,654 @@
 {
   "mode": "standard",
-  "generated_at": "2026-03-24T08:54:54.005342+00:00",
+  "generated_at": "2026-03-24T09:01:03.583161+00:00",
   "stats": {
     "mode": "standard",
-    "tag_count": 0,
-    "deep_divecandidates": 0,
-    "deep_cap": null,
-    "deep_selected": 0,
-    "quick_candidates": 0,
-    "quick_skim_target": 10,
-    "quick_selected": 0
+    "tag_count": 1,
+    "deep_divecandidates": 6,
+    "deep_cap": 6,
+    "deep_selected": 6,
+    "quick_candidates": 29,
+    "quick_skim_target": 11,
+    "quick_selected": 11
   },
-  "deep_dive": [],
-  "quick_skim": []
+  "deep_dive": [
+    {
+      "id": "2603.19926v1",
+      "title": "SegVGGT: Joint 3D Reconstruction and Instance Segmentation from Multi-View Images",
+      "abstract": "3D instance segmentation methods typically rely on high-quality point clouds or posed RGB-D scans, requiring complex multi-stage processing pipelines, and are highly sensitive to reconstruction noise. While recent feed-forward transformers have revolutionized multi-view 3D reconstruction, they remain decoupled from high-level semantic understanding. In this work, we present SegVGGT, a unified end-to-end framework that simultaneously performs feed-forward 3D reconstruction and instance segmentation directly from multi-view RGB images. By introducing object queries that interact with multi-level geometric features, our method deeply integrates instance identification into the visual geometry grounded transformer. To address the severe attention dispersion problem caused by the massive number of global image tokens, we propose the Frame-level Attention Distribution Alignment (FADA) strategy. FADA explicitly guides object queries to attend to instance-relevant frames during training, providing structured supervision without extra inference overhead. Extensive experiments demonstrate that SegVGGT achieves the state-of-the-art performance on ScanNetv2 and ScanNet200, outperforming both recent joint models and RGB-D-based approaches, while exhibiting strong generalization capabilities on ScanNet++.",
+      "authors": [
+        "Jinyuan Qu",
+        "Hongyang Li",
+        "Lei Zhang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-20T13:10:46+00:00",
+      "link": "https://arxiv.org/pdf/2603.19926v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "joint 3D reconstruction and instance segmentation from multi-view images",
+      "llm_evidence_cn": "多视图图像的联合3D重建与实例分割",
+      "llm_evidence": "多视图图像的联合3D重建与实例分割",
+      "canonical_evidence": "多视图图像的联合3D重建与实例分割",
+      "llm_tldr_en": "SegVGGT performs end-to-end 3D reconstruction and instance segmentation directly from multi-view RGB images.",
+      "llm_tldr_cn": "SegVGGT直接从多视图RGB图像中执行端到端的3D重建和实例分割。",
+      "llm_tldr": "SegVGGT直接从多视图RGB图像中执行端到端的3D重建和实例分割。",
+      "llm_tags": [
+        "query:rgb-d:composite"
+      ],
+      "matched_query_tag": "query:rgb-d:composite",
+      "matched_query_text": "Papers central to 帮我找到RGB-D多模态的实例分割相关的文章, especially work that connects or combines: RGB-D multimodal data; instance segmentation algorithms; depth information for segmentation; RGB and depth fusion strategies; cross-modal feature learning; RGB D multimodal instance segmentation research papers; state of the art RGB D instance segmentation methods; deep learning for RGB D based instance segmentation; fusion techniques for RGB D instance segmentation.",
+      "matched_requirement_id": "req-composite-rgb-d",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.20729v1",
+      "title": "Weakly supervised multimodal segmentation of acoustic borehole images with depth-aware cross-attention",
+      "abstract": "Acoustic borehole images provide high-resolution borehole-wall structure, but large-scale interpretation remains difficult because dense expert annotations are rarely available and subsurface information is intrinsically multimodal. The challenge is developing weakly supervised methods combining two-dimensional image texture with depth-aligned one-dimensional well-logs. Here, we introduce a weakly supervised multimodal segmentation framework that refines threshold-guided pseudo-labels through learned models. This preserves the annotation-free character of classical thresholding and clustering workflows while extending them with denoising, confidence-aware pseudo-supervision, and physically structured fusion. We establish that threshold-guided learned refinement provides the most robust improvement over raw thresholding, denoised thresholding, and latent clustering baselines. Multimodal performance depends strongly on fusion strategy: direct concatenation provides limited gains, whereas depth-aware cross-attention, gated fusion, and confidence-aware modulation substantially improve agreement with the weak supervisory reference. The strongest model, confidence-gated depth-aware cross-attention (CG-DCA), consistently outperforms threshold-based, image-only, and earlier multimodal baselines. Targeted ablations show its advantage depends specifically on confidence-aware fusion and structured local depth interaction rather than model complexity alone. Cross-well analyses confirm this performance is broadly stable. These results establish a practical, scalable framework for annotation-free segmentation, showing multimodal improvement is maximized when auxiliary logs are incorporated selectively and depth-aware.",
+      "authors": [
+        "Jose Luis Lima de Jesus Silva"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI",
+        "physics.geo-ph"
+      ],
+      "published": "2026-03-21T09:28:05+00:00",
+      "link": "https://arxiv.org/pdf/2603.20729v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "multimodal segmentation with depth-aware cross-attention",
+      "llm_evidence_cn": "具有深度感知交叉注意力的多模态分割",
+      "llm_evidence": "具有深度感知交叉注意力的多模态分割",
+      "canonical_evidence": "具有深度感知交叉注意力的多模态分割",
+      "llm_tldr_en": "A weakly supervised framework for multimodal borehole image segmentation using depth-aware cross-attention.",
+      "llm_tldr_cn": "一种利用深度感知交叉注意力进行多模态钻孔图像分割的弱监督框架。",
+      "llm_tldr": "一种利用深度感知交叉注意力进行多模态钻孔图像分割的弱监督框架。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "cross-modal feature learning",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.18795v1",
+      "title": "Perceptio: Perception Enhanced Vision Language Models via Spatial Token Generation",
+      "abstract": "Large Vision Language Models (LVLMs) excel at semantic understanding but struggle with fine grained spatial grounding, as the model must implicitly infer complex geometry without ever producing a spatial interpretation. We present Perceptio, a perception enhanced LVLM with 2D and 3D spatial reasoning abilities, enabled via explicit semantic segmentation tokens and depth tokens generated directly within the autoregressive sequence. Concretely, we (i) distill a VQVAE depth codebook from a strong monocular teacher to tokenize dense depth into compact sequences, and (ii) integrate SAM2 based semantic segmentation tokens and VQ-VAE depth tokens inside the LLM so the model first emits spatial tokens and then answers. To stabilize depth token generation, we introduce novel composite depth-token objectives (marker, token, and count losses) and a soft-merging technique for differentiable reconstruction. We adopt a multi-task co-training strategy across diverse datasets, letting the model learn perception tokens to tackle multiple downstream tasks. Building on InternVL, Perceptio achieves state-of-the-art performance across benchmarks: improving referring expression segmentation by +0.8/+1.4/+1.1 cIoU on RefCOCO/+/g HardBLINK spatial understanding accuracy by 10.3%, and MMBench accuracy by 1.0%, demonstrating that explicit spatial chain-of-thought materially strengthens spatial grounding in LVLMs.",
+      "authors": [
+        "Yuchen Li",
+        "Amanmeet Garg",
+        "Shalini Chaudhuri",
+        "Rui Zhao",
+        "Garin Kessler"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-03-19T11:46:01+00:00",
+      "link": "https://arxiv.org/pdf/2603.18795v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "explicit semantic segmentation tokens and depth tokens in LVLMs",
+      "llm_evidence_cn": "大型视觉语言模型中的显式语义分割标记和深度标记",
+      "llm_evidence": "大型视觉语言模型中的显式语义分割标记和深度标记",
+      "canonical_evidence": "大型视觉语言模型中的显式语义分割标记和深度标记",
+      "llm_tldr_en": "Perceptio enhances LVLMs with 2D/3D spatial reasoning via integrated segmentation and depth tokens.",
+      "llm_tldr_cn": "Perceptio通过集成分割和深度标记，增强了大型视觉语言模型的2D/3D空间推理能力。",
+      "llm_tldr": "Perceptio通过集成分割和深度标记，增强了大型视觉语言模型的2D/3D空间推理能力。",
+      "llm_tags": [
+        "query:rgb-d:composite"
+      ],
+      "matched_query_tag": "query:rgb-d:composite",
+      "matched_query_text": "Papers central to 帮我找到RGB-D多模态的实例分割相关的文章, especially work that connects or combines: RGB-D multimodal data; instance segmentation algorithms; depth information for segmentation; RGB and depth fusion strategies; cross-modal feature learning; RGB D multimodal instance segmentation research papers; state of the art RGB D instance segmentation methods; deep learning for RGB D based instance segmentation; fusion techniques for RGB D instance segmentation.",
+      "matched_requirement_id": "req-composite-rgb-d",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.22182v1",
+      "title": "Cross-Modal Reinforcement Learning for Navigation with Degraded Depth Measurements",
+      "abstract": "This paper presents a cross-modal learning framework that exploits complementary information from depth and grayscale images for robust navigation. We introduce a Cross-Modal Wasserstein Autoencoder that learns shared latent representations by enforcing cross-modal consistency, enabling the system to infer depth-relevant features from grayscale observations when depth measurements are corrupted. The learned representations are integrated with a Reinforcement Learning-based policy for collision-free navigation in unstructured environments when depth sensors experience degradation due to adverse conditions such as poor lighting or reflective surfaces. Simulation and real-world experiments demonstrate that our approach maintains robust performance under significant depth degradation and successfully transfers to real environments.",
+      "authors": [
+        "Omkar Sawant",
+        "Luca Zanatta",
+        "Grzegorz Malczyk",
+        "Kostas Alexis"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-03-23T16:45:03+00:00",
+      "link": "https://arxiv.org/pdf/2603.22182v1",
+      "tags": [
+        "keyword:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "cross-modal learning between depth and grayscale images",
+      "llm_evidence_cn": "深度图与灰度图之间的跨模态学习",
+      "llm_evidence": "深度图与灰度图之间的跨模态学习",
+      "canonical_evidence": "深度图与灰度图之间的跨模态学习",
+      "llm_tldr_en": "A cross-modal reinforcement learning framework for navigation using shared latent representations of depth and RGB.",
+      "llm_tldr_cn": "一种利用深度和RGB共享潜表征进行导航的跨模态强化学习框架。",
+      "llm_tldr": "一种利用深度和RGB共享潜表征进行导航的跨模态强化学习框架。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "cross-modal feature learning",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.21166v1",
+      "title": "Training-Free Instance-Aware 3D Scene Reconstruction and Diffusion-Based View Synthesis from Sparse Images",
+      "abstract": "We introduce a novel, training-free system for reconstructing, understanding, and rendering 3D indoor scenes from a sparse set of unposed RGB images. Unlike traditional radiance field approaches that require dense views and per-scene optimization, our pipeline achieves high-fidelity results without any training or pose preprocessing. The system integrates three key innovations: (1) A robust point cloud reconstruction module that filters unreliable geometry using a warping-based anomaly removal strategy; (2) A warping-guided 2D-to-3D instance lifting mechanism that propagates 2D segmentation masks into a consistent, instance-aware 3D representation; and (3) A novel rendering approach that projects the point cloud into new views and refines the renderings with a 3D-aware diffusion model. Our method leverages the generative power of diffusion to compensate for missing geometry and enhances realism, especially under sparse input conditions. We further demonstrate that object-level scene editing such as instance removal can be naturally supported in our pipeline by modifying only the point cloud, enabling the synthesis of consistent, edited views without retraining. Our results establish a new direction for efficient, editable 3D content generation without relying on scene-specific optimization. Project page: https://jiatongxia.github.io/TID3R/",
+      "authors": [
+        "Jiatong Xia",
+        "Lingqiao Liu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-22T10:56:15+00:00",
+      "link": "https://arxiv.org/pdf/2603.21166v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "2D-to-3D instance lifting from RGB images",
+      "llm_evidence_cn": "从RGB图像进行2D到3D的实例提升",
+      "llm_evidence": "从RGB图像进行2D到3D的实例提升",
+      "canonical_evidence": "从RGB图像进行2D到3D的实例提升",
+      "llm_tldr_en": "A training-free system that propagates 2D segmentation masks into consistent 3D instance representations.",
+      "llm_tldr_cn": "一种无需训练的系统，可将2D分割掩码传播为一致的3D实例表示。",
+      "llm_tldr": "一种无需训练的系统，可将2D分割掩码传播为一致的3D实例表示。",
+      "llm_tags": [
+        "query:rgb-d:composite"
+      ],
+      "matched_query_tag": "query:rgb-d:composite",
+      "matched_query_text": "Papers central to 帮我找到RGB-D多模态的实例分割相关的文章, especially work that connects or combines: RGB-D multimodal data; instance segmentation algorithms; depth information for segmentation; RGB and depth fusion strategies; cross-modal feature learning; RGB D multimodal instance segmentation research papers; state of the art RGB D instance segmentation methods; deep learning for RGB D based instance segmentation; fusion techniques for RGB D instance segmentation.",
+      "matched_requirement_id": "req-composite-rgb-d",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.21999v1",
+      "title": "STENet: Superpixel Token Enhancing Network for RGB-D Salient Object Detection",
+      "abstract": "Transformer-based methods for RGB-D Salient Object Detection (SOD) have gained significant interest, owing to the transformer's exceptional capacity to capture long-range pixel dependencies. Nevertheless, current RGB-D SOD methods face challenges, such as the quadratic complexity of the attention mechanism and the limited local detail extraction. To overcome these limitations, we propose a novel Superpixel Token Enhancing Network (STENet), which introduces superpixels into cross-modal interaction. STENet follows the two-stream encoder-decoder structure. Its cores are two tailored superpixel-driven cross-modal interaction modules, responsible for global and local feature enhancement. Specifically, we update the superpixel generation method by expanding the neighborhood range of each superpixel, allowing for flexible transformation between pixels and superpixels. With the updated superpixel generation method, we first propose the Superpixel Attention Global Enhancing Module to model the global pixel-to-superpixel relationship rather than the traditional global pixel-to-pixel relationship, which can capture region-level information and reduce computational complexity. We also propose the Superpixel Attention Local Refining Module, which leverages pixel similarity within superpixels to filter out a subset of pixels (i.e., local pixels) and then performs feature enhancement on these local pixels, thereby capturing concerned local details. Furthermore, we fuse the globally and locally enhanced features along with the cross-scale features to achieve comprehensive feature representation. Experiments on seven RGB-D SOD datasets reveal that our STENet achieves competitive performance compared to state-of-the-art methods. The code and results of our method are available at https://github.com/Mark9010/STENet.",
+      "authors": [
+        "Jianlin Chen",
+        "Gongyang Li",
+        "Zhijiang Zhang",
+        "Liang Chang",
+        "Dan Zeng"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-23T14:06:46+00:00",
+      "link": "https://arxiv.org/pdf/2603.21999v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "RGB-D salient object detection with cross-modal interaction",
+      "llm_evidence_cn": "具有跨模态交互的RGB-D显著性目标检测",
+      "llm_evidence": "具有跨模态交互的RGB-D显著性目标检测",
+      "canonical_evidence": "具有跨模态交互的RGB-D显著性目标检测",
+      "llm_tldr_en": "Proposes STENet for RGB-D salient object detection using superpixel-driven cross-modal interaction.",
+      "llm_tldr_cn": "提出STENet，利用超像素驱动的跨模态交互进行RGB-D显著性目标检测。",
+      "llm_tldr": "提出STENet，利用超像素驱动的跨模态交互进行RGB-D显著性目标检测。",
+      "llm_tags": [
+        "query:rgb-d:composite"
+      ],
+      "matched_query_tag": "query:rgb-d:composite",
+      "matched_query_text": "Papers central to 帮我找到RGB-D多模态的实例分割相关的文章, especially work that connects or combines: RGB-D multimodal data; instance segmentation algorithms; depth information for segmentation; RGB and depth fusion strategies; cross-modal feature learning; RGB D multimodal instance segmentation research papers; state of the art RGB D instance segmentation methods; deep learning for RGB D based instance segmentation; fusion techniques for RGB D instance segmentation.",
+      "matched_requirement_id": "req-composite-rgb-d",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2603.14214v1",
+      "title": "UniFusion: A Unified Image Fusion Framework with Robust Representation and Source-Aware Preservation",
+      "abstract": "Image fusion aims to integrate complementary information from multiple source images to produce a more informative and visually consistent representation, benefiting both human perception and downstream vision tasks. Despite recent progress, most existing fusion methods are designed for specific tasks (i.e., multi-modal, multi-exposure, or multi-focus fusion) and struggle to effectively preserve source information during the fusion process. This limitation primarily arises from task-specific architectures and the degradation of source information caused by deep-layer propagation. To overcome these issues, we propose UniFusion, a unified image fusion framework designed to achieve cross-task generalization. First, leveraging DINOv3 for modality-consistent feature extraction, UniFusion establishes a shared semantic space for diverse inputs. Second, to preserve the understanding of each source image, we introduce a reconstruction-alignment loss to maintain consistency between fused outputs and inputs. Finally, we employ a bilevel optimization strategy to decouple and jointly optimize reconstruction and fusion objectives, effectively balancing their coupling relationship and ensuring smooth convergence. Extensive experiments across multiple fusion tasks demonstrate UniFusion's superior visual quality, generalization ability, and adaptability to real-world scenarios. Code is available at https://github.com/dusongcheng/UniFusion.",
+      "authors": [
+        "Xingyuan Li",
+        "Songcheng Du",
+        "Yang Zou",
+        "HaoYuan Xu",
+        "Zhiying Jiang",
+        "Jinyuan Liu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-03-15T04:07:06+00:00",
+      "link": "https://arxiv.org/pdf/2603.14214v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "unified image fusion framework for multi-modal data",
+      "llm_evidence_cn": "多模态数据的统一图像融合框架",
+      "llm_evidence": "多模态数据的统一图像融合框架",
+      "canonical_evidence": "多模态数据的统一图像融合框架",
+      "llm_tldr_en": "UniFusion is a unified framework for cross-task image fusion, including multi-modal source preservation.",
+      "llm_tldr_cn": "UniFusion是一个用于跨任务图像融合的统一框架，包括多模态源信息保留。",
+      "llm_tldr": "UniFusion是一个用于跨任务图像融合的统一框架，包括多模态源信息保留。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "RGB and depth fusion strategies",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.14281v1",
+      "title": "DC-ViT: Modulating Spatial and Channel Interactions for Multi-Channel Images",
+      "abstract": "Training and evaluation in multi-channel imaging (MCI) remains challenging due to heterogeneous channel configurations arising from varying staining protocols, sensor types, and acquisition settings. This heterogeneity limits the applicability of fixed-channel encoders commonly used in general computer vision. Recent Multi-Channel Vision Transformers (MC-ViTs) address this by enabling flexible channel inputs, typically by jointly encoding patch tokens from all channels within a unified attention space. However, unrestricted token interactions across channels can lead to feature dilution, reducing the ability to preserve channel-specific semantics that are critical in MCI data. To address this, we propose Decoupled Vision Transformer (DC-ViT), which explicitly regulates information sharing using Decoupled Self-Attention (DSA), which decomposes token updates into two complementary pathways: spatial updates that model intra-channel structure, and channel-wise updates that adaptively integrate cross-channel information. This decoupling mitigates informational collapse while allowing selective inter-channel interaction. To further exploit these enhanced channel-specific representations, we introduce Decoupled Aggregation (DAG), which allows the model to learn task-specific channel importances. Extensive experiments across three MCI benchmarks demonstrate consistent improvements over existing MC-ViT approaches.",
+      "authors": [
+        "Umar Marikkar",
+        "Syed Sameed Husain",
+        "Muhammad Awais",
+        "Sara Atito"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-15T08:31:34+00:00",
+      "link": "https://arxiv.org/pdf/2603.14281v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "modulating interactions for multi-channel images",
+      "llm_evidence_cn": "调节多通道图像的交互",
+      "llm_evidence": "调节多通道图像的交互",
+      "canonical_evidence": "调节多通道图像的交互",
+      "llm_tldr_en": "Introduces DC-ViT to decouple spatial and channel interactions in multi-channel imaging.",
+      "llm_tldr_cn": "引入DC-ViT，通过解耦空间和通道交互来处理多通道成像数据。",
+      "llm_tldr": "引入DC-ViT，通过解耦空间和通道交互来处理多通道成像数据。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "cross-modal feature learning",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.14309v1",
+      "title": "In-Field 3D Wheat Head Instance Segmentation From TLS Point Clouds Using Deep Learning Without Manual Labels",
+      "abstract": "3D instance segmentation for laser scanning (LiDAR) point clouds remains a challenge in many remote sensing-related domains. Successful solutions typically rely on supervised deep learning and manual annotations, and consequently focus on objects that can be well delineated through visual inspection and manual labeling of point clouds. However, for tasks with more complex and cluttered scenes, such as in-field plant phenotyping in agriculture, such approaches are often infeasible. In this study, we tackle the task of in-field wheat head instance segmentation directly from terrestrial laser scanning (TLS) point clouds. To address the problem and circumvent the need for manual annotations, we propose a novel two-stage pipeline. To obtain the initial 3D instance proposals, the first stage uses 3D-to-2D multi-view projections, the Grounded SAM pipeline for zero-shot 2D object-centric segmentation, and multi-view label fusion. The second stage uses these initial proposals as noisy pseudo-labels to train a supervised 3D panoptic-style segmentation neural network. Our results demonstrate the feasibility of the proposed approach and show performance improvementsrelative to Wheat3DGS, a recent alternative solution for in-field wheat head instance segmentation without manual 3D annotations based on multi-view RGB images and 3D Gaussian Splatting, showcasing TLS as a competitive sensing alternative. Moreover, the results show that both stages of the proposed pipeline can deliver usable 3D instance segmentation without manual annotations, indicating promising, low-effort transferability to other comparable TLS-based point cloud segmentation tasks.",
+      "authors": [
+        "Tomislav Medic",
+        "Liangliang Nan"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-15T09:58:20+00:00",
+      "link": "https://arxiv.org/pdf/2603.14309v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "3D instance segmentation from point clouds using deep learning",
+      "llm_evidence_cn": "利用深度学习进行点云3D实例分割",
+      "llm_evidence": "利用深度学习进行点云3D实例分割",
+      "canonical_evidence": "利用深度学习进行点云3D实例分割",
+      "llm_tldr_en": "Develops a two-stage deep learning method for 3D wheat head instance segmentation from TLS point clouds.",
+      "llm_tldr_cn": "开发了一种从TLS点云中进行3D小麦穗实例分割的两阶段深度学习方法。",
+      "llm_tldr": "开发了一种从TLS点云中进行3D小麦穗实例分割的两阶段深度学习方法。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "instance segmentation algorithms",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.14701v1",
+      "title": "AURORA-KITTI: Any-Weather Depth Completion and Denoising in the Wild",
+      "abstract": "Robust depth completion is fundamental to real-world 3D scene understanding, yet existing RGB-LiDAR fusion methods degrade significantly under adverse weather, where both camera images and LiDAR measurements suffer from weather-induced corruption. In this paper, we introduce AURORA-KITTI, the first large-scale multi-modal, multi-weather benchmark for robust depth completion in the wild. We further formulate Depth Completion and Denoising (DCD) as a unified task that jointly reconstructs a dense depth map from corrupted sparse inputs while suppressing weather-induced noise. AURORA-KITTI contains over \\textit{82K} weather-consistent RGBL pairs with metric depth ground truth, spanning diverse weather types, three severity levels, day and night scenes, paired clean references, lens occlusion conditions, and textual descriptions. Moreover, we introduce DDCD, an efficient distillation-based baseline that leverages depth foundation models to inject clean structural priors into in-the-wild DCD training. DDCD achieves state-of-the-art performance on AURORA-KITTI and the real-world DENSE dataset while maintaining efficiency. Notably, our results further show that weather-aware, physically consistent data contributes more to robustness than architectural modifications alone. Data and code will be released upon publication.",
+      "authors": [
+        "Yiting Wang",
+        "Tim Brödermann",
+        "Hamed Haghighi",
+        "Haonan Zhao",
+        "Christos Sakaridis",
+        "Kurt Debattista",
+        "Valentina Donzella"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-16T01:18:58+00:00",
+      "link": "https://arxiv.org/pdf/2603.14701v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "RGB-LiDAR fusion for depth completion and denoising in diverse weather",
+      "llm_evidence_cn": "用于多种天气下深度补全和去噪的RGB-LiDAR融合",
+      "llm_evidence": "用于多种天气下深度补全和去噪的RGB-LiDAR融合",
+      "canonical_evidence": "用于多种天气下深度补全和去噪的RGB-LiDAR融合",
+      "llm_tldr_en": "Introduces a benchmark and method for robust RGB-LiDAR fusion-based depth completion in adverse weather.",
+      "llm_tldr_cn": "引入了恶劣天气下基于RGB-LiDAR融合的鲁棒深度补全基准和方法。",
+      "llm_tldr": "引入了恶劣天气下基于RGB-LiDAR融合的鲁棒深度补全基准和方法。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "RGB and depth fusion strategies",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.16241v1",
+      "title": "Exclusivity-Guided Mask Learning for Semi-Supervised Crowd Instance Segmentation and Counting",
+      "abstract": "Semi-supervised crowd analysis is a prominent area of research, as unlabeled data are typically abundant and inexpensive to obtain. However, traditional point-based annotations constrain performance because individual regions are inherently ambiguous, and consequently, learning fine-grained structural semantics from sparse anno tations remains an unresolved challenge. In this paper, we first propose an Exclusion-Constrained Dual-Prompt SAM (EDP-SAM), based on our Nearest Neighbor Exclusion Circle (NNEC) constraint, to generate mask supervision for current datasets. With the aim of segmenting individuals in dense scenes, we then propose Exclusivity-Guided Mask Learning (XMask), which enforces spatial separation through a discriminative mask objective. Gaussian smoothing and a differentiable center sampling strategy are utilized to improve feature continuity and training stability. Building on XMask, we present a semi-supervised crowd counting framework that uses instance mask priors as pseudo-labels, which contain richer shape information than traditional point cues. Extensive experiments on the ShanghaiTech A, UCF-QNRF, and JHU++ datasets (using 5%, 10%, and 40% labeled data) verify that our end-to-end model achieves state-of-the-art semi-supervised segmentation and counting performance, effectively bridging the gap between counting and instance segmentation within a unified framework.",
+      "authors": [
+        "Jiyang Huang",
+        "Hongru Cheng",
+        "Wei Lin",
+        "Jia Wan",
+        "Antoni B. Chan"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-17T08:25:57+00:00",
+      "link": "https://arxiv.org/pdf/2603.16241v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "instance segmentation algorithms for dense scenes",
+      "llm_evidence_cn": "针对密集场景的实例分割算法",
+      "llm_evidence": "针对密集场景的实例分割算法",
+      "canonical_evidence": "针对密集场景的实例分割算法",
+      "llm_tldr_en": "Introduces XMask for semi-supervised crowd instance segmentation using exclusivity-guided mask learning.",
+      "llm_tldr_cn": "引入 XMask，通过排他性引导的掩码学习进行半监督人群实例分割。",
+      "llm_tldr": "引入 XMask，通过排他性引导的掩码学习进行半监督人群实例分割。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "instance segmentation algorithms",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.14702v1",
+      "title": "Fractal Autoregressive Depth Estimation with Continuous Token Diffusion",
+      "abstract": "Monocular depth estimation can benefit from autoregressive (AR) generation, but direct AR modeling is hindered by the modality gap between RGB and depth, inefficient pixel-wise generation, and instability in continuous depth prediction. We propose a Fractal Visual Autoregressive Diffusion framework that reformulates depth estimation as a coarse-to-fine, next-scale autoregressive generation process. A VCFR module fuses multi-scale image features with current depth predictions to improve cross-modal conditioning, while a conditional denoising diffusion loss models depth distributions directly in continuous space and mitigates errors caused by discrete quantization. To improve computational efficiency, we organize the scale-wise generators into a fractal recursive architecture, reusing a base visual AR unit in a self-similar hierarchy. We further introduce an uncertainty-aware robust consensus aggregation scheme for multi-sample inference to improve fusion stability and provide a practical pixel-wise reliability estimate. Experiments on standard benchmarks demonstrate strong performance and validate the effectiveness of the proposed design.",
+      "authors": [
+        "Jinchang Zhang",
+        "Xinrou Kang",
+        "Guoyu Lu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-16T01:19:42+00:00",
+      "link": "https://arxiv.org/pdf/2603.14702v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "monocular depth estimation and cross-modal conditioning",
+      "llm_evidence_cn": "单目深度估计与跨模态调节",
+      "llm_evidence": "单目深度估计与跨模态调节",
+      "canonical_evidence": "单目深度估计与跨模态调节",
+      "llm_tldr_en": "A fractal autoregressive diffusion framework for continuous depth estimation from RGB images.",
+      "llm_tldr_cn": "一种用于从RGB图像进行连续深度估计的分形自回归扩散框架。",
+      "llm_tldr": "一种用于从RGB图像进行连续深度估计的分形自回归扩散框架。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "depth information for segmentation",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.16270v1",
+      "title": "MG-Grasp: Metric-Scale Geometric 6-DoF Grasping Framework with Sparse RGB Observations",
+      "abstract": "Single-view RGB-D grasp detection remains a com- mon choice in 6-DoF robotic grasping systems, which typically requires a depth sensor. While RGB-only 6-DoF grasp methods has been studied recently, their inaccurate geometric repre- sentation is not directly suitable for physically reliable robotic manipulation, thereby hindering reliable grasp generation. To address these limitations, we propose MG-Grasp, a novel depth- free 6-DoF grasping framework that achieves high-quality object grasping. Leveraging two-view 3D foundation model with camera intrinsic/extrinsic, our method reconstructs metric- scale and multi-view consistent dense point clouds from sparse RGB images and generates stable 6-DoF grasp. Experiments on GraspNet-1Billion dataset and real world demonstrate that MG-Grasp achieves state-of-the-art (SOTA) grasp performance among RGB-based 6-DoF grasping methods.",
+      "authors": [
+        "Kangxu Wang",
+        "Siang Chen",
+        "Chenxing Jiang",
+        "Shaojie Shen",
+        "Yixiang Dai",
+        "Guijin Wang"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-03-17T08:58:29+00:00",
+      "link": "https://arxiv.org/pdf/2603.16270v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "RGB-D grasp detection and dense point cloud reconstruction from RGB",
+      "llm_evidence_cn": "RGB-D抓取检测及从RGB重建稠密点云",
+      "llm_evidence": "RGB-D抓取检测及从RGB重建稠密点云",
+      "canonical_evidence": "RGB-D抓取检测及从RGB重建稠密点云",
+      "llm_tldr_en": "MG-Grasp reconstructs metric-scale point clouds from RGB to enable reliable 6-DoF robotic grasping.",
+      "llm_tldr_cn": "MG-Grasp从RGB图像重建度量级点云，实现了可靠的机器人6自由度抓取。",
+      "llm_tldr": "MG-Grasp从RGB图像重建度量级点云，实现了可靠的机器人6自由度抓取。",
+      "llm_tags": [
+        "query:rgb-d:composite"
+      ],
+      "matched_query_tag": "query:rgb-d:composite",
+      "matched_query_text": "Papers central to 帮我找到RGB-D多模态的实例分割相关的文章, especially work that connects or combines: RGB-D multimodal data; instance segmentation algorithms; depth information for segmentation; RGB and depth fusion strategies; cross-modal feature learning; RGB D multimodal instance segmentation research papers; state of the art RGB D instance segmentation methods; deep learning for RGB D based instance segmentation; fusion techniques for RGB D instance segmentation.",
+      "matched_requirement_id": "req-composite-rgb-d",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.16270v2",
+      "title": "MG-Grasp: Metric-Scale Geometric 6-DoF Grasping Framework with Sparse RGB Observations",
+      "abstract": "Single-view RGB-D grasp detection remains a common choice in 6-DoF robotic grasping systems, which typically requires a depth sensor. While RGB-only 6-DoF grasp methods has been studied recently, their inaccurate geometric representation is not directly suitable for physically reliable robotic manipulation, thereby hindering reliable grasp generation. To address these limitations, we propose MG-Grasp, a novel depth-free 6-DoF grasping framework that achieves high-quality object grasping. Leveraging two-view 3D foundation model with camera intrinsic/extrinsic, our method reconstructs metric-scale and multi-view consistent dense point clouds from sparse RGB images and generates stable 6-DoF grasp. Experiments on GraspNet-1Billion dataset and real world demonstrate that MG-Grasp achieves state-of-the-art (SOTA) grasp performance among RGB-based 6-DoF grasping methods.",
+      "authors": [
+        "Kangxu Wang",
+        "Siang Chen",
+        "Chenxing Jiang",
+        "Shaojie Shen",
+        "Yixiang Dai",
+        "Guijin Wang"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-03-17T08:58:29+00:00",
+      "link": "https://arxiv.org/pdf/2603.16270v2",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "RGB-D grasp detection and metric-scale point cloud reconstruction",
+      "llm_evidence_cn": "RGB-D抓取检测与度量尺度点云重建",
+      "llm_evidence": "RGB-D抓取检测与度量尺度点云重建",
+      "canonical_evidence": "RGB-D抓取检测与度量尺度点云重建",
+      "llm_tldr_en": "MG-Grasp reconstructs metric-scale point clouds from RGB images for reliable 6-DoF robotic grasping.",
+      "llm_tldr_cn": "MG-Grasp从RGB图像重建度量尺度点云，以实现可靠的6自由度机器人抓取。",
+      "llm_tldr": "MG-Grasp从RGB图像重建度量尺度点云，以实现可靠的6自由度机器人抓取。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "RGB-D multimodal data",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.16461v1",
+      "title": "GAP-MLLM: Geometry-Aligned Pre-training for Activating 3D Spatial Perception in Multimodal Large Language Models",
+      "abstract": "Multimodal Large Language Models (MLLMs) demonstrate exceptional semantic reasoning but struggle with 3D spatial perception when restricted to pure RGB inputs. Despite leveraging implicit geometric priors from 3D reconstruction models, image-based methods still exhibit a notable performance gap compared to methods using explicit 3D data. We argue that this gap does not arise from insufficient geometric priors, but from a misalignment in the training paradigm: text-dominated fine-tuning fails to activate geometric representations within MLLMs. Existing approaches typically resort to naive feature concatenation and optimize directly for downstream tasks without geometry-specific supervision, leading to suboptimal structural utilization. To address this limitation, we propose GAP-MLLM, a Geometry-Aligned Pre-training paradigm that explicitly activates structural perception before downstream adaptation. Specifically, we introduce a visual-prompted joint task that compels the MLLMs to predict sparse pointmaps alongside semantic labels, thereby enforcing geometric awareness. Furthermore, we design a multi-level progressive fusion module with a token-level gating mechanism, enabling adaptive integration of geometric priors without suppressing semantic reasoning. Extensive experiments demonstrate that GAP-MLLM significantly enhances geometric feature fusion and consistently enhances performance across 3D visual grounding, 3D dense captioning, and 3D video object detection tasks.",
+      "authors": [
+        "Jiaxin Zhang",
+        "Junjun Jiang",
+        "Haijie Li",
+        "Youyu Chen",
+        "Kui Jiang",
+        "Dave Zhenyu Chen"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-17T12:43:48+00:00",
+      "link": "https://arxiv.org/pdf/2603.16461v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "geometry-aligned pre-training for 3D spatial perception in MLLMs",
+      "llm_evidence_cn": "多模态大模型中用于3D空间感知的几何对齐预训练",
+      "llm_evidence": "多模态大模型中用于3D空间感知的几何对齐预训练",
+      "canonical_evidence": "多模态大模型中用于3D空间感知的几何对齐预训练",
+      "llm_tldr_en": "Activates 3D spatial perception in MLLMs using geometry-aligned pre-training and explicit 3D data.",
+      "llm_tldr_cn": "利用几何对齐预训练和显式3D数据激活多模态大模型的3D空间感知能力。",
+      "llm_tldr": "利用几何对齐预训练和显式3D数据激活多模态大模型的3D空间感知能力。",
+      "llm_tags": [
+        "query:rgb-d:composite"
+      ],
+      "matched_query_tag": "query:rgb-d:composite",
+      "matched_query_text": "Papers central to 帮我找到RGB-D多模态的实例分割相关的文章, especially work that connects or combines: RGB-D multimodal data; instance segmentation algorithms; depth information for segmentation; RGB and depth fusion strategies; cross-modal feature learning; RGB D multimodal instance segmentation research papers; state of the art RGB D instance segmentation methods; deep learning for RGB D based instance segmentation; fusion techniques for RGB D instance segmentation.",
+      "matched_requirement_id": "req-composite-rgb-d",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.16671v1",
+      "title": "$x^2$-Fusion: Cross-Modality and Cross-Dimension Flow Estimation in Event Edge Space",
+      "abstract": "Estimating dense 2D optical flow and 3D scene flow is essential for dynamic scene understanding. Recent work combines images, LiDAR, and event data to jointly predict 2D and 3D motion, yet most approaches operate in separate heterogeneous feature spaces. Without a shared latent space that all modalities can align to, these systems rely on multiple modality-specific blocks, leaving cross-sensor mismatches unresolved and making fusion unnecessarily complex.Event cameras naturally provide a spatiotemporal edge signal, which we can treat as an intrinsic edge field to anchor a unified latent representation, termed the Event Edge Space. Building on this idea, we introduce $x^2$-Fusion, which reframes multimodal fusion as representation unification: event-derived spatiotemporal edges define an edge-centric homogeneous space, and image and LiDAR features are explicitly aligned in this shared representation.Within this space, we perform reliability-aware adaptive fusion to estimate modality reliability and emphasize stable cues under degradation. We further employ cross-dimension contrast learning to tightly couple 2D optical flow with 3D scene flow. Extensive experiments on both synthetic and real benchmarks show that $x^2$-Fusion achieves state-of-the-art accuracy under standard conditions and delivers substantial improvements in challenging scenarios.",
+      "authors": [
+        "Ruishan Guo",
+        "Ciyu Ruan",
+        "Haoyang Wang",
+        "Zihang Gong",
+        "Jingao Xu",
+        "Xinlei Chen"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-17T15:36:57+00:00",
+      "link": "https://arxiv.org/pdf/2603.16671v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "cross-modality and cross-dimension fusion in shared latent space",
+      "llm_evidence_cn": "共享潜空间中的跨模态和跨维度融合",
+      "llm_evidence": "共享潜空间中的跨模态和跨维度融合",
+      "canonical_evidence": "共享潜空间中的跨模态和跨维度融合",
+      "llm_tldr_en": "Reframes multimodal fusion as representation unification in a shared Event Edge Space for flow estimation.",
+      "llm_tldr_cn": "将多模态融合重新定义为共享事件边缘空间中的表示统一，用于流估计。",
+      "llm_tldr": "将多模态融合重新定义为共享事件边缘空间中的表示统一，用于流估计。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "cross-modal feature learning",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2603.17705v1",
+      "title": "Parameter-Efficient Modality-Balanced Symmetric Fusion for Multimodal Remote Sensing Semantic Segmentation",
+      "abstract": "Multimodal remote sensing semantic segmentation enhances scene interpretation by exploiting complementary physical cues from heterogeneous data. Although pretrained Vision Foundation Models (VFMs) provide strong general-purpose representations, adapting them to multimodal tasks often incurs substantial computational overhead and is prone to modality imbalance, where the contribution of auxiliary modalities is suppressed during optimization. To address these challenges, we propose MoBaNet, a parameter-efficient and modality-balanced symmetric fusion framework. Built upon a largely frozen VFM backbone, MoBaNet adopts a symmetric dual-stream architecture to preserve generalizable representations while minimizing the number of trainable parameters. Specifically, we design a Cross-modal Prompt-Injected Adapter (CPIA) to enable deep semantic interaction by generating shared prompts and injecting them into bottleneck adapters under the frozen backbone. To obtain compact and discriminative multimodal representations for decoding, we further introduce a Difference-Guided Gated Fusion Module (DGFM), which adaptively fuses paired stage features by explicitly leveraging cross-modal discrepancy to guide feature selection. Furthermore, we propose a Modality-Conditional Random Masking (MCRM) strategy to mitigate modality imbalance by masking one modality only during training and imposing hard-pixel auxiliary supervision on modality-specific branches. Extensive experiments on the ISPRS Vaihingen and Potsdam benchmarks demonstrate that MoBaNet achieves state-of-the-art performance with significantly fewer trainable parameters than full fine-tuning, validating its effectiveness for robust and balanced multimodal fusion. The source code in this work is available at https://github.com/sauryeo/MoBaNet.",
+      "authors": [
+        "Haocheng Li",
+        "Juepeng Zheng",
+        "Shuangxi Miao",
+        "Ruibo Lu",
+        "Guosheng Cai",
+        "Haohuan Fu",
+        "Jianxi Huang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-03-18T13:23:58+00:00",
+      "link": "https://arxiv.org/pdf/2603.17705v1",
+      "tags": [
+        "keyword:RGB-D",
+        "query:RGB-D"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "multimodal symmetric fusion for semantic segmentation using heterogeneous data",
+      "llm_evidence_cn": "针对异构数据的多模态对称融合语义分割",
+      "llm_evidence": "针对异构数据的多模态对称融合语义分割",
+      "canonical_evidence": "针对异构数据的多模态对称融合语义分割",
+      "llm_tldr_en": "Proposes MoBaNet, a parameter-efficient symmetric fusion framework for multimodal remote sensing segmentation.",
+      "llm_tldr_cn": "提出MoBaNet，一种用于多模态遥感分割的高效对称融合框架。",
+      "llm_tldr": "提出MoBaNet，一种用于多模态遥感分割的高效对称融合框架。",
+      "llm_tags": [
+        "query:rgb-d"
+      ],
+      "matched_query_tag": "query:rgb-d",
+      "matched_query_text": "RGB and depth fusion strategies",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
 }

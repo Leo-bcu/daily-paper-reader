@@ -1,0 +1,665 @@
+Title: Weakly supervised multimodal segmentation of acoustic borehole images with depth-aware cross-attention
+
+URL Source: https://arxiv.org/pdf/2603.20729v1
+
+Published Time: Tue, 24 Mar 2026 00:46:12 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+# Weakly supervised multimodal segmentation of acoustic borehole images with depth-aware cross-attention 
+
+# Jose Luis Lima de Jesus Silva 1,2 
+
+> 1
+
+Federal University of Bahia, Institute of Geosciences, Department of Geophysics, Salvador, BA 40170-115, Brazil 
+
+> 2
+
+Grupo de Estudos e Aplica c¸ ˜ ao de Intelig ˆencia Artificial em Geof ´ısica (GAIA), Federal University of Bahia, Salvador, BA 40170-115, Brazil 
+
+# ABSTRACT 
+
+Acoustic borehole images provide high-resolution borehole-wall structure, but large-scale interpretation remains difficult because dense expert annotations are rarely available and subsurface information is intrinsically multimodal. The challenge is developing weakly supervised methods combining two-dimensional image texture with depth-aligned one-dimensional well-logs. Here, we introduce a weakly supervised multimodal segmentation framework that refines threshold-guided pseudo-labels through learned models. This preserves the annotation-free character of classical thresholding and clustering workflows while extending them with denoising, confidence-aware pseudo-supervision, and physically structured fusion. We establish that threshold-guided learned refinement provides the most robust improvement over raw thresholding, denoised thresholding, and latent clustering baselines. Multimodal performance depends strongly on fusion strategy: direct concatenation provides limited gains, whereas depth-aware cross-attention, gated fusion, and confidence-aware modulation substantially improve agreement with the weak supervisory reference. The strongest model, confidence-gated depth-aware cross-attention (CG-DCA), consistently outperforms threshold-based, image-only, and earlier multimodal baselines. Targeted ablations show its advantage depends specifically on confidence-aware fusion and structured local depth interaction rather than model complexity alone. Cross-well analyses confirm this performance is broadly stable. These results establish a practical, scalable framework for annotation-free segmentation, showing multimodal improvement is maximized when auxiliary logs are incorporated selectively and depth-aware. 
+
+# Introduction 
+
+High-resolution borehole acoustic image logs provide a detailed, two-dimensional view of structures within the rock around a well, revealing features such as fractures, breakouts, and enlargements caused by stress, bedding-related textures and patterns from layered sediment, and other geological attributes that are hard to capture with one-dimensional well logs alone 1, 2 . In petroleum engineering and geoscience workflows, these images are interpreted to support reservoir (rock containing hydrocarbons) and geomechanical (rock stress and strength) analysis, completion design, and subsurface risk assessment 3.However, manual interpretation is labor-intensive, subjective, and difficult to scale across large well inventories 4. As a result, we need automated methods that are accurate, robust, interpretable, and capable of leveraging complementary multimodal well data (data from different well measurement tools) 5.A major challenge is that acoustic images and conventional logs have fundamentally different structures. Acoustic images are two-dimensional datasets that show both the depth and the direction (bearing) around the borehole and display detailed patterns on the borehole wall (spatial texture). In contrast, conventional well logs, such as gamma ray (which measures natural radioactivity), density (the compactness of the formation), neutron porosity (the amount of hydrogen, indicating porosity), sonic travel time (the speed of sound through the formation), and resistivity (resistance to electrical current flow), are one-dimensional measurements recorded only by depth 6. Both data types are aligned along the depth axis, but they capture different physical properties of the subsurface formation 7. The acoustic image shows patterns and variations on the borehole wall at each depth, while customary logs provide information about the material properties sampled vertically. Successful data fusion has to account for this difference in geometry, rather than treating all channels as if they provide the same type of input 8.Another major obstacle is the scarcity of reliable dense annotations. Pixel-level or sample-level labeling of borehole images is expensive and requires expert knowledge 9. In practice, many interpretation workflows rely on threshold-based heuristics, denoising steps, and manual refinement rather than on large, curated, tagged datasets 10 . This motivates weakly supervised and self-refining approaches, which can exploit structure already present in the data without requiring fully supervised training 11 .The challenge is to turn noisy pseudo-labels into useful supervision while preventing the model from overfitting artifacts or 
+
+> arXiv:2603.20729v1 [cs.CV] 21 Mar 2026
+
+spurious multimodal correlations. Classical annotation-free approaches such as thresholding, clustering, and self-organizing maps can reveal coarse structure in borehole images 12, 13 , but they generally do not have explicit mechanisms for confidence-aware refinement, depth-aligned multimodal interaction, and selective control over auxiliary information. As a result, they are useful for exploratory partitioning but frequently remain limited in spatial coherence, multimodal interpretability, and dependability across intervals. The lack of dense manual labels is not a temporary inconvenience but a defining condition of the problem. Our framework was designed for this realistic regime of annotation-free analysis, preserving the practical advantage of no dense expert labels. At the same time, it introduces stronger refinement mechanisms to improve structural unity and multimodal interpretability. Recent multimodal learning research in petrophysics has shown that relationships between borehole image logs and conventional logs can be learned through self-organizing maps, heteroassociative mappings, and self-supervised regenerative frameworks. These enable cross-modal representation learning, probabilistic multi-output prediction from heterogeneous 1D and 2D inputs ?, and the generation or regeneration of data 14–17 . However, these approaches are mainly for generation, prediction 18 , or representation learning 19 , not dense interpretation problems. This work builds on previous research by treating multimodal petrophysical learning as a weakly supervised segmentation task applied to acoustic borehole images, aligning increasingly tightly with recent semi-supervised strategies that reduce annotation needs in similar segmentation tasks 20 . We develop a geometry-aware fusion strategy where images are treated as depth-azimuth fields, whereas conventional logs serve as depth-indexed contextual signals. Their interaction is mediated through local depth-aware cross-attention 21 , learned gating, and confidence-aware fusion. This approach shifts the focus from cross-modal generation to annotation-efficient, spatially explicit interpretation 22 , facilitating selective, reliability-aware multimodal refinement of borehole-image structure. Accordingly, our contribution is to move from multimodal petrophysical generation and representation learning toward weakly supervised, dense borehole-image interpretation with geometry-aware and confidence-aware fusion. In this work, we deal with these challenges using a multimodal, weakly supervised framework to segment and refine acoustic borehole intervals. Our pipeline starts with threshold-derived pseudo-supervision, in which approximate training labels are constructed from raw and denoised acoustic images through global and local flexible thresholding. We progressively evaluate stronger refiners with increasing multimodal structure 23 . Our framework first considers image-only baselines and direct multimodal concatenation from multiple data sources. Then we introduce depth-aware cross-attention, a method that explicitly links each row in the image, representing a specific measured depth in the borehole, to conventional log measurements such as electrical resistivity or sonic travel time. The aim is to determine which log-derived petrophysical context is most relevant to the interpretation of the visual structure observed at a given image depth. To improve robustness, we also investigate adaptive fusion mechanisms. These mechanisms flexibly combine information from different sources and modulate the contribution of conventional logs. Conventional logs are primarily recorded data from sensors or systems, rather than data assumed to be of consistent benefit. In particular, we examine gated variants that use learned thresholds to control information flow. We also examine confidence-aware variants that adjust fusion based on the system’s certainty. The last attributes tune multimodal interaction based on the estimated reliability of the pseudo-supervision. Pseudo-supervision refers to labels or annotations from non-expert or automated sources, as well as local segmentation context, or specific data regions 24, 25 . It is important to note that multimodal information is not always useful across all intervals because it can clarify an ambiguous structure. Therefore, a successful model must learn not only how to fuse the modalities, but also when and where to trust the additional information. To ground our evaluation in a realistic, operationally relevant setting, this study leverages the Wellbore Acoustic Image Database (WAID), an open-source repository released by PETROBRAS. The WAID dataset provides high-resolution acoustic amplitude images alongside a comprehensive suite of depth-aligned conventional open-hole logs—including caliper, gamma ray, bulk density, neutron porosity, sonic slowness, and resistivity—from five distinct wells located in a highly heterogeneous Brazilian carbonate pre-salt reservoir. To protect confidentiality, these wells have been pseudonymized after endangered species (Antilope-25, Antilope-37, Botorosa-47, Coala-88, and Tatu-22). Although the dataset was released explicitly to foster artificial intelligence innovation in petrophysics, we intentionally operate in the unannotated regime to maintain our core focus on developing new approaches to advance weakly supervised, annotation-free interpretation techniques. This choice makes WAID an ideal testbed for evaluating our framework under the practical constraints faced in scalable, real-world workflows. While recent literature has successfully utilized WAID to pioneer self-supervised regenerative learning, cross-modal representations, and bidirectional probabilistic log generation 14–17 , our work represents a novel expansion of its utility. We shift the application of this dataset away from purely generative tasks and toward dense, geometry-aware, and confidence-modulated structural interpretation. We analyze benchmarks to investigate the benefits of multimodal attention. This is assessed by comparing performance among wells, interval types from distinct geological or data-defined intervals, and representative interval conditions, with varying levels of segmentation difficulty. We relate improvements to factors such as the model’s prediction uncertainty, reconstruction error, and segmentation morphology, including transition density and structural fragmentation. This approach 
+
+> 2/23
+
+elevates our contribution from a purely empirical benchmark to a more scientific analysis of multimodal behavior in borehole interpretation. Such analysis is especially relevant in production contexts, where decision-makers need to know when a method is reliable and when manual review is needed. Our framework additionally strengthens the weak supervisory signal. We compare threshold-based pseudo-labeling, image-only refinement, direct multimodal concatenation, and the proposed attention-based multimodal refiners. Performance is summarized mainly through permutation-invariant agreement with the pseudo-label reference, which measures agreement with the weak supervisory signal while taking into account class-label ambiguity. The cross-well benchmarking and targeted ablation are then used to identify both the strongest model and the mechanisms responsible for its gains. We observe that agreement increases from 0.6002 for raw thresholding to 0.7456 after denoising-based threshold guidance. Across the full cross-well benchmark, the strongest model, confidence-gated depth-aware cross-attention (CG-DCA), which combines local depth-aware cross-attention with learned gating and confidence-aware fusion, reaches a mean agreement of 0.8571. It outperforms direct multimodal concatenation, which fuses image and log information through early channel-wise stacking (0.7518), the image-only refiner, which relies only on acoustic image information (0.7339), and ungated depth-aware cross-attention (DCA), which uses depth-local cross-attention without selective confidence-aware fusion (0.8044). Targeted ablation further shows that this gain is mechanistically meaningful rather than incidental. Full CG-DCA achieves a mean agreement of 0.9172 on the ablation subset, dropping to 0.8904 when confidence-aware fusion is removed. 
+
+# Results 
+
+0.1 Threshold-guided refinement and multimodal fusion 
+
+Figure 1. Construction of the weak supervisory signal and aligned multimodal inputs for the initial Antilope25 interval. (a) 
+
+From left to right: raw global Multi-Otsu thresholding, denoised global Multi-Otsu thresholding, adaptive/local thresholding, cleaned pseudo-labels, and the corresponding confidence map. (b) From left to right: acoustic image amplitude (AMP), caliper (CAL), gamma ray (GR), bulk density (DEN), neutron porosity (NEU), compressional slowness (DTC), and deep resistivity (RES90). The log channels were interpolated to the image depth grid, normalized, and laterally replicated into image-shaped auxiliary channels. We first assessed whether a representative interval from the Antilope25 well could be partitioned into a coherent structural map using the borehole acoustic image, and whether this partition could be improved through incorporating depth-aligned conventional well logs. Because manual pixel-level labels were not available, the analysis was conducted under limited supervision 19 . In this setting, the learned models were trained against automatically generated pseudo-labels rather than expert geological annotations. Three objects should therefore be distinguished throughout this first analysis: the input acoustic image, the pseudo-label map used as a provisional training target, and the refined segmentation predicted by the neural network. A four-class partition was adopted here as a reproducible segmentation scale for the method, rather than as evidence that the interval contains exactly four geological facies 7. A permutation-invariant metric (see Methods) serves as the main benchmark, 
+
+> 3/23
+
+as arbitrary class numbering is inherent to these partitions. This metric scores the optimal match against the pseudo-label map and measures internal consistency rather than externally validated geological ground truth. We also compute structural diagnostics to explicitly map geometric changes in the class boundaries. Figure 1a summarizes how the provisional targets were obtained. When global Multi-Otsu thresholding 26 is applied directly to the raw image, the main contrast pattern is recovered, but the result is still affected by local noise. Using the autoencoder-denoised image makes this large-scale partition more stable. By applying local adaptive thresholding to resolve depth-varying contrast, we obtain a regularized final pseudo-label map and a paired confidence map that systematically assigns lower certainty to ambiguous boundaries. To construct the multimodal input (Figure 1b), we have used conventional well logs including caliper (CAL), gamma ray (GR), bulk density (DEN), neutron porosity (NEU), compressional slowness (DTC), and deep resistivity (RES90). These logs were interpolated to the image depth grid, independently normalized, and laterally replicated. These channels provide a structured and depth-dependent petrophysical context that complements the two-dimensional acoustic texture (see Supplementary Table S1 for descriptive statistics). Note that the lateral continuity of the aligned log channels in Figure 1b is merely an artifact of azimuthal replication, since the true physical variation occurs exclusively along the vertical depth axis. 
+
+Figure 2. Initial multimodal segmentation findings for the representative Antilope25 interval. (a) Input acoustic borehole image in decibel units. (b) Autoencoder-denoised reconstruction. (c) Reconstruction error map. (d) Cleaned pseudo-label map. 
+
+(e) Raw global Multi-Otsu thresholding. (f) Global Multi-Otsu thresholding applied to the denoised image. (g) AE + KMeans baseline. (h) Final multimodal M-TGS segmentation using the denoised acoustic image and aligned auxiliary logs. (i) Overlay of the AE → Otsu segmentation. (j) Overlay of the image-only M-TGS segmentation. (k) Overlay of the multimodal M-TGS segmentation. (l) Confusion matrix comparing the pseudo-label reference with the multimodal M-TGS segmentation. The full progression from raw input to refined segmentation is captured in Figure 2. The original acoustic image Figure 2a is characterized by laterally continuous yet locally irregular banding. By passing this through the autoencoder Figure 2b, fine-scale textural noise is attenuated while the primary structural organization remains intact. The reconstruction error map Figure 2c shows that this smoothing is highly selective and due to irregular anomalies and sharp lower horizons rather than washing out major boundaries. This controlled denoising yields a pseudo-label map Figure 2d that traces the dominant lateral 
+
+> 4/23
+
+architecture with far greater spatial coherence than naive thresholding. The raw global thresholding in Figure 2e remains highly fragmented, reaching a permutation-invariant agreement (see Methods section) of 0.6002 with the pseudo-label reference. This metric measures the fraction of pixels that agree after optimal matching of class identities between the two segmentations. However, the denoised thresholding in Figure 2f) improves spatial continuity and raises agreement to 0.7456. Because the reference is itself a pseudo-label map rather than an expert geological ground truth. Therefore, these values should be interpreted as measures of internal consistency rather than absolute geological accuracy. Furthermore, the latent-clustering reference from the method AE + KMeans (see Methods section), Figure 2g produces blocky, artificial partitions and reaches only 0.4212 agreement, indicating that learned features alone cannot recover coherent structure without spatial refinement (quantitative results in Supplementary Table S2). This shows that the gain observed later in the pipeline is not a generic consequence of using learned features, but depends on threshold-guided spatial refinement. The proposed multimodal Threshold-Guided Segmentation (M-TGS) model (see in Methods) overcomes these drawbacks by learning to improve the provisional target, weighted by the confidence map to ignore unstable boundaries. The final multimodal M-TGS segmentation (Figure 2h) successfully consolidates the horizontal bands and internal anomalies, achieving the highest overall agreement of 0.9262 (compared to 0.8938 for the image-only refiner). Here, agreement denotes permutation-invariant agreement with the pseudo-label reference, which means that the fraction of pixels assigned to the same class after optimal matching of class identities between the compared segmentations (see Methods). Relative to denoised thresholding, the image-only refiner improves agreement by 0.1482 and the multimodal model by 0.1806, while the multimodal gain over the image-only baseline is 0.0324. The overlay visualizations confirm this structural precision as compared to the denoised Otsu reference (Figure 2i) and the image-only refiner (Figure 2j), the multimodal overlay (Figure 2k) most accurately corresponds to the visible boundaries of the authentic image, particularly in the ambiguous central regions. The confusion matrix, which counts how many pixels assigned to each pseudo-label class are mapped to each predicted class after optimal class matching (Figure 2), shows a strong diagonal pattern. Therefore, high agreement is distributed across the full four-class partition rather than collapsed into a single dominant background class. We broadened our tests to include cross-well screening to determine whether these improvements worked across different rock layers. We found that the refined method consistently outperformed older methods. The image-only refiner matched the pseudo-label reference with a mean score of 0.8349, beating raw Multi-Otsu thresholding (0.6670), denoised thresholding (0.7223), and unsupervised latent clustering AE + KMeans with a score of 0.5201 (see Supplementary Table S3). However, our screening also revealed that the results from concatenated depth-aligned conventional logs with the acoustic image (multimodal integration) varied widely across geological intervals (slices). This approach outperformed the image-only refiner, but overall it surpassed the refiner in only 7 of 15 slices, resulting in a negligible median difference. Such variation suggests that unselective injection of petrophysical logs can dilute strong image-derived features rather than universally improve segmentation. We isolated three morphologically diverse intervals for extended optimization to determine exactly when and why multi-modal fusion succeeds or fails (Supplementary Table S4). Selected across different wells and depth regimes, these cases embody distinct structural challenges. A laterally banded interval from Botorosa47 provides an ideal environment for multimodal integration. Conversely, a deep, vertically columnar section of Antilope25 is resolved so effectively by the image-only model that simple multimodal fusion offers no advantage. Finally, a mid-depth Antilope25 interval featuring a compact, localized anomaly serves as a testing case for naive multimodal concatenation. To evaluate these varied geometries, we apply a consistent visual analysis to each interval. We compare the raw acoustic input (panel a) against its structure-preserving denoised reconstruction (panel b). Discrepancies between the two are captured by the log-compressed reconstruction error (panel c), while a pixel-wise confidence map (panel d) identifies ambiguous transitions to be down-weighted during optimization. Next, we benchmark the raw thresholding (panel e), denoised thresholding (panel f), and AE + KMeans clustering, directly against the learned image-only (panel g) and multimodal (panel h) refiners. This framework was used to investigate how the laterally banded, vertically columnar, and highly localized structures can shed light on the physical conditions under which auxiliary logs aid or disrupt spatial segmentation. 
+
+0.2 Botorosa47 multimodal case 
+
+Figure 3 illustrates the clearest multimodal-positive case within a morphologically legible interval from the Botorosa47 well. The input acoustic image, Figure 3a, exhibits laterally continuous horizontal banding interrupted by localized, low-intensity (darker) anomalies. Furthermore, the autoencoder preserves this dominant layering while attenuating high-frequency noise in Figure 3b. The reconstruction error (log-compressed) shown in Figure 3c is concentrated around complex structural boundaries and localized anomalies. The latter suggests that the denoiser selectively smooths local complexity. In Figure 3d, we observe high reliability to broad and coherent bands, and down-weighting ambiguous transition zones, therefore, providing a structurally aware weakly supervised training signal. Before attempting to classify the rock formations or use the 1D well logs, we first have to clean the raw image and identify which parts we can actually trust. 
+
+> 5/23
+
+Figure 3. Botorosa47 multimodal case. Top row: (a) input acoustic image, (b) autoencoder-denoised reconstruction, (c) 
+
+reconstruction error, and (d) confidence map. Bottom row: (e) raw thresholding, (f) denoised thresholding, (g) image-only refined segmentation, and (h) multimodal refined segmentation. The interval is characterized by laterally continuous banded structure. Both refined models produce segmentation maps that are markedly more coherent than the thresholding baselines, while the multimodal refiner yields the strongest overall result, achieving an agreement of 0.9133 with the pseudo-label reference. Classical global thresholding in Figure 3e is overly sensitive to local variability, producing a highly fragmented partition that improves only modestly from an agreement of 0.7309 to 0.7595 after denoising Figure 3f. To overcome this limitation, we apply the M-TGS refiner, which is optimized using the pseudo-label map as a provisional target and spatially regulated by the confidence map to ignore unstable boundaries. The image-only M-TGS refiner Figure 3g drastically reorganizes the fragmented baseline into continuous bands, increasing agreement to 0.8664. The multimodal M-TGS refiner Figure 3h provides a good morphology and overall agreement of 0.9133. By incorporating petrophysical logs with the acoustic image, the multimodal network successfully stabilizes class assignments across laterally continuous but locally ambiguous bands. Therefore, auxiliary 1D context is highly beneficial for resolving continuous horizontal architectures. The quantitative progression in this interval is consistent with the visual interpretation, which shows that agreement increases from 0.7309 for raw thresholding and 0.7595 after denoising to 0.8664 for the image-only refiner and 0.9133 for the multimodal refiner. Therefore, the aligned auxiliary logs can contribute an additional improvement when the interval is organized as a laterally continuous but locally ambiguous banded structure. 
+
+0.3 Strong refinement in a vertically elongated morphology 
+
+Figure 4 evaluates the refinement framework in a second representative interval from the Antilope25 well, which is morphologi-cally dominated by vertically elongated, columnar structures rather than lateral bands. The input image Figure 4a presents a highly distinctive structural signal with strong contrast against the background. The autoencoder successfully preserves this vertical geometry, as shown in Figure 4b, concentrating reconstruction error primarily along the irregular edges and local protrusions of the columns (Figure 4c). Figure 4d highlights higher-confidence interior regions and lower-confidence structural margins. The latter suggests the successful preservation of supervision over the broader geometric bodies. While direct thresholding captures the broad location of these structures, the raw partition remains noisy and over-segmented in Figure 4e with a score of 0.8638. Denoising stabilizes this output, yielding smoother boundaries Figure 4f, 0.9285 agreement), but still lacks the full spatial consistency of a refined model. When the threshold-guided supervision is applied, the image-only M-TGS refiner (Figure 4g) cleanly connects the elongated features into internally consistent entities, achieving an excellent agreement of 0.9524. The multimodal M-TGS refiner shown in Figure 4h is visually coherent and provides a slightly lower score of 0.9445, 
+
+> 6/23
+
+Figure 4. Heavy-rerun interval from Antilope25 displaying robust refinement in a distinct morphology. Top row: (a) input acoustic image, (b) autoencoder-denoised reconstruction, (c) reconstruction error, and (d) confidence map. Bottom row: (e) raw thresholding, (f) denoised thresholding, (g) image-only refined segmentation, and (h) multimodal refined segmentation. The interval is dominated by vertically elongated structures. Both optimized models substantially outperform the thresholding references. therefore, the learned refinement framework generalizes robustly across fundamentally different geometric structures. We also observe that when the acoustic image has a highly distinctive, high-contrast structural signal, multimodal concatenation provides no incremental benefit over image-only refinement. 
+
+0.4 A localized anomaly in multimodal fusion 
+
+Figure 5 illustrates the critical failure mode of simple multimodal concatenation using a highly challenging mid-depth interval from the Antilope25 well. Unlike the broad bands or continuous columns of the previous cases, the relevant structural signal here is a compact, localized anomaly embedded within a weakly textured, vertically striped background Figure 5a. The autoencoder preserves this principal target Figure 5b, with reconstruction errors appropriately highlighting both the core anomaly and structured variations in the background (Figure 5c). Figure 5d exhibits heterogeneous uncertainty that extends from the anomaly’s boundaries into the vertical striping, signaling a highly complex provisional target. Direct thresholding struggles severely with this compact geometry, recovering only a sparse, incomplete residual of the anomaly even after denoising (Figure 5e,f; agreement rising marginally from 0.6494 to 0.6577). In stark contrast, the image-only M-TGS refiner (Figure 5g) effectively leverages local 2D spatial context to consolidate the weak target, reorganizing the fragmented baseline into a continuous and coherent spatial object with a high score of 0.8105. However, the unselective injection of 1D log data via the simple multimodal refiner Figure 5h) proves actively detrimental. Instead of improving the compact target, the multimodal model increases the amount of irrelevant vertical background striping, thereby redistributing the network’s attention away from the localized anomaly. This geometric distraction causes the quantitative agreement to plummet to 0.5809, a performance very similar to the unsupervised latent-clustering, which has a score of 0.5782. When a target is geometrically compact, as in this anomaly, and the auxiliary channels correlate with background texture, simple channel-wise stacking biases the segmentation toward the background. The latter result indicates that early concatenation might require a more sophisticated integration mechanism capable of spatially selective, depth-aware cross-modal interaction. 
+
+0.5 Benchmark synthesis of depth-aware multimodal refinement 
+
+Our benchmark showed that threshold-type refinement outperforms classical references and revealed that simple multimodal concatenation can have inconsistent gains. When averaged across case studies, the image-only refiner obtained a mean 
+
+> 7/23
+
+Figure 5. Heavy-rerun interval from Antilope25 illustrating a challenging case for multimodal fusion. Top row: (a) input acoustic image, (b) autoencoder-denoised reconstruction, (c) reconstruction error, and (d) confidence map. Bottom row: (e) raw thresholding, (f) denoised thresholding, (g) image-only refined segmentation, and (h) multimodal refined segmentation (Concat). The interval contains a localized anomalous structure embedded within a weakly textured, vertically striped background. The image-only refiner successfully isolates the compact anomaly, whereas simple multimodal concatenation amplifies background noise. agreement of 0.9346 with the pseudo-label, compared to 0.8935 for the concatenation-based multimodal refiner. This interval-dependent performance indicates that the limitation does not lie in the auxiliary logs themselves, but in their unselective fusion. To address this, we evaluated a new family of multimodal refiners based on depth-aware cross-attention (Figure 6). Unlike simple channel concatenation, these models treat the image and logs as geometrically distinct but depth-aligned modalities. The baseline depth-aware cross-attention (DCA) model explicitly links each two-dimensional image row to one-dimensional conventional log measurements by allowing image features to query a local depth window of encoded log context. To further regulate this interaction, we introduced variants, including the proposed gated depth-aware cross-attention (G-DCA), which modulates the strength of the multimodal contribution via an explicit learned gate, and the confidence-gated depth-aware cross-attention (CG-DCA). Therefore, multimodal correction becomes not only depth-aware but spatially selective and reliability-aware. As detailed in Supplementary Table S5, CG-DCA achieves the highest mean agreement against the pseudo-label reference across the 58 evaluation intervals ( 0.8603 ). The entire attention-based family improves performance, with G-DCA ( 0.8201 ) and DCA ( 0.8098 ) clearly outperforming both the earlier concatenation-based refiner ( 0.7550 ) and the image-only model ( 0.7387 ). The performance hierarchy is broadly stable across both the broad and deeper evaluation subsets and highly consistent at the interval level, with CG-DCA outperforming G-DCA in 55 of the 58 evaluated slices. These margins confirm that fusion is an important factor in multimodal performance. The unselective concatenation can dilute strong image-driven features. However, depth-aware, spatially selective, and confidence-modulated integration reliably converts auxiliary log context into systematic enhancements within segmentation coherence. 
+
+> 0.5.1 Coala88 well case for multimodal fusion
+
+Figure 7 demonstrates the Phase 4 multimodal family’s benefit in a visually subtle, although systematic case. The Coala88 slice features weak, spatially sparse structures embedded within a uniform bright background. It tests whether the fusion mechanisms improve segmentation selectively—by preserving faint elongated features—without creating spurious classes or over-segmenting the background. The input image (Figure 7a) contains diffuse, low-contrast anomalies. The autoencoder keeps these weak targets while attenuating fine-scale noise (Figure 7b). The reconstruction error (Figure 7c) highlights where the denoiser departs most 
+
+> 8/23
+
+Figure 6. Architectural evolution of the multimodal refinement framework. Top , full schematic of the confidence-gated depth-aware cross-attention (CG-DCA) refiner, showing the image and log encoders, local depth window, cross-attention block, gating pathway, confidence-modulated fusion, decoder, and prediction stage. Bottom , conceptual comparison of the multimodal progression considered in this study: (a) early concatenation baseline, (b) ungated depth-aware cross-attention (DCA), and (c) confidence-gated DCA (CG-DCA). strongly from the input, while the confidence map (Figure 7d) identifies the regions of greatest structural ambiguity from threshold distance and local vote consistency. Together, these panels show that refinement should be concentrated in sparse, uncertain regions with feature-bearing sections, while leaving the highly confident background intact. We observe that raw thresholding in Figure 7e fragments these sparse targets, and denoising provides only modest stabilization, as shown in Figure 7f. The pseudo-label map in Figure 7g establishes a more spatially organized provisional target, and the direct multimodal concatenation shown in Figure 7h propagates mid-interval responses indiscriminately, resulting in soft, blurred boundaries. The depth-aware fundamentally resolves this diffusion. The DCA shown in Figure 7i better localizes the sparse anomalies, and the G-DCA shown in Figure 7j suppresses spurious background contrast. Our proposed CG-DCA, shown in Figure 7k, provides the most controlled map. The method preserves weak targets without diffuse class spread, as confirmed by its tight image overlay shown in Figure 7l. The optimal formulation is not the one that produces the most visually aggressive segmentation, but the one that maximizes structural continuity in ambiguous zones. The Methods section provides the structural metrics that quantify this selectivity. The advanced attention models leave the vast majority of the segmentation intact, modifying only 7.13% (DCA), 8.35% (G-DCA), and 8.99% (CG-DCA) of pixels relative to the concatenation baseline. Despite these limited changes, pseudo-label agreement improves substantially from 0.9014 (Concat) to 0.9739 (CG-DCA), accompanied by a reduction in off-diagonal confusion mass from 0.0986 to 0.0261. 
+
+> 9/23
+
+Figure 7. Selected-case interval from Coala88 illustrating the progression from threshold-guided refinement to selectively fused multimodal refinement. Top row: (a) input acoustic image, (b) autoencoder-denoised reconstruction, (c) reconstruction error, and (d) confidence map. Middle row: (e) raw thresholding, (f) denoised thresholding, (g) pseudo-labels, and (h) 
+
+concatenation-based multimodal refinement. Bottom row: (i) DCA, (j) G-DCA, (k) CG-DCA, and (l) CG-DCA overlay. Because most of these spatial edits (66.3% for CG-DCA) occur precisely within the low-confidence regions of the weak supervisory signal, the architecture acts as a highly targeted refinement mechanism rather than a global re-segmentation model. 
+
+> 0.5.2 Botorosa47 well refiner family
+
+Unlike the subtle improvements detected in the Coala88 interval, the Botorosa47 slice (Figure 8) presents a pronounced visual and structural contrast between the earlier unselective multimodal baseline and the depth-aware (DCA) family. This interval is dominated by laterally continuous horizontal banding, a central cluster of darker anomalies, and a distinct lower horizon (Figure 8a). The primary segmentation challenge is keeping this lateral continuity without introducing diffuse class spreading. The autoencoder successfully prioritizes these horizontal structures (Figure 8b, c), allowing the pseudo-labels to form a highly coherent layered hypothesis (Figure 8g). However, the simple concatenation-based refiner (Figure 8h) fails to respect these crisp boundaries, smearing mid-interval responses heavily into adjacent vertical zones. The introduction of depth-aware cross-attention fundamentally resolves this diffusion. The DCA family (Figure 8i–k) enforces strict spatial control, aligning the segmentation map with the laterally continuous architecture visible in the acoustic image. Among these variants, CG-DCA (Figure 8k, l) achieves the most precise structural recovery, balancing the preservation of thin banded features with the suppression of spurious localized noise. The structural metrics from Section ?? track this exact progression. Moving from unselective concatenation to baseline DCA corrects 9.08 % of the pixel assignments, driving pseudo-label agreement up from 0.8806 to 0.9336. Adding learned gating (G-DCA) and confidence modulation (CG-DCA) pushes that agreement even higher to 0.9346 and 0.9568, respectively, which collapses the off-diagonal confusion mass to a mere 0.0432. Furthermore, this architectural selectivity proves highly targeted. Of all the pixels modified by CG-DCA relative to G-DCA, 59.0 % sit squarely inside the lowest-confidence quartile of the weak supervisory signal. The final performance leap of CG-DCA is therefore not a global smoothing artifact, but the result of surgically resolving geometrically complex horizons. It actively reorganizes the segmentation to match the dominant lateral banding of the raw acoustic data. 
+
+> 0.5.3 Shallow Antilope25 as a case for family refinement
+
+In contrast to the subtle textures of Coala88 and the fine banding of Botorosa47, the Antilope25 interval is dominated by a large central body (Figure 9a). This structure has sharp lateral boundaries and embedded localized anomalies. Here, the segmentation challenge shifts from recovering thin features to accurately outlining a dominant region. The goal is to avoid over-smoothing its 
+
+> 10/23
+
+Figure 8. Selected-case interval from Botorosa47 illustrating the progression from threshold-guided refinement to the Phase 4 multimodal family. Top row: (a) input acoustic image, (b) autoencoder-denoised reconstruction, (c) reconstruction error, and 
+
+(d) confidence map. Middle row: (e) raw thresholding, (f) denoised thresholding, (g) pseudo-labels, and (h) 
+
+concatenation-based multimodal refinement. Bottom row: (i) DCA, (j) G-DCA, (k) CG-DCA, and (l) CG-DCA overlay. In this interval, the main visual difference is between the earlier baselines and the DCA-family methods: the latter better preserve the laterally continuous banding visible in the image and reduce the diffuse class spread seen in the earlier multimodal formulation. 
+
+> 11/23
+
+Figure 9. Selected-case interval from Antilope25 illustrating the progression from threshold-guided refinement to the Phase 4 multimodal family. Top row: (a) input acoustic image, (b) autoencoder-denoised reconstruction, (c) reconstruction error, and 
+
+(d) confidence map. Middle row: (e) raw thresholding, (f) denoised thresholding, (g) pseudo-labels, and (h) 
+
+concatenation-based multimodal refinement. Bottom row: (i) DCA, (j) G-DCA, (k) CG-DCA, and (l) CG-DCA overlay. In this interval, the principal structure is a broad central dark body bounded by strong lateral transitions. Relative to the earlier baselines, the DCA-family methods recover this geometry more cleanly, and the progression from concat multimodal to DCA, G-DCA, and CG-DCA is visually more apparent than in the Botorosa47 case. margins or absorbing smaller internal components. The autoencoder cleanly isolates this central body (Figure 9b). The reconstruction error and confidence maps (Figure 9c, d) correctly identify the sharp boundaries and upper anomalies as the main zones of ambiguity. The concatenation-based multimodal refiner (Figure 9h) recovers the broad geometry, but operates bluntly. It smooths over localized responses and blurs detailed boundaries. The transition to depth-aware fusion directly resolves these boundary ambiguities. The DCA family (Figure 9i–k) provides stricter spatial control, detecting sharp transitions and isolating upper anomalies. The final overlay (Figure 9l) confirms that the selective multimodal architecture preserves the dominant body and prevents class spread into the background. Quantitative structural metrics (summarized for all three Phase 4 case studies in Supplementary Table S6) reveal that this interval exhibits a strong but non-monotonic progression. The initial shift from concatenation to ungated DCA yields a massive performance leap, resolving 8.78% of the pixel assignments and driving agreement from 0.8991 to 0.9702. The introduction of the learned gate (G-DCA) provides optimal refinement for this specific geometry, achieving 0.9765 agreement and reducing the off-diagonal confusion mass to just 0.0235. This gating step is highly targeted: 70.4% of the pixels modified by G-DCA relative to DCA fall precisely within the lower-confidence regions of the supervisory signal. While the confidence-gated variant (CG-DCA) remains highly accurate (0.9738), it actually yields a marginal regression compared to G-DCA in this specific slice. These three detailed case studies in Supplementary Table S6 confirm the wider benchmark conclusions that depth-aware, selective fusion consistently surpasses unselective concatenation by actively targeting structurally ambiguous zones, even if the absolute optimal gating formulation remains mildly sensitive to local interval geometry. 
+
+0.6 Targeted ablation and cross-well robustness 
+
+We showed that selective depth-aware fusion improves benchmark-level agreement. To isolate the drivers of this gain and test its generalizability, we performed targeted ablations (Figure 10a–l) and cross-well robustness analyses (Figure 10m, n). We observe that the learned multimodal control maps highlight the advantage of the confidence-gated architecture. The standard G-DCA model uses broad spatial modulation over the interval, as shown in Figure 10b. In contrast, the CG-DCA 
+
+> 12/23
+
+Figure 10. Targeted ablation and cross-well robustness of the final multimodal framework. (a) G-DCA segmentation. 
+
+(b) G-DCA gate map. (c) CG-DCA gate map. (d) CG-DCA segmentation. Panels (a) –(d) illustrate how the confidence-gated variant produces a more structured and spatially selective multimodal control pattern than G-DCA in the representative Antilope25 heavy-top interval. (e) Full CG-DCA with depth-window radius r = 2. (f) CG-DCA without confidence-weighted loss. (g) CG-DCA without confidence-aware fusion. (h) CG-DCA without either confidence-weighted loss or confidence-aware fusion. (i) Full CG-DCA with r = 0, that is, same-depth-only log interaction. (j) CG-DCA without the learned gate. (k) Effective uncertainty-driven fusion map. (l) Confidence-weight map used for pixelwise loss weighting. Together, panels (e) –(l) show that the strongest degradation arises when confidence-aware fusion is removed, whereas removing confidence-weighted loss alone or removing the gate has a smaller and more interval-dependent effect. (m) Held-out-well style performance profile summarizing mean agreement on each well for all compared methods. (n) Cross-well robustness heatmap showing agreement against the pseudo-label reference across wells and methods. 
+
+> 13/23
+
+concentrates auxiliary-context fusion in ambiguous zones, like boundary transitions and irregular internal inclusions, as shown in Figure 10c. Therefore, confidence-aware fusion acts selectively rather than uniformly, targeting the harder regions of the segmentation problem. We have investigated the quantitative ablation results, which support this interpretation, as shown in Table 2. The full CG-DCA model with a depth-window radius of r = 2 achieved a mean score of 0.9172 on the targeted ablation set. If we remove the confidence-aware fusion, we induce the largest degradation, reducing the score to 0.8904, whereas removing both confidence-aware mechanisms reduces it to 0.8914. However, by contrast, removing only the confidence-weighted loss, ablating the explicit learned gate, or restricting attention to same-depth log interactions ( r = 0 ) did not consistently reduce performance on this specific subset, and all three variants remained close to the full model on average. In pairwise comparisons, the full model outperformed both variants lacking confidence-aware fusion across all 10 targeted intervals. These ablations isolate confidence-aware fusion, rather than confidence weighting alone, as the most critical contributor to the final model’s behavior. This structural advantage is robust across wells. Cross-well aggregation (Figure 10m, n) shows the same method hierarchy for all five wells. Therefore, thresholding references are weakest. The image-only and concatenation-based refinements are in the middle, and the DCA family is strongest. The well-wise profiles prove that this ranking is not driven by a single favorable well. CG-DCA remained the strongest method across all well-level aggregates. Furthermore, interval-level pairwise comparisons showed CG-DCA outperforming G-DCA in most slices of every well, including 21 of 22 intervals in Antilope25, 9 of 9 in Antilope37, 10 of 10 in Coala88, 8 of 8 in Tatu22, and 7 of 9 in Botorosa47. Therefore, the final performance gain is not a trivial consequence of increased complexity of the model, but rather depends specifically on confidence-aware, spatially selective multimodal interaction. Furthermore, the advantage is not limited to a few favorable examples but remains stable under cross-well aggregation, firmly supporting the interpretation of CG-DCA as an effective refinement model within the present annotation-free benchmark. 
+
+Table 1. Cross-well robustness summary for all compared methods. Agreement is reported against the pseudo-label reference and therefore measures internal consistency within the annotation-free framework rather than externally validated geological accuracy. Mean over wells is the primary ranking criterion; the remaining columns summarize well-to-well variability.                                              
+
+> Method Mean over wells Std. over wells Min well Max well Range Raw Otsu 0.6138 0.0366 0.5719 0.6594 0.0875 AE →Otsu 0.7026 0.0230 0.6726 0.7265 0.0539 AE+KMeans 0.4713 0.0168 0.4544 0.4887 0.0343 Image-only 0.7339 0.0218 0.7138 0.7603 0.0466 Concat multimodal 0.7518 0.0226 0.7134 0.7701 0.0567 DCA 0.8044 0.0328 0.7574 0.8425 0.0851 G-DCA 0.8162 0.0299 0.7701 0.8514 0.0813 CG-DCA 0.8571 0.0238 0.8223 0.8842 0.0620
+
+Table 2. Targeted ablation summary for the CG-DCA family. Means are reported over the 10 targeted ablation intervals. The final columns summarize pairwise comparison against the full CG-DCA model with r = 2 when such a comparison is defined. Negative ∆ indicates lower agreement than the full model.                                                                        
+
+> Variant Overall mean Std. Broad mean Heavy mean ∆vs full (r=2)Full wins Full win rate CG-DCA full (r=2)0.9172 0.0888 0.8783 0.9755 0.0000 ––CG-DCA no conf-loss (r=2)0.9187 0.0837 0.8842 0.9705 0.0016 3/10 0.30 CG-DCA no conf-fusion (r=2)0.8904 0.0984 0.8509 0.9497 -0.0268 10/10 1.00 CG-DCA no conf-loss/fusion (r=2)0.8914 0.1006 0.8495 0.9543 -0.0258 10/10 1.00 CG-DCA full (r=0)0.9181 0.0867 0.8792 0.9765 0.0010 6/10 0.60 CG-DCA no gate (r=2)0.9207 0.0861 0.8821 0.9786 0.0035 3/10 0.30
+
+# Discussion 
+
+We have demonstrated that weakly supervised, threshold-based refinement can convert noisy, heuristic partitions of acoustic borehole images into coherent structural segmentations. Across the initial interval study, the compact cross-well screening, the deeper analyses, and the final attention-based benchmark, the most stable pattern is the substantial improvement gained by moving from raw or denoised thresholding to learned refinement. This result is reinforced by the consistently weak performance 
+
+> 14/23
+
+of the unsupervised AE + KMeans reference. The performance gain is therefore not driven by the mere use of learned features, but by the combination of denoising, pseudo-label generation, confidence estimation, and supervised-style refinement from a structured weak target. The initial multimodal results showed that auxiliary logs are not always helpful when added by direct channel concatenation. In the compact screening, both the image-only and concatenation-type multimodal refiners achieved almost identical average scores. They also had a balanced interval-level win rate. In the laterally banded Botorosa47 interval, multimodal refinement clearly helped. However, in the vertically elongated Antilope25 interval, the image-only refiner was already strong and slightly outperformed concatenation. In a localized-anomaly Antilope25 interval, simple concatenation actually decreases performance. These results show that multimodal context can be valuable. Its usefulness depends on injecting the auxiliary signal in a way that fits the local image structure. Deploying attention-based multimodal refiners substantially resolves this conflict. Once multimodal interaction is refor-mulated through depth-aware cross-attention and further regulated by learned gating and confidence-aware modulation, the benchmark-level ordering stabilizes. The confidence-gated depth-aware cross-attention (CG-DCA) model achieves the highest overall performance, and the family ranking remains broadly consistent across intervals and subsets, even though the strongest within-family variant can remain mildly interval-dependent. The latter suggests that possible limitations of multimodal fusion did not stem from the auxiliary logs but from the unselective way in which they were fused with the acoustic image. The acoustic image provides two-dimensional borehole-wall texture, whereas the logs provide a one-dimensional depth-indexed petrophysical context. A fusion method that respects this geometrical asymmetry, rather than treating replicated logs as ordinary image channels can be more effective. We have observed that targeted ablation performance degrades most when confidence-aware fusion is removed. In contrast, removing only the confidence-weighted loss or limiting the network to pointwise depth interactions ( r = 0) does not always harm performance on the targeted subset. Both variants still show the role of uncertainty-aware and local depth-aware integration. The final model’s behavior is best explained by the interaction among local depth-aware attention, learned gating, and confidence-aware modulation, rather than by any component alone. These findings are highly relevant because the absence of dense manual labels is a defining practical condition of borehole-image interpretation at scale. In such settings, a framework that begins with threshold-derived pseudo-labels and refines them through learned spatial regularization offers a highly practical middle ground between purely heuristic partitioning and fully supervised workflows. The present results show that this strategy is viable even before external geological validation is introduced. Therefore, we can generate internally consistent structural maps while preserving the scalability of manual free-labelling analysis. Furthermore, the multimodal contributions and auxiliary logs specifically resolve existing image ambiguity rather than imposing structure indiscriminately. Our research shows that threshold-guided learned refinement offers a strong path for segmenting geometrically complex borehole data under strict weak supervision. The multimodal fusion only attains its full potential when it is depth-aware, spatially selective, and confidence-modulated. We also observe that simple channel concatenation does not have sufficient precision to guarantee improvement. Furthermore, we conclude that the success of the DCA family suggests that a physically structured multimodal design is what actually converts auxiliary logs into a reliable source of segmentation value. Therefore, the CG-DCA architecture within the scope of this benchmark can be considered the most robust formulation for weakly supervised, multimodal borehole interpretation. 
+
+# Methods 
+
+0.7 Problem formulation and multimodal geometry 
+
+An acoustic borehole-image interval was represented as an unwrapped cylindrical wall image Ximg db ∈ RH×W , where Ximg db 
+
+denotes the acoustic image in the decibel or amplitude domain, H is the number of depth samples (rows), and W is the number of azimuthal samples (columns) around the borehole wall. In parallel, depth-aligned conventional logs were represented as 
+
+eXlog ∈ RH×C where eXlog is the aligned log matrix, H is the same depth dimension used by the image, and C denotes the number of aligned auxiliary channels. In the final multimodal benchmark, C = 7 channels were used: caliper (CAL), gamma ray (GR), bulk density (DEN), neutron porosity (NEU), compressional slowness (DTC), photoelectric factor (PE), and deep resistivity (RES90). We have considered an earlier interval-level analysis for experiment-specific channel subsets when one or more logs were unavailable or intentionally excluded. First, we have estimated a segmentation map, such that Y ∈ { 0, 1, . . . , K − 1}H×W
+
+and K = 4 . The notation Y represents the predicted class map, each entry Y (h, w) is an integer class label at depth row h
+
+and azimuth column w, and K = 4 is the total number of structural classes considered in the study. The classes were weakly supervised structural-amplitude classes induced by threshold-guided pseudo-labeling rather than manually annotated lithofacies. For interpretability, predicted classes were canonically reordered by increasing mean acoustic amplitude. The benchmark was constructed from five wells ( antilope25 , antilope37 , botorosa47 , coala88 , and tatu22 ). The interval 
+
+> 15/23
+
+extraction yielded 69 intervals in total (54 broad and 15 representative heavy intervals) using slice height 600 rows, broad step 12,000 rows, minimum valid height 300 rows, and random seed 42. However, the central multimodal difficulty is geometric asymmetry, because the acoustic image resolves both depth and azimuth, whereas the auxiliary logs resolve only depth. Fusion must therefore inject depth-indexed context without fabricating azimuthal log structure. 
+
+0.8 Preprocessing and depth alignment 
+
+Missing image values were replaced by the interval median. For learning, the acoustic image in the amplitude domain was standardized as: 
+
+Xz(h, w) = Ximg db (h, w) − μσ , (1) where Xz(h, w) is the z-scored value at pixel (h, w), Ximg db (h, w) is the original amplitude at that location, μ is the mean of the interval, and σ is the corresponding standard deviation. The standardized values were then softly compressed into [0, 1] through 
+
+X01 (h, w) = 12
+
+
+
+1 + tanh 
+
+ Xz(h, w)
+
+3
+
+ 
+
+. (2) Here, X01 (h, w) denotes the normalized value used by the learning models, and the hyperbolic tangent compresses extreme values while preserving relative contrast around the center of the distribution. This produced the normalized image X01 ∈ [0, 1]H×W .In the final implementation, all learned refinement models used the denoised representation bX01 rather than the raw normalized image. Each conventional log channel was median-filled if necessary, robustly normalized by 1– 99 percentile clipping, and linearly interpolated to the image depth grid: 
+
+eXlog (h, c) = Ic
+
+
+
+zimg 
+
+> h
+
+
+
+, h = 1, . . . , H, c = 1, . . . , C, (3) where eXlog (h, c) is the aligned value of channel c at image depth row h, Ic(·) denotes the interpolation operator for channel c,and zimg  
+
+> h
+
+is the physical depth associated with image row h. For the direct concatenation baseline only, the aligned logs were laterally replicated across azimuth: 
+
+Xlog →img  
+
+> c
+
+(h, w) = eXlog (h, c), (4) where Xlog →img  
+
+> c
+
+(h, w) denotes the image-shaped version replicated of the c-th log channel. This preserves depth synchrony, but does not assign azimuthal resolution to the logs. 
+
+0.9 Interval-wise denoising autoencoder 
+
+Pseudo-supervision was built from an interval-wise denoised image. Each normalized interval X01 was decomposed into overlapping 32 × 32 patches with stride 8. A convolutional denoising autoencoder 27 encoded each patch through three stride-2 convolutional layers with channel progression 1 → 16 → 32 → 64 , flattened the final feature map, and projected it onto a latent vector of dimension dz = 64 . The decoder mirrored this topology by first expanding the latent vector through a fully connected layer and then reconstructing the patch with three transposed-convolution blocks 64 → 32 → 16 → 1 with sigmoid output. Gaussian noise with standard deviation ση = 0.05 was injected during training. Let pi ∈ [0, 1]32 ×32 denote the i-th image patch extracted from the interval, where i = 1, . . . , N and N is the total number of patches. Let gφ ,θ denote the autoencoder, parameterized by encoder weights θ and decoder weights φ . Training minimized the mean squared reconstruction error: 
+
+LAE = 1
+
+N
+
+> N
+
+# ∑
+
+> i=1
+
+gφ ,θ (pi + ηi) − pi 22 , ηi ∼ N (0, 0.05 2), (5) where LAE is the autoencoder loss, ηi is additive Gaussian noise applied to patch pi, and ∥ · ∥ 2 denotes the Euclidean norm over all patch pixels. Optimization used Adam 28 with learning rate 10 −3 and batch size 128. Training lasted 60 epochs for broad intervals and 120 epochs for heavy intervals. Patch reconstructions were merged with a soft 2D Hann window with floor εhann = 0.05 to obtain the denoised image bX01 .Here, εhann prevents weights from vanishing at the patch boundaries. This denoised image was inverse-transformed back to the acoustic amplitude domain: 
+
+bXimg db = 3σ arctanh (2bX01 − 1) + μ, (6) 
+
+> 16/23
+
+where bXimg db ∈ RH×W is the denoised image in the original acoustic-amplitude domain, μ and σ are the mean and standard deviation used in the forward normalization of the interval, and arctanh (·) is the inverse hyperbolic tangent, which reverses the earlier tanh -based compression. The same patch-level latent vectors were retained for the latent-clustering baseline. For interval-level diagnostics and figure panels, a reconstruction-error map was also computed in the acoustic-amplitude domain: 
+
+Edb 2 (h, w) = 
+
+
+
+Ximg db (h, w) − bXimg db (h, w)
+
+2
+
+, (7) where Edb 2 (h, w) is the squared reconstruction error at pixel (h, w), Ximg db (h, w) is the original acoustic-amplitude value at that location, and bXimg db (h, w) is the corresponding denoised reconstruction. Together with its log-compressed version, as shown by the following equation: 
+
+Elog (h, w) = log  1 + Edb 2 (h, w) . (8) where Elog (h, w) is the log-compressed reconstruction error, and the term 1 + Edb 2 (h, w) ensures numerical stability when the squared error is zero. These maps were used for visualization and selected-case analysis, but not as direct inputs to the final confidence map used in the benchmark. 
+
+0.10 Weak supervision: pseudo-labels and confidence 
+
+Weak supervision was derived from the denoised image bXimg db . First, global four-class Multi-Otsu thresholding 26, 29 produced 
+
+YAE →Otsu = MO 
+
+bXimg db , K = 4
+
+
+
+, (9) where YAE →Otsu is the global threshold-based segmentation of the denoised image and MO (·, K) denotes the Multi-Otsu operator of class K. Second, an adaptive local Multi-Otsu procedure 26, 29 was applied on overlapping windows of size 128 × 64 with overlap 32 × 16 . The tile votes were aggregated into a pixelwise label field, and the winning label was smoothed with a 3 × 3 median filter 30 to obtain the pseudo-label map: 
+
+Y pseudo (h, w) = median 
+
+n
+
+Y local (i, j) : (i, j) ∈ N3×3(h, w)
+
+o
+
+. (10) Here, Ylocal is the label map obtained after aggregating the local tile predictions, and N3×3(h, w) denotes the 3 × 3 neighborhood centered at pixel (h, w). The final pseudo-label map was therefore the locally regularized threshold-derived segmentation of the denoised image, whereas global AE →Otsu was retained as a separate baseline. A confidence map C ∈ [0, 1]H×W quantified heuristic reliability by combining a global threshold-distance term and a local vote-margin term. If {τm} are the global Multi-Otsu thresholds, such that: 
+
+Cglobal (h, w) = min 
+
+1, max 
+
+0,
+
+min m bXimg db (h, w) − τm
+
+0.25 sd (bXimg db ) + ε
+
+ . (11) where Cglobal (h, w) is the global confidence term at pixel (h, w), τm are the global threshold values, sd (·) denotes standard deviation, and ε is a small numerical stabilizer preventing division by zero. If v(1)(h, w) and v(2)(h, w) are the largest and second-largest local vote counts at pixel (h, w), then we have the following equation: 
+
+Clocal (h, w) = v(1)(h, w) − v(2)(h, w)
+
+v(1)(h, w) + ε . (12) where Clocal (h, w) measures the dominance of the winning local label vote over the runner-up vote. The final confidence map was obtained by averaging the global and local confidence terms and restricting the result to the interval [0, 1]:
+
+C(h, w) = min  1, max  0, 0.5Cglobal (h, w) + 0.5Clocal (h, w) . (13) where equal weights were given to the global and local confidence components. For confidence-weighted optimization, the corresponding weight map can computed with the equation: 
+
+W conf (h, w) = λ + ( 1 − λ )C(h, w)γ , (14) where W conf (h, w) is the pixel-wise optimization weight, λ is a confidence floor, and γ controls the nonlinearity of the confidence weighting. In the final confidence-gated model, λ = 0.15 and γ = 1.0. For qualitative interval figures, the standard visualization sequence comprised the input image Ximg db , the denoised reconstruction bXimg db , the reconstruction-error map Elog , the confidence map C, threshold baselines, pseudo-labels, and the corresponding learned predictions. 
+
+> 17/23
+
+0.11 Baseline methods 
+
+The thresholding baselines were direct four-class quantizations of the raw and denoised images: 
+
+YRawOtsu = QT raw 
+
+
+
+Ximg db 
+
+
+
+, YAE →Otsu = QT den 
+
+bXimg db 
+
+
+
+, (15) where QT (·) denotes quantization under threshold set T , T raw are the thresholds fitted to the raw image, and T den are those fitted to the denoised image. A latent-clustering baseline was obtained by applying K-means 31 with K = 4, ninit = 10 , and random state 42 to standardized patch descriptors formed by concatenating the autoencoder latent vector with the mean patch amplitude in the original acoustic domain. Patch assignments were projected back to pixels with the same soft Hann aggregation used for reconstruction. Two learned refinement baselines were then considered. The image-only refiner used Uimg = bX01 where Uimg is the input tensor supplied to the image-only refinement network. The direct multimodal concatenation baseline used is represented by the equation: 
+
+Umm = concat 
+
+bX01 , L1, . . . , LC
+
+
+
+, (16) where Umm is the multimodal input tensor and Lc is the laterally replicated image-shaped version of the c-th aligned log channel, with entries Lc,h,w = eXlog (h, c). Both used the same shallow convolutional refiner with channel progression din →
+
+32 → 64 → 64 → 4 where din = 1 for the image-only baseline and din = 1 +C for the direct multimodal baseline. The network was implemented with 3 × 3 convolutions and ReLU activations 32 , followed by a final 1 × 1 classifier. These models were optimized with Adam at learning rate 10 −3 for 80 epochs on broad intervals and 140 epochs on heavy intervals, using standard pixelwise cross-entropy. 
+
+0.12 Depth-aware cross-attention refinement 
+
+As summarized in Figure ?? , the multimodal architecture comprised a 2D image encoder, a 1D log encoder, a local depth-window attention block, a learned gate, confidence-gated fusion, a shallow classifier head, and an evaluation-only ordered-remapping stage. To respect modality geometry, the denoised image and aligned logs were encoded separately. The image encoder was a 2D convolutional network with channel progression 1 → 32 → 64 → 64 , and the log encoder was a 1D convolutional network with channel progression C → 32 → 64. This produced the following attributes: 
+
+Fimg = gθimg (bX01 ) ∈ RD×H×W , Flog = gθlog (eXlog ⊤) ∈ RD×H , (17) where Fimg is the encoded image feature tensor, Flog is the encoded log feature tensor, gθimg and gθlog are the image and log encoders, and D = 64 is the feature dimension. In all depth-aware cross-attention (DCA) family models, four attention heads were used and the depth-window radius was r = 2, corresponding to a local neighborhood of 2 r + 1 = 5 depth positions. For each image row h, the azimuthal image features formed query tokens Qh ∈ RW ×D, where h ∈ { 1, . . . , H} indexes the depth row, W is the number of azimuthal positions in that row, and D is the feature dimension of the encoded representation. Thus, each row h is represented by W query vectors of dimension D, one for each azimuthal location. The log features within the local depth neighborhood 
+
+N (h; r) = {max (1, h − r), . . . , min (H, h + r)} (18) were used to construct the keys and values. Here, N (h; r) denotes the set of depth indices within radius r of row h, clipped to the valid interval range {1, . . . , H}. Therefore, the attention mechanism does not use the entire log column at once, but only a local vertical window centered on the current image row. The attended log context for row h was then computed as: 
+
+Ah = MHA (QhWQ, KhWK , VhWV ) , (19) where Ah is the attended context tensor for image row h, Kh and Vh are the key and value tensors formed from the encoded log features in the neighborhood N (h; r), WQ, WK , and WV are the learned query, key, and value projection matrices, and MHA (·)
+
+denotes multi-head attention 33 . In other words, Ah is the log-derived contextual representation retrieved for the h-th image row after matching the image queries to the depth-local log keys and values. Equivalently, within each head the attention weights were given by the following equation: 
+
+αh,w,r =
+
+exp 
+
+
+
+q⊤
+
+> h,w
+
+kr/√Dh
+
+
+
+∑r′∈N (h;r) exp 
+
+
+
+q⊤
+
+> h,w
+
+kr′ /√Dh
+
+ , (20) 
+
+> 18/23
+
+where αh,w,r is the attention weight assigned by image location (h, w) to the r-th log position in the local depth neighborhood, 
+
+qh,w is the query vector at that image location, kr is the corresponding key vector, and Dh = D/4 is the per-head feature dimension. The attended log context at location (h, w) was then computed with the equation: 
+
+ah,w = ∑ 
+
+> r∈N(h;r)
+
+αh,w,rvr, (21) where vr is the value vector at the r-th depth position in the local neighborhood. In the basic DCA model, the attended log context was injected through a residual Layer Normalization block: 
+
+eFDCA  
+
+> h
+
+= LN (QhWQ + Ah) , (22) where eFDCA  
+
+> h
+
+is the fused representation at row h after residual attention and LN (·) denotes Layer Normalization 34 . The full DCA representation was obtained by stacking the row-wise outputs over depth: 
+
+FDCA = stack h
+
+eFDCA 
+
+> h
+
+
+
+. (23) where stack h(·) denotes depth-wise stacking of the row-level outputs to reconstruct a full 2D feature tensor. The gated depth-aware cross-attention (G-DCA) variant introduced a learned spatial gate, as shown in the following equation: 
+
+G = σ
+
+
+
+φ  [Fimg ; FDCA ]
+
+, (24) where G ∈ [0, 1]D×H×W is the learned gate tensor, [·; ·] denotes channel-wise concatenation, φ is a two-layer 1 × 1 convolutional network with channel progression 2D → D → D and a ReLU nonlinearity 32 after the first layer, and σ is the sigmoid. The gate therefore learned, at each depth, azimuth, and feature channel, how strongly the log-conditioned correction should modulate the image representation. Therefore, the definition of Fusion in the following equation: 
+
+ZG = GN 
+
+
+
+Fimg + G ⊙ FDCA 
+
+, (25) where ZG is the gated fused representation, ⊙ denotes element-wise multiplication, and GN (·) denotes Group Normalization 35 
+
+with 8 groups. The confidence-gated depth-aware cross-attention (CG-DCA) further modulated the multimodal correction by the confidence map broadcast along the channel dimension: ¯C ∈ [0, 1]D×H×W , ¯Cd,h,w = C(h, w), (26) and the fused representation can be written as the following equation: 
+
+ZCG = GN 
+
+
+
+Fimg + ( G ⊙ ¯C) ⊙ FDCA 
+
+, (27) where ZCG is the confidence-gated fused representation. This formulation corresponds to the confidence-gated fusion block shown in Figure 6: multimodal correction was attenuated both where the learned gate suppressed it and where pseudo-label confidence was low. A shallow 2D classifier head with channel progression 64 → 64 → 32 → 4 produced class logits: 
+
+Sm = dθcls (Zm), m ∈ { DCA , G, CG }, (28) where Sm ∈ RK×H×W is the logit tensor for model variant m, dθcls is the classifier head, and Zm denotes the fused representation for the corresponding model. Class probabilities were obtained by the following equation: 
+
+pk(h, w) = exp (Smk,h,w)
+
+∑K−1 
+
+> j=0
+
+exp (Smj,h,w) , (29) and predictions were then obtained as 
+
+bY mh,w = arg max  
+
+> k
+
+pk(h, w), (30) where bY mh,w is the predicted class at pixel (h, w). The ordered remapping stage shown in Figure 11 was applied only for evaluation and visualization, and was not part of model training. 
+
+> 19/23
+
+0.13 Optimization and targeted ablations 
+
+All learned refinement models were trained against Ypseudo . The image-only, direct-concatenation, DCA, and G-DCA models used standard pixelwise cross-entropy, as defined in the following equation: 
+
+LCE = − 1
+
+HW ∑
+
+> h,w
+
+log pY pseudo (h,w)(h, w), (31) where LCE is the average pixelwise cross-entropy and pY pseudo (h,w)(h, w) is the predicted probability assigned to the pseudo-label at pixel (h, w). CG-DCA used confidence-weighted cross-entropy defined in the following equation: 
+
+LCG -DCA = − 1
+
+HW ∑
+
+> h,w
+
+W conf (h, w) log pY pseudo (h,w)(h, w). (32) Here, LCG -DCA differs from LCE only by the inclusion of the pixel-wise confidence weight W conf (h, w).The DCA-family benchmark models were optimized with Adam at learning rate 10 −3 for 180 epochs on broad intervals and 1000 epochs on heavy intervals. Training was performed on complete intervals rather than mini-batches of crops. Targeted ablations were then carried out on 10 selected intervals (six best-performing and four difficult cases, with best-per-well inclusion) using the same 180/1000 training schedule. The tested variants were: full CG-DCA with r = 2 ; no confidence-weighted loss; no confidence-gated fusion; neither confidence mechanism; full CG-DCA with r = 0; and no learned gate. Here, setting r = 0removes the local depth neighborhood and reduces cross-attention to a degenerate single-depth interaction, while removing the gate eliminates the learned spatial modulation of multimodal fusion. These experiments isolated the effects of local depth context, learned gating, and confidence use in fusion and optimization. 
+
+0.14 Permutation-invariant evaluation 
+
+Because weakly supervised class identities are permutation-ambiguous, predicted classes from clustering and learned models were reordered by their mean acoustic amplitude in Ximg db . For a segmentation bY, class k was assigned mean amplitude: 
+
+bμk = 1
+
+| bCk| ∑ 
+
+> (h,w)∈bCk
+
+Ximg db (h, w), (33) where bμk is the mean acoustic amplitude of class k and bCk = {(h, w) : bYh,w = k} is the set of pixels assigned to that class. Classes were then relabeled in ascending order of bμk. Threshold-based maps are intrinsically ordered by their thresholds and therefore already satisfy this convention. This ordering was used for interpretability, whereas evaluation robustness was ensured separately through optimal permutation matching. For two segmentations YA and YB, the contingency matrix is represented by the following equation: 
+
+Mi, j = #{(h, w) : Y Ah,w = i, Y Bh,w = j}, (34) where Mi, j counts the number of pixels jointly assigned to class i in YA and class j in YB. The optimal permutation was obtained by Hungarian matching 36, 37 , such that: 
+
+π⋆ = arg max 
+
+> π∈S4
+> 3
+
+# ∑
+
+> i=0
+
+Mi,π(i), (35) where S4 is the set of all permutations of the four class labels and π⋆ is the permutation that maximizes matched contingency mass. The permutation-invariant agreement was then computed with the following equation: Acc perm (YA, YB) = 1
+
+HW ∑
+
+> h,w
+
+⊮Y Ah,w = π⋆(Y Bh,w) . (36) Here, ⊮[·] is the indicator function, equal to 1 when its argument is true and 0 otherwise. This was the principal metric used against the pseudo-label reference in all compact benchmark comparisons. Agreement against AE →Otsu and raw Otsu, aligned confusion matrices, class fractions, and per-well summaries were also recorded. For selected-case structural analysis, all compared segmentations were first aligned to the pseudo-label reference. If M
+
+denotes the aligned confusion matrix, the diagonal and off-diagonal confusion masses were defined as DiagMass (M) = tr (M)
+
+∑i, j Mi, j
+
+, OffDiagMass (M) = 1 − DiagMass (M). (37) 
+
+> 20/23
+
+where tr (M) = ∑i Mi,i is the trace of M, that is, the total mass on the diagonal, and ∑i, j Mi, j is the total number of evaluated pixels. Therefore, DiagMass (M) measures the fraction of aligned pixel assignments lying on the diagonal of the confusion matrix, whereas OffDiagMass (M) measures the fraction lying off the diagonal. Relative to the direct-concatenation baseline 
+
+Yconcat , the fraction of changed pixels for method m was ChangedFrac (m) = 1
+
+HW ∑
+
+> h,w
+
+⊮Y m(h, w)̸ = Y concat (h, w) . (38) Here, Ym denotes the aligned segmentation produced by method m, H and W are the depth and azimuthal dimensions of the interval, and ⊮[·] is the indicator function, which is equal to 1 when the condition inside the brackets is true and 0 otherwise. Thus, ChangedFrac (m) measures the fraction of pixels whose class assignment differs between method m and the concatenation baseline. Low-confidence regions were defined in quantile mode by the first quartile of the confidence map, 
+
+τlow = Q0.25 (C), (39) where C ∈ [0, 1]H×W is the pixel-wise confidence map and Q0.25 (C) denotes its 25th percentile. In other words, τlow is the threshold below which the lowest-confidence quarter of pixels lies. The fraction of changed pixels falling in low-confidence regions was defined as: LowConfChangeFrac (m) = ∑h,w ⊮[Y m(h, w)̸ = Y concat (h, w)] ⊮[C(h, w) < τlow ]
+
+∑h,w ⊮[Y m(h, w)̸ = Y concat (h, w)] . (40) This quantity therefore measures the proportion of all pixels changed by method m, relative to the concatenation baseline, that fall inside the least confident part of the interval. The boundary complexity was quantified by the total number of adjacent pixel transitions: BoundaryLen (Y) = 
+
+> H
+
+# ∑ 
+
+> h=1
+> W−1
+
+# ∑
+
+> w=1
+
+⊮[Y (h, w)̸ = Y (h, w + 1)] + 
+
+> H−1
+
+# ∑
+
+> h=1
+> W
+
+# ∑
+
+> w=1
+
+⊮[Y (h, w)̸ = Y (h + 1, w)] , (41) where Y ∈ { 0, . . . , K − 1}H×W is any aligned segmentation map. The first term counts horizontal label transitions between neighboring azimuthal pixels, and the second term counts vertical label transitions between neighboring depth pixels. Hence, BoundaryLen (Y) measures the total complexity of the segmentation boundaries in the interval. The topological fragmentation was quantified by the total number of 8-connected components ? of each class after discarding components smaller than 10 pixels: TotalComponents (Y) = 
+
+> K−1
+
+# ∑
+
+> k=0
+
+C C (8)
+
+> ≥10
+
+(⊮[Y = k]) . (42) Here, ⊮[Y = k] is the binary mask of class k, C C (8) 
+
+> ≥10
+
+denotes the set of 8-connected components with size at least 10 pixels, and | · | denotes the number of such components. Thus, TotalComponents (Y) summarizes how fragmented the segmentation is across all classes. Additional selected-case structural diagnostics, including boundary length, connected-component counts, and low-confidence update fractions, were used only for supplementary case-level interpretation. For qualitative comparison, remapped segmentations were also overlaid on the original acoustic image after alignment, and aligned confusion matrices were visualized to assess whether gains were distributed across the full four-class partition rather than concentrated in a single dominant class. 
+
+# Acknowledgements 
+
+This work was supported by the Brazilian National Council for Scientific and Technological Development (CNPq) under grant No. 445344/2024-5. The author acknowledges financial support as a Project Coordinator and Researcher Level 1 through the Talentos Brasil (Talents Brazil) Fellowship. Furthermore, the author gratefully acknowledges the Group of Artificial Intelligence in Applied Geophysics (GAIA) at the Federal University of Bahia (UFBA) for providing essential computational resources and infrastructure. 
+
+# Author contributions statement 
+
+J.L.L.J.S. is the sole author of this work. J.L.L.J.S. conceived the experiments, developed the mathematical formulation and implemented the software framework for the CG-DCA model and the baseline refinement families, conducted all benchmarking and ablation studies, analyzed the results, and wrote and reviewed the manuscript. 
+
+> 21/23
+
+# Data availability statement 
+
+The dataset analyzed in this study is the Wellbore Acoustic Image Database (WAID), a public resource provided by Petrobras to promote machine learning applications in the oil and gas industry. The dataset consists of acoustic image logs from several wells in Brazilian pre-salt carbonate reservoirs, alongside associated conventional open-hole logs. The data is publicly and freely available for research purposes through the official Petrobras repository at https://github.com/petrobras/waid .
+
+# Additional information 
+
+Competing interests: The author declares no competing interests. 
+
+# Author note 
+
+This work is currently under peer review. The content of this manuscript may change in a revised or published version. 
+
+# Corresponding Author 
+
+Correspondence and requests for materials should be addressed to jseluis.silva@gmail.com .
+
+# References 
+
+1. Prensky, S. Advances in borehole imaging: A review. Log Analyst 40 (1999). 
+
+2. Luthi, S. M. Geological well logs: their use in reservoir modeling (Springer Science & Business Media, 2001). 
+
+3. Dias, L. O. et al. Automatic detection of fractures and breakouts patterns in acoustic borehole image logs using fast-region convolutional neural networks. J. Petroleum Sci. Eng. 191 , 107099 (2020). 
+
+4. Peveraro, R. The role of the geoscientist in the age of artificial intelligence and machine learning. Petrophysics–The SPWLA J. 62 , 454–467 (2021). 
+
+5. Hall, M. Facies classification using machine learning. The Lead. Edge 35 , 906–909 (2016). 
+
+6. Lai, J. et al. Application of geophysical well logs in solving geologic issues: Past, present and future prospect. Geosci. Front. 15 , 101779 (2024). 
+
+7. Kong, F., Xu, H., Gu, X., Luo, C. & Li, S. Segmentation of borehole acoustic reflection image using feature pyramid network and transfer learning. Geoenergy Sci. Eng. 229 , 212088 (2023). 
+
+8. He, W. et al. Multimodal deep learning for petrophysical property prediction from well logs and images. IEEE Transactions on Geosci. Remote. Sens. 60 , 1–13 (2021). 
+
+9. Ye, S.-J., Rabiller, P. & Keskes, N. A specialized network for automatic bedding detection from borehole images. In 
+
+SPWLA 39th Annual Logging Symposium (Society of Petrophysicists and Well-Log Analysts, 1998). 
+
+10. Anovitz, L. M. & Cole, D. R. Characterization and analysis of porosity and pore structures. Rev. Mineral. Geochem. 80 ,61–164 (2015). 
+
+11. Zhou, Z.-H. A brief introduction to weakly supervised learning. Natl. Sci. Rev. 5, 44–53 (2018). 
+
+12. Hasan, M. M. U. et al. Lithofacies identification from wire-line logs using an unsupervised data clustering algorithm. 
+
+Energies 16 , 8116 (2023). 
+
+13. Keretchashvili, G., Lei, T., Liang, L., Schlicht, P. & Donald, A. Unsupervised machine learning workflow for identifying micro-resistivity borehole image features. In SPE Middle East Oil and Gas Show and Conference , D011S024R007 (SPE, 2025). 
+
+14. Frota, R. A., Vellasco, M. M. B. R., Barreto, G. A. & de Jesus, C. M. Heteroassociative mapping with self-organizing maps for probabilistic multi-output prediction. In 2024 International Joint Conference on Neural Networks (IJCNN) , 1–6, DOI: 10.1109/IJCNN60899.2024.10650225 (2024). 
+
+15. Frota, R. A., Barreto, G. A., Vellasco, M. M. B. R. & de Jesus, C. M. Rede som para aprendizado de representações multimodais com aplicação em petrofísica. In XXV Congresso Brasileiro de Automática (CBA 2024) , DOI: 10.20906/ CBA2024/4398 (2024). 
+
+16. Frota, R. A., Barreto, G. A., Vellasco, M. M. B. R. & de Jesus, C. M. Self-organizing maps for cross-modal representation learning in petrophysics applications. Geoenergy Sci. Eng. 257 , 214267, DOI: 10.1016/j.geoen.2025.214267 (2026). 
+
+> 22/23
+
+17. Frota, R. A., Barreto, G. A., Vellasco, M. M. B. R. & de Jesus, C. M. Bidirectional unsupervised probabilistic data generation with self-organizing maps for the geoenergy industry. Neurocomputing 669 , 132476, DOI: 10.1016/j.neucom.2025.132476 (2026). 
+
+18. Lin, L. et al. A deep-learning framework for borehole formation properties prediction using heterogeneous well-logging data: A case study of a carbonate reservoir in the gaoshiti-moxi area, sichuan basin, china. Geophysics 89 , WA295–WA308 (2024). 
+
+19. Qi, Z. et al. Wlfm: A well-logs foundation model for multi-task and cross-well geological interpretation. arXiv preprint arXiv:2509.18152 (2025). 
+
+20. Da Cunha, A., Dos Anjos, G. B., Nascimento, R., de Jesus, C. M. & Jauregui, J. A semi-supervised approach for borehole image log structures segmentation for small labeled datasets. In Sixth EAGE Borehole Geology Workshop , vol. 2025, 1–5 (European Association of Geoscientists & Engineers, 2025). 
+
+21. Chen, L., Wang, X. & Liu, Z. Geological information-driven deep learning for lithology identification from well logs. 
+
+Front. Earth Sci. 13 , 1662760 (2025). 
+
+22. Shen, H., Li, A., Zhang, L. & Liu, X. Fracloggpt: A multimodal large language model for fracture interpretation in imaging logging. Electronics 15 , 127 (2025). 
+
+23. Valentín, M. B. et al. A deep learning-based method for salt and basalt identification in borehole image logs. J. Petroleum Sci. Eng. 179 , 1188–1203 (2019). 
+
+24. Silva, J. L. L. d. J. et al. Wavelet gated multiformer for groundwater time series forecasting. Sci. Reports 13 , 12345 (2023). 
+
+25. Wu, H., Sun, Y., Yang, Y. & Wong, D. F. Beyond simple fusion: Adaptive gated fusion for robust multimodal sentiment analysis. arXiv preprint arXiv:2510.01677 (2025). 
+
+26. Otsu, N. et al. A threshold selection method from gray-level histograms. Automatica 11 (1979). 
+
+27. Vincent, P., Larochelle, H., Bengio, Y. & Manzagol, P.-A. Extracting and composing robust features with denoising autoencoders. In Proceedings of the 25th international conference on Machine learning , 1096–1103 (2008). 
+
+28. Kingma, D. P. & Ba, J. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980 (2014). 
+
+29. Liao, P.-S., Chen, T.-S. & Chung, P.-C. A fast algorithm for multilevel thresholding. J. Inf. Sci. Eng. 17 , 713–727 (2001). 
+
+30. Huang, T., Yang, G. & Tang, G. A fast two-dimensional median filtering algorithm. IEEE transactions on acoustics, speech, signal processing 27 , 13–18 (1979). 
+
+31. McQueen, J. B. Some methods of classification and analysis of multivariate observations. In Proc. of 5th Berkeley Symposium on Math. Stat. and Prob. , 281–297 (1967). 
+
+32. Nair, V. & Hinton, G. E. Rectified linear units improve restricted boltzmann machines. In Proceedings of the 27th International Conference on Machine Learning , 807–814 (2010). 
+
+33. Vaswani, A. et al. Attention is all you need. Adv. neural information processing systems 30 (2017). 
+
+34. Ba, J. L., Kiros, J. R. & Hinton, G. E. Layer normalization. arXiv preprint arXiv:1607.06450 (2016). 
+
+35. Wu, Y. & He, K. Group normalization. In Proceedings of the European Conference on Computer Vision , 3–19 (2018). 
+
+36. Kuhn, H. W. The hungarian method for the assignment problem. Nav. Res. Logist. Q. 2, 83–97 (1955). 
+
+37. Munkres, J. Algorithms for the assignment and transportation problems. J. Soc. for Ind. Appl. Math. 5, 32–38 (1957).

@@ -1,0 +1,321 @@
+Title: Fractal Autoregressive Depth Estimation with Continuous Token Diffusion
+
+URL Source: https://arxiv.org/pdf/2603.14702v1
+
+Published Time: Tue, 17 Mar 2026 03:53:00 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Fractal Autoregressive Depth Estimation with Continuous Token Diffusion 
+
+Jinchang Zhang 1, Xinrou Kang 1, and Guoyu Lu 1
+
+Intelligent Vision and Sensing (IVS) Lab at SUNY Binghamton University 
+
+guoyulu62@gmail.com 
+
+Abstract. Monocular depth estimation can benefit from autoregressive (AR) generation, but direct AR modeling is hindered by RGB–depth modality mismatch, inefficient pixel-wise generation, and instability in continuous depth prediction. We propose a Fractal Visual Autoregres-sive Diffusion framework that reformulates depth estimation as a coarse-to-fine next-scale autoregressive generation process. A VCFR module fuses multi-scale image features with current depth predictions to im-prove cross-modal conditioning, while a conditional denoising diffusion loss models depth distributions directly in continuous space and miti-gates discrete quantization error. To improve computational efficiency, we organize the scale-wise generators into a fractal recursive architecture, reusing a base visual AR unit in a self-similar hierarchy. We further in-troduce an uncertainty-aware robust consensus aggregation scheme for multi-sample inference to improve fusion stability and provide a practical pixel-wise reliability proxy. Experiments on standard benchmarks show strong performance and validate the proposed design. 
+
+## 1 Introduction 
+
+Monocular Depth Estimation is a fundamental task in robotic perception and computer vision, and plays an important role in applications such as scene un-derstanding, 3D reconstruction, and autonomous navigation [5, 16, 35]. Its goal is to predict pixel-wise depth from a single RGB image. Autoregressive (AR) generative models have demonstrated strong sequential modeling capability in image generation, and they also provide a potential path for decomposing com-plex depth prediction into structured subproblems. However, directly applying conventional AR models to monocular depth estimation still faces three ma-jor challenges: (1) cross-modal mapping makes it difficult to model structural correspondences between RGB appearance and depth geometry; (2) pixel-wise generation leads to high serial inference cost; and (3) error propagation during generation undermines prediction stability and reliability. To address these issues, we propose an autoregressive depth generation frame-work based on next-scale prediction, which reformulates monocular depth es-timation as a progressive generation process from low to high resolution and uses scale, rather than pixel, as the generation unit. This design improves infer-ence efficiency while preserving hierarchical modeling capacity. To alleviate the  
+
+> arXiv:2603.14702v1 [cs.CV] 16 Mar 2026 2F. Author et al.
+
+modality mismatch between RGB and depth, we design a Visual-Conditioned Feature Refinement (VCFR) module. This module constructs a Visual-Depth Joint token as the conditional input for next-scale depth generation, thereby enhancing cross-modal structural alignment and detail recovery. In addition, another major challenge of traditional AR models lies in the quantization pro-cess. Discretizing continuous depth values into tokens often introduces quanti-zation error, causing fine-grained geometric information loss and unstable train-ing. However, the core principle of autoregressive modeling—predicting the next state conditioned on the existing context—does not inherently require a discrete state space [18]. Based on this observation, while retaining the scale-wise AR generation framework, we incorporate a conditional denoising diffusion loss to model the conditional distribution at each scale in continuous depth space. This design avoids quantization errors caused by discrete tokenization and provides a more flexible conditional distribution representation than point-wise regres-sion in locally ambiguous regions. Specifically, the autoregressive process mod-els cross-scale hierarchical dependencies, while the diffusion process models the continuous depth distribution within each scale; the two are complementary. However, merely reformulating depth estimation as scale-wise progressive gen-eration is still insufficient to resolve the computational burden introduced by multi-scale iteration. If different scales use independent generators, both model complexity and inference path length increase. To this end, we further propose a fractal architecture, which abstracts the scale-wise autoregressive unit as a reusable base generator and organizes the overall model in a self-similar recur-sive manner. This design structurally unifies the generation process across scales, aligning the modeling principle of next-scale prediction with the network imple-mentation, and mitigates the growth of parameters and inference cost through module reuse. As a result, it achieves a better efficiency-performance trade-off while maintaining modeling capacity. Building on this, to address the instabil-ity and limited reliability of AR-generated depth during inference, we further propose an Uncertainty-Aware Robust Consensus Aggregation module for sta-ble fusion of multiple sampled predictions and reliability estimation. This design improves the stability of multi-sample aggregation without additional training and provides practical region-level risk indicators for downstream tasks. We summarize our contributions as follows: 1. We propose a fractal recur-sive autoregressive framework for monocular depth estimation, which reformu-lates depth prediction as a next-scale generation process and recursively com-poses scale-wise generators using reusable autoregressive modules. 2. We intro-duce a VCFR module that constructs a Visual-Depth Joint token by fusing multi-scale image features with current depth predictions, thereby improving cross-modal conditioning during autoregressive generation. 3. We incorporate a conditional denoising diffusion loss into the scale-wise autoregressive process to directly model depth distributions in continuous space, reducing quantization er-rors caused by discrete tokenization. 4. We propose an uncertainty-aware robust consensus aggregation scheme for multi-sample inference, which improves fusion Abbreviated paper title 32x2 H/32 x W/32       
+
+> H x W
+> H/16 x W/16
+> ..
+> V
+> C
+> F
+> R
+> V
+> C
+> F
+> R
+> V
+> C
+> F
+> R
+> H x W
+> Condition Z
+> noisy VIT tx
+> Image
+> Token
+> Z(D)
+> Sub Module ( Visual Autoregressive )
+> CNN Layer
+> Up Projection
+> Attention
+> Multi -Scale Aggregation
+> Latent Encoder
+> Z(X)
+> Image
+> Token
+> BottleNeck
+> Block
+> Xt Visual
+> Autoregressive
+> Visual -Conditioned Feature Refinement (VCFR)
+> Diffusion Loss
+
+Fig. 1: Given an input RGB image X ∈ RH×W ×3, we first extract multi-scale visual features Z(X) using an image encoder and a multi-scale aggregation module, which serve as global conditioning throughout depth generation. The framework is organized as a fractal recursive hierarchy of four nested scale-wise generators {g4, g 3, g 2, g 1}, which progressively recover depth representations from coarse to fine and output the final depth map ˆD ∈ RH×W . Specifically, g4 starts from a coarse latent token and predicts an initial depth latent, which is then passed to g3, followed by g2, and finally g1. The top-left panel illustrates the fractal recursion pattern, while the bottom panel shows the concrete generation pipeline. At each scale, a VCFR block fuses image features with the current-scale depth latent/token to form a Visual-Depth Joint token for next-scale prediction. Within each module, depth is predicted via a visual autoregressive diffusion process, where a conditional denoising diffusion objective models the continuous depth distribution at the current scale; the noise predictor ϵθ (xt | t, z ) takes diffusion timestep 
+
+t and condition vector z and is optimized with diffusion loss. 
+
+stability and provides a practical pixel-wise reliability proxy without additional training. Our framework is illustrated in Fig. 1. 
+
+## 2 Related Work 
+
+2.1 Monocular Depth Estimation Supervised Learning: Supervised learning methods typically formulate monoc-ular depth estimation as a per-pixel regression problem and train on datasets with ground-truth depth annotations. Early approaches were primarily CNN-based, such as RAP [42] and DAV [15], which improved depth prediction through enhanced feature extraction and refinement modules. More recently, Transformer-based architectures have also been introduced, e.g., PixelFormer [1]. In addi-tion, [38] proposes an image-fusion method better tailored to depth estimation, while [41] explores depth estimation from defocus cues. Another line of work for-mulates depth estimation as a hybrid regression–classification problem. Methods such as AdaBins [2] adopt adaptive binning strategies that combine classification and regression for depth prediction. WordDepth [37] is built on a VAE framework and uses textual descriptions to model a depth distribution; image-conditioned 4 F. Author et al. 
+
+samples are then combined with this distribution to infer depth. Building on this idea, [39, 40] further incorporates a camera model to compute depth priors from environmental information. 
+
+2.2 Generative Models in Depth Estimation Diffusion Models: Marigold [17] shows that pre-trained text-to-image diffu-sion generators can be effectively repurposed for monocular depth estimation. ECoDepth [25] further highlights the importance of conditioning design by con-structing more effective visual conditioning signals to improve the geometric pre-diction quality of diffusion-based depth estimation. DiffusionDepth [8] progres-sively recovers depth maps from noisy depth states through iterative denoising. Lotus [12] revisits diffusion design choices from a more general dense predic-tion perspective and proposes a simplified diffusion formulation that is better suited for dense prediction. Autoregressive Models: Another line of genera-tive modeling for depth estimation is based on autoregressive ideas. DORN [9] estimates depth by discretizing the depth space into multiple bins and predicting the corresponding ordinal labels. Subsequent work, such as Ord2Seq [32], further formulates ordinal regression as a sequence generation problem and uses autore-gressive networks to progressively refine predictions. [33] formulates monocular depth estimation under an autoregressive prediction paradigm. However, these methods still rely on discretization-based modeling pipelines, which may intro-duce information loss before depth decoding and limit the representation of fine-grained continuous geometry. In contrast, our framework combines scale-wise visual autoregression with conditional diffusion modeling in a continuous latent space, avoiding explicit discretization while enabling coarse-to-fine recur-sive depth generation with improved computational efficiency. 
+
+## 3 Method 
+
+Given a monocular RGB image, the model first extracts multi-scale visual fea-tures through an image encoder. Subsequently, depth prediction is no longer performed via pixel-wise autoregressive generation; instead, it is decomposed into a coarse-to-fine cross-scale recursive generation process, which is progres-sively realized by a fractal hierarchical generator (g4 → g1). Specifically, g4 first predicts the depth latent variable at the coarsest scale. Then, each subsequent generator takes the depth state from the previous level as a condition and gen-erates a higher-precision continuous depth latent variable at the corresponding resolution, until g1 outputs the highest-resolution depth representation. To alle-viate the modality mismatch between RGB features and depth representations, we introduce a Visual-Condition Feature Refinement (VCFR) module at each level, which fuses the current depth latent variable with visual features at the same scale to construct a joint conditional representation for the next prediction step. The depth latent variables at all scales are modeled in a continuous space using a conditional diffusion objective. Finally, the highest-resolution depth la-tent variable is decoded into a dense depth map. Abbreviated paper title 5
+
+3.1 Preliminaries: Visual Autoregressive Modeling 
+
+We briefly review the visual autoregressive (VAR) formulation that serves as the foundation of our method, and adapt its notation to the depth prediction set-ting for completeness. Traditional autoregressive modeling assumes a 1D causal dependency, where each token depends only on its prefix. However, visual repre-sentations are naturally organized as 2D feature maps with strong bidirectional spatial correlations. Directly flattening a feature map into a 1D sequence not only breaks local spatial structure, but also introduces a mismatch between the spatially correlated visual tokens and the unidirectional dependency assump-tion of standard token-wise autoregressive models [31]. To address this issue, we follow the visual autoregressive modeling strategy in [31] and shift the pre-diction unit from the next token to the next scale. Instead of autoregressively generating individual tokens in raster order, the model predicts a textbftoken map at each step. Concretely, let F ∈ Rh×w×C denote a visual token map, and let (r1, r 2, . . . , r K ) denote its multi-scale representations with progressively increasing spatial resolutions (hk × wk), where the final scale rK matches the original resolution (h × w). The scale-wise autoregressive factorization is written as P (r1, r 2, . . . , r K ) = QKk=1 P (rk | r<k ), where r<k := ( r1, . . . , r k−1) denotes the prefix over scales. In this formulation, each autoregressive step predicts all tokens in rk in parallel conditioned on the previously generated coarser-scale to-ken maps. This scale-wise formulation defines an autoregressive dependency over textbfscales rather than over individual tokens, thereby preserving within-scale spatial structure and avoiding raster-order flattening during generation. In our method, we build on this factorization principle and further reformulate it into a recursive fractal framework for coarse-to-fine depth generation. 
+
+3.2 Fractal Autoregressive Framework 
+
+While the scale-wise VAR formulation in Sec. 3.1 preserves spatial structure and enables parallel generation within each scale, directly applying a monolithic visual autoregressive module to dense depth prediction remains computation-ally demanding. In particular, as the target resolution increases, the model must jointly capture increasingly complex geometric dependencies, which leads to high modeling and inference cost. To address this issue, we reformulate scale-wise au-toregressive depth generation as a recursive fractal process. Our key idea is to construct a hierarchy of self-similar generators that progressively refine depth from coarse to fine scales. Let zi denote the depth latent (or depth state) at recursion level i, where lower levels correspond to coarser spatial resolutions and higher levels correspond to finer resolutions. Instead of using a single genera-tor to predict the full-resolution depth representation in one step, we define a sequence of level-wise generators {gi}, each responsible for refining the depth rep-resentation at the next scale: zi+1 = gi(zi, ci), where ci denotes a scale-specific conditioning signal derived from the input image and the current depth state (detailed in Sec. 3.3). This recursive formulation decomposes dense depth gener-ation into a sequence of manageable subproblems, each operating at a predefined 6 F. Author et al. 
+
+spatial scale. From a probabilistic perspective, the recursive process induces a hierarchical autoregressive factorization over depth representations across scales. Let z1: L := ( z1, z2, . . . , zL) denote the depth representations from the coarsest to the finest level. Conditioned on the input image I, we write 
+
+p(z1: L | I) = p(z1 | I)
+
+> L−1
+
+Y
+
+> i=1
+
+p(zi+1 | zi, ci), (1) where each factor models the transition from one scale to the next finer scale. Compared with monolithic pixel-wise autoregressive modeling, this factorization provides a more favorable computational structure by distributing the generation burden across multiple levels, while explicitly aligning with the coarse-to-fine hierarchical nature of scene geometry. We instantiate this recursive hierarchy as a fractal stack g4 to g1, where each module predicts a depth latent at a predefined resolution and passes it to the next finer level for further refinement. The visual-depth conditioning mechanism used to construct ci is introduced next. 
+
+3.3 Visual-Conditioned Feature Refinement (VCRF) 
+
+As introduced in Sec. 3.2, each recursive generator gi requires a scale-specific conditioning signal ci to inject image evidence during coarse-to-fine depth re-finement. Relying only on the previous depth state zi may be insufficient to recover fine-grained geometric structures, especially around object boundaries and texture-rich regions. To bridge this modality gap between RGB appear-ance and depth representation, we introduce a VCFR module that constructs a visual-depth joint condition at each scale. Multi-scale visual feature ex-traction. Given an input image I, we first extract multi-scale visual features using a Swin Transformer backbone [23], which captures both coarse scene lay-out and fine local details. We further enhance cross-scale feature interaction via the HAHI module [19]. The resulting multi-scale features are then aggregated with a FPN [21] to produce scale-aligned visual features {fi}Li=1 for recursive depth refinement. Scale-wise visual-depth refinement. At recursion level i,VCFR takes the current depth state zi and the corresponding visual feature fi as input, and outputs a refined conditioning feature ci. To preserve local structural consistency while matching spatial resolutions, we first apply a local projection layer to align fi to the spatial size of zi. The projected visual feature is then processed by a lightweight refinement head consisting of a convolutional block and a self-attention layer, which jointly model local patterns and long-range dependencies. We then fuse the refined visual feature with the current depth state through element-wise interaction, followed by a bottleneck block [13] and a channel-attention module with residual connections for feature recalibration and stabilization. The final output is the scale-specific visual-depth joint con-dition ci, which is used by gi to predict the next-scale depth representation in Eq. (3.2). VCFR injects image structure into each recursive refinement stage, rather than relying on depth-only propagation across scales. This design im-proves cross-modal alignment between RGB features and depth latents while maintaining a lightweight conditioning path for efficient multi-level inference. Abbreviated paper title 7
+
+3.4 Conditional Diffusion Modeling in Continuous Latent Space 
+
+The scale-wise autoregressive factorization in Secs. 3.1 and 3.2 specifies how depth representations are generated across scales, but does not by itself de-termine how the per-scale conditional distribution should be modeled. Prior autoregressive formulations often rely on discrete tokenization, which can be effective for image generation but is less natural for depth estimation, where the target encodes continuous scene geometry. In particular, discretization may introduce quantization artifacts and can limit the fidelity of fine-grained depth variations. Following the view that autoregressive modeling fundamentally con-cerns distribution factorization rather than mandatory vector quantization [18], we model depth latents directly in continuous space. Given the recursive depth state and the scale-specific visual-depth condition from Secs. 3.2 and 3.3, we model the conditional distribution at each level using a conditional diffusion ob-jective. Concretely, at scale i, let z∗ 
+
+> i
+
+denote the target depth latent (derived from ground-truth depth) and let ci denote the VCFR conditioning feature. Our goal is to model the conditional distribution p(z∗ 
+
+> i+1
+
+| zi, ci), where ci encodes the autoregressive context through the current recursive state and image evidence. 
+
+Conditional diffusion objective. We adopt a denoising diffusion objec-tive [14] to supervise continuous depth latent modeling at each scale. Let ϵ ∼N (0 , I) and let t be a diffusion timestep sampled from a predefined noise sched-ule. The noised latent is constructed as zi,t = √¯αt z∗ 
+
+> i
+
++√1 − ¯αt ϵ, where ¯αt is the cumulative product of the noise schedule coefficients. A conditional noise predic-tor ϵθ takes (zi,t , t, ci) as input and predicts the injected noise. The training loss is L(i)diff = Et,ϵ 
+
+h
+
+∥ϵ − ϵθ (zi,t , t, ci)∥22
+
+i
+
+. Compared with direct discrete token match-ing, this objective enables continuous distribution modeling of depth latents and better preserves smooth geometric transitions across scales. 
+
+Relation to direct regression. A direct regression loss (e.g., ℓ1/ℓ 2 or Gaussian likelihood regression) typically optimizes a point estimate under a rel-atively restrictive output assumption. In contrast, conditional diffusion models the full conditional distribution in continuous latent space, which provides a more expressive objective for handling local geometric ambiguity (e.g., occlusion boundaries and texture-poor regions) while maintaining compatibility with our scale-wise autoregressive recursion. 
+
+Training and sampling. During training, diffusion timesteps are sampled randomly for each scale, and the same scale-specific condition ci can be reused across sampled timesteps for efficient supervision. At inference, we sample the depth latent from the learned conditional distribution via the reverse diffusion process. Starting from Gaussian noise zi,T ∼ N (0 , I), we iteratively denoise using 
+
+zi,t −1 = 1
+
+√αt
+
+
+
+zi,t − 1 − αt
+
+√1 − ¯αt
+
+ϵθ (zi,t , t, ci)
+
+
+
++ σtδ,  (2) where δ ∼ N (0 , I) and σt is the noise scale at timestep t. The final sample zi, 0
+
+is used as the refined depth latent at scale i. Optionally, we use a temperature parameter τ to scale the stochastic term σtδ, which provides a practical trade-off between sample diversity and geometric sharpness during inference [7]. 8 F. Author et al. 
+
+3.5 Uncertainty-Aware Robust Consensus Aggregation 
+
+To improve the stability of multi-sample inference and provide a practical relia-bility estimate, we unify depth fusion and uncertainty estimation into a robust consensus optimization problem. This module is used as an optional inference-time aggregation scheme that combines stochastic sample consistency with re-cursive cross-scale consistency from the coarse-to-fine generation process. 
+
+Multi-sample inference and scale-shift alignment. Given an input im-age I, we run the conditional diffusion generator N times to obtain a set of depth predictions { ˆD(n)}Nn=1 . Since monocular depth predictions are typically comparable only up to an affine transformation (scale and shift), different sam-ples may exhibit global scale-shift ambiguity. To make samples comparable, we align each prediction to a shared reference space: ˜D(n) = αn ˆD(n) + βn, where 
+
+{(αn, β n)}Nn=1 are input-specific affine alignment parameters estimated at in-ference time (rather than globally learned parameters). We estimate them by minimizing the pairwise alignment energy 
+
+Lalign ({αn, β n}) = X
+
+> n<m
+
+˜D(n) − ˜D(m)
+
+> 1
+
++ λ
+
+> N
+
+X
+
+> n=1
+
+(αn − 1) 2. (3) 
+
+Robust consensus fusion and uncertainty proxy. After alignment, we estimate the consensus depth at each pixel by minimizing a unified robust con-sistency energy. Let M (x, y ) denote the consensus depth value at pixel (x, y ):
+
+M (x, y ) = arg min z E(z; x, y ). The energy is defined as 
+
+E(z; x, y ) = 
+
+> N
+
+X
+
+> n=1
+
+ρs
+
+˜D(n)(x, y ) − zτs + δ
+
+!
+
++ γ X
+
+> k∈{ 4,3,2,1}
+
+wk ρr
+
+˜Dgk (x, y ) − zτr + δ
+
+!
+
+, (4) where ˜Dgk denotes the prediction from recursive generator module gk, first up-sampled to the final resolution and then affine-aligned to the same reference space as the stochastic samples; wk is the scale weight (normalized across levels), γ
+
+balances the recursive consistency term, ρs and ρr are robust penalty functions (Charbonnier in our implementation), τs and τr are normalization constants, and δ is a small numerical stabilization term. The first term enforces stochastic consistency across multi-sample predictions, while the second term enforces re-cursive consistency along the coarse-to-fine generation trajectory. We define the pixel-wise uncertainty proxy as the minimum residual energy of the consensus optimization: U (x, y ) = E(M (x, y ); x, y ). Thus, the module jointly outputs the robust fused depth map M and the uncertainty proxy map U within the same optimization framework. We emphasize that U is a practical reliability indicator for relative ranking, weighting, or region filtering, rather than a strictly cali-brated probabilistic uncertainty. Inference usage. In multi-sample inference mode, we use the consensus-fused depth as the final prediction, ˆD := M. Abbreviated paper title 9                                                                                                                                                                             
+
+> Method Architecture AbsRel ↓Sq Rel ↓RMSE ↓RMSE log ↓δ < 1.25 ↑δ < 1.25 2↑δ < 1.25 3↑
+> AdaBins [2] E-B5+mini-ViT 0.067 0.190 2.960 0.088 0.949 0.992 0.998 DPT [27] VIT-L 0.060 -2.573 0.092 0.959 0.995 0.996 P3Depth [24] ResNet-101 0.071 0.270 2.842 0.103 0.953 0.993 0.998 NeWCRFs [36] Swin-Large 0.052 0.155 2.129 0.079 0.974 0.997 0.999 BinsFormer [20] Swin-Large 0.052 0.151 2.098 0.079 0.974 0.997 0.999 PixelFormer [1] Swin-Large 0.051 0.149 2.081 0.077 0.976 0.997 0.999 VA-DepthNet [22] Swin-Large 0.050 0.148 2.093 0.076 0.977 0.997 0.999 IEBins [29] Swin-Large 0.050 0.142 2.011 -0.978 0.998 0.999 iDisc [26] Swin-Large 0.050 0.145 2.067 0.077 0.977 0.997 0.999 DCDepth [34] Swin-Large 0.051 0.145 2.044 0.076 0.977 0.997 0.999 WorDepth [37] Swin-Large 0.049 -2.039 0.074 0.979 0.998 0.999 EcoDepth [25] ViT-L 0.048 0.139 2.039 0.074 0.979 0.998 1.000 ZoeDepth [4] ViT-L 0.054 0.189 2.440 0.083 0.977 0.996 0.999 DepthAnything [43] ViT-L 0.046 -1.896 0.069 0.982 0.998 1.000 DiffusiongDepth [8] Diffusion 0.050 0.141 2.016 0.074 0.977 0.998 0.999 Repurposing Diffusion [17] Diffusion 0.105 ---0.904 --DepthFM Diffusion [11] Diffusion 0.091 ---0.92 --Lotus [12] Diffusion 0.081 ---0.931 0.987 -DAR-Base [33] Autoregressive 0.046 0.114 1.823 0.069 0.985 0.999 1.000 Ours Autoregressive 0.044 0.132 1.712 0.069 0.980 0.997 0.999
+
+Table 1: A quantitative comparison of the KITTI dataset [10]. 
+
+## 4 Experiments 
+
+4.1 Implementation Details Training setup. We use the AdamW optimizer with (β1, β 2) = (0 .9, 0.95) and weight decay 0.05 . The base learning rate is 5 × 10 −5 and is linearly scaled by the global batch size divided by 32 . We apply a 5-epoch linear warm-up followed by cosine decay to 5 × 10 −7. Supervision and diffusion training objec-tive. We train the model in a fully supervised manner using ground-truth depth maps, where the supervision is provided by the conditional diffusion objective in continuous latent space (Sec. 3.4). Specifically, ground-truth depth maps are encoded into scale-wise target depth latents, and each recursive level is super-vised by the corresponding conditional diffusion loss. Recursive generation and patch-based context passing. The depth representation is generated in a coarse-to-fine recursive manner across four levels. At each level, the previous generator predicts a guidance-depth token, defined as the mean log-depth at the current resolution. This token is concatenated to the transformer condition input to provide global scale information before finer structural details are syn-thesized. For patch-wise generation at finer resolutions, depth maps are divided into square patches. To reduce boundary artifacts, each patch is passed to the next generator stage together with its 4-neighborhood context (top, bottom, left, and right neighboring patches). VCFR and visual backbone settings. The proposed VCFR module is compatible with backbones that provide multi-scale visual features. In this work, we evaluate two backbone families: convolutional ResNet backbones [13] and Swin Transformers [23]. To strengthen cross-scale feature interaction, we adopt HAHI [19] as the neck and use an FPN [21] to aggregate multi-scale features into scale-aligned visual conditioning features for recursive refinement. The visual condition dimensionality is set to match the output dimensionality of the neck/FPN stage used for conditioning. The back-bone stage channel dimensions are [64, 128, 256, 512] for ResNet and [192, 384, 768, 1536] for Swin. Inference details. The uncertainty-aware robust consensus 10 F. Author et al.                                
+
+> Level Sequence Input Scale GFLOPs
+> g1256 16 ×16 256 ×256 26
+> g216 4×416 ×16 332
+> g316 1×14×4819
+> g4111×1650
+
+Table 2: Configuration of each level in our fractal visual autoregressive depth es-timation framework.                            
+
+> Model Loss Arch Abs Rel ↓RMSE ↓Sq Rel ↓
+> AR CrossEnt VQ16 0.051 2.081 0.149 AR Diff Loss VQ16 0.050 2.011 0.142 VAR CrossEnt VQ16 0.051 2.044 0.145 VAR Diff Loss VQ16 0.046 1.823 0.139 VAR Diff Loss KL16 0.044 1.712 0.132
+
+Table 3: Analysis of the diffusion loss on KITTI [10]. 
+
+aggregation (URCA, Sec. 3.5) is not used during training and is applied only in the optional multi-sample inference mode. 
+
+4.2 Architecture 
+
+Fig. 2: Different stages of depth in a fractal framework. 
+
+We propose a Fractal Visual Au-toregressive Diffusion Model that follows a recursive generation strat-egy. Starting from a coarse latent token, the model progressively gen-erates a high-resolution depth map through multi-stage conditional dif-fusion and autoregressive prediction. Unlike conventional methods that di-rectly regress depth from RGB in-puts, our approach begins with a low-dimensional latent and recursively re-constructs the full depth structure via four hierarchical visual autoregressive diffusion modules. Specifically, the fourth-level module g4 takes a single global latent token (corresponding to a 1 × 1 depth map) as input and predicts the initial coarse depth. Its output serves as a conditional input to the third-level module g3, which takes 16 × (1 × 1) latent tokens and outputs a 4 × 4 resolution depth map, capturing localized structure. The second-level module g2 then takes 
+
+4 × 4 patches of 4 × 4 latent tokens (also 16 in total), and predicts a 16 × 16 
+
+resolution depth map with more detailed mid-level structure. Finally, the top-level module g1 receives 16 × 16 = 256 latent tokens, each representing a 16 × 16 
+
+region, and recursively performs visual autoregressive diffusion to generate the full-resolution 256 × 256 depth map. This generation process consists of four recursive stages. Each layer outputs a depth representation at a specific resolu-tion, which serves as the conditional input for the next layer. The model thus gradually expands from a global latent to a fine-grained pixel-level depth map. The recursive architecture forms a fractal-like nested hierarchy, where each stage exhibits structural self-similarity and recursively calls. 
+
+4.3 Comparisons with Previous Methods Quantitative Results : We conduct comprehensive evaluations of the pro-posed model on the outdoor KITTI dataset [10] and the indoor NYUv2 dataset Abbreviated paper title 11                                     
+
+> Runs (N) AbsRel ↓SqRel ↓RMSE ↓δ < 1.25 ↑
+> 10.0440 0.1320 1.712 0.9800 20.0425 0.1296 1.702 0.9812 30.0416 0.1282 1.696 0.9819 40.0410 0.1272 1.692 0.9824 60.0401 0.1258 1.686 0.9832 80.0395 0.1248 1.681 0.9837 10 0.0390 0.1240 1.678 0.9840
+
+Table 5: Effect of the number of inference runs N on depth estimation performance on KITTI [10].                                       
+
+> Condition DSR Abs Rel. ↓RMSE ↓Cost ↓
+> Res34+FPN ×20.0554 2.0502 0.60 Res50+FPN ×20.0532 1.9724 0.74 MobileNetV3+FPN ×20.0492 1.9245 0.35 Swin+FPN ×20.0458 1.8169 0.89 ConvNeXt+FPN ×20.0468 1.8432 1.10 ConvNeXt+HAHI ×20.0448 1.7680 1.24 Swin+HAHI ×20.0440 1.712 1.00 Swin+HAHI ×40.0443 1.7280 0.98
+
+Table 6: Comparison of visual conditions on KITTI [10]. Cost denotes normalized inference cost,where the highest-cost set-ting is normalized to 1. 
+
+[30]. As summarized in Tables 1 and 4, our method consistently outperforms ex-isting state-of-the-art supervised approaches across multiple evaluation metrics on both datasets. Specifically, we reduce the RMSE to 1.7124 on KITTI and further to 0.197 on NYU. As illustrated in Fig. 3, our visual autoregressive dif-fusion framework captures both local and global structural patterns within the depth distribution. Compared to methods such as Repurposing Diffusion [17], DiffusionDepth [8], our model demonstrates superior depth estimation quality through a more comprehensive and structured generative process. 
+
+4.4 Analysis of the Number of Inference Samples 
+
+In Table 5, We analyze the effect of the number of stochastic inference samples N
+
+on model performance and stability. As N increases, result consistently decrease, while δ < 1.25 consistently increases, indicating that multi-sample inference can steadily improve depth estimation accuracy. Meanwhile, the performance gain exhibits a clear diminishing-return trend: the improvement is more pronounced when increasing from N = 1 to N = 4 , while further increasing to N = 8 or 
+
+N = 10 still yields gains but with smaller margins. This suggests that a moderate number of samples is sufficient to achieve a favorable performance–cost trade-off. From the uncertainty distribution perspective in Fig 4, as N increases from 1 to 2, 4, and 8, the distribution of the pixel-wise uncertainty proxy u shifts toward lower values overall, the high-uncertainty tail shrinks noticeably, and the proportion of pixels with u > 1.0 decreases significantly. This indicates stronger pixel-wise consistency after multi-sample fusion, which is also consistent with the continuous improvement observed in the quantitative metrics. The qualitative results (Fig. 5) further verify this trend: as the number of samples increases, the predicted depth maps become smoother and more stable in road regions, vehicle contours, and distant structures, with reduced local noise and fewer inconsistent regions, leading to clearer overall geometric structures. Overall, multi-sample inference combined with robust consensus aggregation provides consistent gains in accuracy, stability, and visual quality. 
+
+4.5 Module Design and Analysis Diffusion Loss: The results in Table 3 show the effectiveness of the diffusion for monocular depth estimation under different autoregressive settings. First, under an AR backbone with a VQ tokenizer, we treat the continuous latents before 12 F. Author et al.                                                                                                                                                                              
+
+> Method Encoder AbsRel ↓Sq Rel ↓RMSE ↓log ↓δ < 1.25 ↑δ < 1.25 2↑δ < 1.25 3↑
+> AdaBins [2] E-B5+mini-ViT 0.103 -0.364 0.044 0.903 0.984 0.997 P3Depth [24] ResNet-101 0.104 -0.356 0.043 0.904 0.988 0.998 LocalBins [3] E-B5 0.099 -0.357 0.042 0.907 0.987 0.998 NeWCRFs [36] Swin-Large 0.095 0.045 0.334 0.041 0.922 0.992 0.998 BinsFormer [20] Swin-Large 0.094 -0.330 0.040 0.925 0.991 0.997 PixelFormer [1] Swin-Large 0.090 -0.322 0.039 0.929 0.991 0.998 VA-DepthNet [22] Swin-Large 0.086 0.043 0.304 0.039 0.929 0.991 0.998 IEBins [29] Swin-Large 0.087 0.040 0.314 0.038 0.936 0.992 0.998 NDDepth [28] Swin-Large 0.087 0.041 0.311 0.038 0.936 0.991 0.998 DCDepth [34] Swin-Large 0.085 0.039 0.304 0.037 0.940 0.992 0.998 WorDepth [37] Swin-Large 0.088 -0.317 0.038 0.932 0.992 0.998 VPD [44] ViT-L 0.069 0.030 0.254 0.027 0.964 0.995 0.999 EcoDepth [25] ViT-L 0.059 0.013 0.218 0.026 0.978 0.997 0.999 ZoeDepth †[4] ViT-L 0.077 -0.282 0.033 0.951 0.994 0.999 DepthAnything †[43] ViT-L 0.063 0.020 0.235 0.026 0.975 0.997 0.999 VDA-L [6] ViT-L 0.046 ---0.978 --DiffusiongDepth [8] Diffusion 0.085 -0.295 0.036 0.939 0.992 0.999 Repurposing Diffusion [17] Diffusion 0.055 ---0.964 --DepthFM [11] Diffusion 0.055 ---0.963 --Lotus [12] Diffusion 5.1 ---0.97.2 0.992 -DAR-Base [33] Autoregressive 0.058 0.013 0.214 0.026 0.980 0.997 0.999 Ours Autoregressive 0.049 0.011 0.197 0.023 0.984 0.998 0.999
+
+Table 4: A quantitative comparison on NYU dataset [30]. 
+
+Fig. 3: Visual results on NYU. From left to right: input images, depth estimation from ground truth, DiffusionDepth [8], Repurposing Diffusion [17], ours. 
+
+the VQ layer as diffusion tokens and replace the original cross-entropy objective with the diffusion objective, which improves depth estimation metrics. Under the VAR backbone, the RMSE is further reduced. These consistent gains across the evaluated AR variants suggest that the diffusion objective provides a more effective supervision signal for depth prediction than discrete token likelihood training in our setting. Second, after introducing the diffusion objective, replac-ing the VQ-16 tokenizer with a KL-16 tokenizer further reduces the RMSE to 1.712. This result indicates that diffusion-based continuous modeling benefits from the richer continuous structure preserved by KL codes. As illustrated in Fig. 6, continuous depth tokens produce reconstructions that are visually closer to the ground truth than discrete VQ-16 tokens. The discrete formulation shows noticeable quantization artifacts (e.g., staircase effects on large planar regions) and less stable transitions around thin structures, whereas continuous KL-16 tokens yield smoother depth gradients while better preserving sharp boundaries and fine geometric details. These qualitative results further support the advan-tage of continuous latent-space modeling for fine-grained depth geometry. Abbreviated paper title 13            
+
+> Fig. 4: Uncertainty distribution shifts un-der multi-sample inference with different numbers of runs ( N= 1 ,2,4,8). In each subplot, the x-axis denotes the pixel-wise uncertainty proxy uand the y-axis de-notes density. The dashed vertical line in-dicates the threshold u= 1 .0.
+> Fig. 5: Effect of multi-sample uncertainty aggregation on KITTI. From top to bot-tom: input RGB images, ground truth, and depth predicted from 1, 4, and 8 dif-fusion samples.
+> Fig. 6: Visual results. From top to bottom; input images, ground truth, depth from discrete VQ tokens, and depth from continuous KL tokens..
+
+Analysis of Visual Conditions. As shown in Table 6, although visual con-ditions such as MobileNetV3+FPN and ResNet34+FPN achieve significantly faster inference speeds compared to Swin+HAHI, they suffer from noticeable drawbacks in accuracy. Conversely, high-accuracy models like ConvNeXt+FPN attain performance that is comparable to or slightly better than Swin, but incur much higher computational cost and inference latency. In contrast, Swin+HAHI strikes a favorable balance between accuracy and efficiency, ranking among the top in multiple evaluation metrics. As a result, we adopt it as the default visual condition configuration in our model. In addition, we evaluate encoder-decoder structures based on depth latent spaces with down-sampling rates of ×4 and 
+
+×2. While the lower-resolution latent space ( ×4) offers slight advantages in run-time, the higher-resolution ( ×2) consistently yields better accuracy in depth pre-diction. Therefore, we select the ×2 setting, considering the trade-off between computational efficiency and predictive performance. 
+
+4.6 Inference Latency 
+
+As shown in Table 7, our method offers a favorable accuracy–efficiency trade-off: while it is slower than lightweight CNN-/Transformer-based modles (e.g., Monodepth2 and MonoViT), it is substantially faster than diffusion-based ap-14 F. Author et al. Method Marigold Lotus E2E-Mono Monodepth2 MonoViT DiffusiongDepth Jasmine Ours MACs 133T 2.65T 2.65T 21.43G 25.63G - 35.7G 132G Runtime 9.88s 157ms 152ms 33ms 29ms 223ms 172ms 64ms 
+
+Table 7: MACs and runtime on input resolution 1024 × 320 .
+
+proaches (e.g., Marigold, DiffusionDepth, and Jasmine) under the same input resolution, while maintaining stronger depth estimation performance. 
+
+4.7 Ablation Study                                   
+
+> AR VAR Diffusion Fractal VCFR Cost AbsRel ↓Sq Rel ↓RMSE ↓δ < 1.25 ↑
+> ✓1.000 0.083 0.039 0.314 0.938
+> ✓0.017 0.079 0.037 0.279 0.949
+> ✓✓0.720 0.063 0.020 0.235 0.975
+> ✓✓✓0.045 0.058 0.013 0.212 0.982
+> ✓✓✓✓0.051 0.049 0.011 0.197 0.984
+
+Table 8: Ablation study of the frame-work on the NYU dataset. 
+
+We conduct ablation studies on the NYUv2 dataset to evaluate the contribu-tion of each component, with results sum-marized in Table 8. Here, cost denotes the normalized inference cost, with the AR baseline normalized to 1.000 (lower is bet-ter). Therefore, each value represents the relative inference overhead compared with the AR model under the same evalua-tion setting. Visual Autoregressive Structure. Comparing the AR and VAR variants (first two rows), the AR baseline shows limited depth estimation accu-racy and a high inference cost. Replacing AR with a VAR formulation improves performance while substantially reducing the normalized cost from 1.000 (AR baseline) to 0.017, indicating that scale-wise autoregressive generation is more suitable for dense depth prediction. Conditional Denoising Diffusion Ob-jective. We then introduce a conditional denoising diffusion objective to model depth latents in continuous space and alleviate limitations introduced by discrete tokenization. As shown in Table 8, adding diffusion significantly improves depth estimation accuracy. However, the multi-step denoising process increases the normalized inference cost to 0.720, motivating a more efficient generator orga-nization. Fractal Structure. To reduce the cost introduced by diffusion-based scale-wise generation, we adopt the proposed fractal recursive design, which com-poses the model from reusable small-scale autoregressive modules. This design markedly improves the accuracy-cost trade-off, reducing the normalized cost to 0.045 while further improving prediction performance. Visual-Conditioned Feature Refinement Finally, we add the VCFR module to enhance visual-depth conditioning at each recursive scale. As shown in Table 8, VCFR yields the best overall performance across all metrics while maintaining a low nor-malized cost of 0.051, validating its effectiveness for cross-modal alignment and fine-grained geometric refinement. 
+
+## 5 Conclusion 
+
+We proposed a fractal visual autoregressive diffusion framework for monocular depth estimation. Our method reformulates depth prediction as a coarse-to-fine next-scale autoregressive process and organizes the generators in a recursive frac-tal hierarchy, improving the computational structure of dense prediction. The Abbreviated paper title 15 
+
+proposed VCFR module enhances RGB–depth alignment at each scale, while a conditional diffusion objective models depth latents in continuous space without explicit discretization. We further introduce an uncertainty-aware robust consen-sus aggregation scheme for multi-sample inference to improve prediction stability and provide a practical reliability proxy. Experiments on standard benchmarks show strong performance and validate the effectiveness of the proposed design. 
+
+## References 
+
+1. Agarwal, A., Arora, C.: Attention attention everywhere: Monocular depth predic-tion with skip attention. In: Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision. pp. 5861–5870 (2023) 2. Bhat, S.F., Alhashim, I., Wonka, P.: Adabins: Depth estimation using adaptive bins. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 4009–4018 (2021) 3. Bhat, S.F., Alhashim, I., Wonka, P.: Localbins: Improving depth estimation by learning local distributions. In: European Conference on Computer Vision. pp. 480–496. Springer (2022) 4. Bhat, S.F., Birkl, R., Wofk, D., Wonka, P., Müller, M.: Zoedepth: Zero-shot transfer by combining relative and metric depth. arXiv preprint arXiv:2302.12288 (2023) 5. Chen, P.Y., Liu, A.H., Liu, Y.C., Wang, Y.C.F.: Towards scene understanding: Unsupervised monocular depth estimation with semantic-aware representation. In: Proceedings of the IEEE/CVF Conference on computer vision and pattern recog-nition. pp. 2624–2632 (2019) 6. Chen, S., Guo, H., Zhu, S., Zhang, F., Huang, Z., Feng, J., Kang, B.: Video depth anything: Consistent depth estimation for super-long videos. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 22831–22840 (2025) 7. Dhariwal, P., Nichol, A.: Diffusion models beat gans on image synthesis. Advances in neural information processing systems 34 , 8780–8794 (2021) 8. Duan, Y., Guo, X., Zhu, Z.: Diffusiondepth: Diffusion denoising approach for monocular depth estimation. In: European Conference on Computer Vision. pp. 432–449. Springer (2024) 9. Fu, H., Gong, M., Wang, C., Batmanghelich, K., Tao, D.: Deep ordinal regression network for monocular depth estimation. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 2002–2011 (2018) 10. Geiger, A., Lenz, P., Stiller, C., Urtasun, R.: Vision meets robotics: The kitti dataset. The International Journal of Robotics Research 32 (11), 1231–1237 (2013) 11. Gui, M., Schusterbauer, J., Prestel, U., Ma, P., Kotovenko, D., Grebenkova, O., Baumann, S.A., Hu, V.T., Ommer, B.: Depthfm: Fast generative monocular depth estimation with flow matching. In: Proceedings of the AAAI Conference on Arti-ficial Intelligence. vol. 39, pp. 3203–3211 (2025) 12. He, J., Li, H., Yin, W., Liang, Y., Li, L., Zhou, K., Zhang, H., Liu, B., Chen, Y.C.: Lotus: Diffusion-based visual foundation model for high-quality dense prediction. In: The Thirteenth International Conference on Learning Representations 13. He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for image recognition. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 770–778 (2016) 14. Ho, J., Jain, A., Abbeel, P.: Denoising diffusion probabilistic models. Advances in neural information processing systems 33 , 6840–6851 (2020) 16 F. Author et al. 15. Huynh, L., Nguyen-Ha, P., Matas, J., Rahtu, E., Heikkilä, J.: Guiding monocular depth estimation using depth-attention volume. In: Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XXVI 16. pp. 581–597. Springer (2020) 16. Izadi, S., Kim, D., Hilliges, O., Molyneaux, D., Newcombe, R., Kohli, P., Shotton, J., Hodges, S., Freeman, D., Davison, A., et al.: Kinectfusion: real-time 3d recon-struction and interaction using a moving depth camera. In: Proceedings of the 24th annual ACM symposium on User interface software and technology. pp. 559–568 (2011) 17. Ke, B., Obukhov, A., Huang, S., Metzger, N., Daudt, R.C., Schindler, K.: Re-purposing diffusion-based image generators for monocular depth estimation. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recog-nition (CVPR) (2024) 18. Li, T., Tian, Y., Li, H., Deng, M., He, K.: Autoregressive image generation with-out vector quantization. Advances in Neural Information Processing Systems 37 ,56424–56445 (2024) 19. Li, Z., Chen, Z., Liu, X., Jiang, J.: Depthformer: Exploiting long-range correlation and local information for accurate monocular depth estimation. Machine Intelli-gence Research 20 (6), 837–854 (2023) 20. Li, Z., Wang, X., Liu, X., Jiang, J.: Binsformer: Revisiting adaptive bins for monoc-ular depth estimation. IEEE Transactions on Image Processing (2024) 21. Lin, T.Y., Dollár, P., Girshick, R., He, K., Hariharan, B., Belongie, S.: Feature pyramid networks for object detection. In: Proceedings of the IEEE conference on computer vision and pattern recognition. pp. 2117–2125 (2017) 22. Liu, C., Kumar, S., Gu, S., Timofte, R., Van Gool, L.: Va-depthnet: A variational approach to single image depth prediction. arXiv preprint arXiv:2302.06556 (2023) 23. Liu, Z., Lin, Y., Cao, Y., Hu, H., Wei, Y., Zhang, Z., Lin, S., Guo, B.: Swin transformer: Hierarchical vision transformer using shifted windows. In: Proceedings of the IEEE/CVF international conference on computer vision. pp. 10012–10022 (2021) 24. Patil, V., Sakaridis, C., Liniger, A., Van Gool, L.: P3depth: Monocular depth estimation with a piecewise planarity prior. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 1610–1621 (2022) 25. Patni, S., Agarwal, A., Arora, C.: Ecodepth: Effective conditioning of diffusion models for monocular depth estimation. In: Proceedings of the IEEE/CVF Con-ference on Computer Vision and Pattern Recognition. pp. 28285–28295 (2024) 26. Piccinelli, L., Sakaridis, C., Yu, F.: idisc: Internal discretization for monocular depth estimation. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 21477–21487 (2023) 27. Ranftl, R., Bochkovskiy, A., Koltun, V.: Vision transformers for dense prediction. In: Proceedings of the IEEE/CVF international conference on computer vision. pp. 12179–12188 (2021) 28. Shao, S., Pei, Z., Chen, W., Wu, X., Li, Z.: Nddepth: Normal-distance assisted monocular depth estimation. In: Proceedings of the IEEE/CVF International Con-ference on Computer Vision. pp. 7931–7940 (2023) 29. Shao, S., Pei, Z., Wu, X., Liu, Z., Chen, W., Li, Z.: Iebins: Iterative elastic bins for monocular depth estimation. Advances in Neural Information Processing Systems 
+
+36 , 53025–53037 (2023) 30. Silberman, N., Hoiem, D., Kohli, P., Fergus, R.: Indoor segmentation and support inference from rgbd images. In: European conference on computer vision. pp. 746– 760. Springer (2012) Abbreviated paper title 17 31. Tian, K., Jiang, Y., Yuan, Z., Peng, B., Wang, L.: Visual autoregressive modeling: Scalable image generation via next-scale prediction. Advances in neural information processing systems 37 , 84839–84865 (2024) 32. Wang, J., Cheng, Y., Chen, J., Chen, T., Chen, D., Wu, J.: Ord2seq: regarding ordinal regression as label sequence prediction. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 5865–5875 (2023) 33. Wang, J., Liu, J., Tang, D., Wang, W., Li, W., Chen, D., Chen, J., Wu, J.: Scal-able autoregressive monocular depth estimation. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 6262–6272 (2025) 34. Wang, K., Yan, Z., Fan, J., Zhu, W., Li, X., Li, J., Yang, J.: Dcdepth: Pro-gressive monocular depth estimation in discrete cosine domain. arXiv preprint arXiv:2410.14980 (2024) 35. Wang, Y., Chao, W.L., Garg, D., Hariharan, B., Campbell, M., Weinberger, K.Q.: Pseudo-lidar from visual depth estimation: Bridging the gap in 3d object detection for autonomous driving. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 8445–8453 (2019) 36. Yuan, W., Gu, X., Dai, Z., Zhu, S., Tan, P.: Neural window fully-connected crfs for monocular depth estimation. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 3916–3925 (2022) 37. Zeng, Z., Wang, D., Yang, F., Park, H., Soatto, S., Lao, D., Wong, A.: Wordepth: Variational language prior for monocular depth estimation. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 9708– 9719 (2024) 38. Zhang, J., Li, Z., Lu, G.: Language-depth navigated thermal and visible image fusion. arXiv preprint arXiv:2503.08676 (2025) 39. Zhang, J., Lu, G.: Vision-language embodiment for monocular depth estimation. In: Proceedings of the Computer Vision and Pattern Recognition Conference. pp. 29479–29489 (2025) 40. Zhang, J., Reddy, P.K., Wong, X.I., Aloimonos, Y., Lu, G.: Embodiment: Self-supervised depth estimation based on camera models. In: 2024 IEEE/RSJ Inter-national Conference on Intelligent Robots and Systems (IROS). pp. 7809–7816. IEEE (2024) 41. Zhang, J., Xu, N., Zhang, H., Lu, G.: Depth estimation based on 3d gaussian splatting siamese defocus. In: 2025 IEEE International Conference on Robotics and Automation (ICRA). pp. 01–07. IEEE (2025) 42. Zhang, Z., Cui, Z., Xu, C., Yan, Y., Sebe, N., Yang, J.: Pattern-affinitive propaga-tion across depth, surface normal and semantic segmentation. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 4106– 4115 (2019) 43. Zhao, H.: Depth anything: Unleashing the power of large-scale unlabeled data. Computer Vision and Pattern Recognition (CVPR), 2024 (17/06/2024-21/06/2024, Seattle, USA) (2024) 44. Zhao, W., Rao, Y., Liu, Z., Liu, B., Zhou, J., Lu, J.: Unleashing text-to-image diffu-sion models for visual perception. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 5729–5739 (2023)
